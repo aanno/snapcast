@@ -162,6 +162,9 @@ std::vector<std::string> Controller::getSupportedPlayerNames()
 #ifdef HAS_WASAPI
     result.emplace_back(player::WASAPI);
 #endif
+#ifdef HAS_PIPEWIRE
+    result.emplace_back(player::PIPEWIRE);
+#endif
     result.emplace_back(player::FILE);
     return result;
 }
@@ -267,6 +270,10 @@ void Controller::getNextMessage()
 #ifdef HAS_WASAPI
             if (!player_)
                 player_ = createPlayer<WASAPIPlayer>(settings_.player, player::WASAPI);
+#endif
+#ifdef HAS_PIPEWIRE
+            if (!player_)
+                player_ = createPlayer<PipeWirePlayer>(settings_.player, player::PIPEWIRE);
 #endif
             if (!player_ && (settings_.player.player_name == player::FILE))
                 player_ = createPlayer<FilePlayer>(settings_.player, player::FILE);
