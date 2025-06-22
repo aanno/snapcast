@@ -44,7 +44,6 @@ class PipeWirePlayer : public Player
 public:
     /// c'tor
     PipeWirePlayer(boost::asio::io_context& io_context, const ClientSettings::Player& settings, std::shared_ptr<Stream> stream);
-    
     /// d'tor
     virtual ~PipeWirePlayer();
 
@@ -57,48 +56,51 @@ public:
 private:
     bool needsThread() const override;
     void worker() override;
+
     void connect();
     void disconnect();
+
     bool getHardwareVolume(Volume& volume) override;
     void setHardwareVolume(const Volume& volume) override;
-    
+
     // PipeWire callbacks
     static void on_process(void* userdata);
     static void on_state_changed(void* userdata, enum pw_stream_state old, enum pw_stream_state state, const char* error);
     static void on_param_changed(void* userdata, uint32_t id, const struct spa_pod* param);
     static void on_io_changed(void* userdata, uint32_t id, void* area, uint32_t size);
     static void on_drained(void* userdata);
-    
+
     // Registry callbacks for device enumeration
     static void registry_event_global(void* data, uint32_t id, uint32_t permissions, const char* type, uint32_t version, const struct spa_dict* props);
     static void registry_event_global_remove(void* data, uint32_t id);
 
     std::vector<char> buffer_;
     std::chrono::microseconds latency_;
-    int underflows_ = 0;
-    std::atomic<bool> stream_ready_;
-    long last_chunk_tick_;
-    
+    std::atomic<int> underflows_{0};
+    std::atomic<bool> stream_ready_{false};
+    std::atomic<long> last_chunk_tick_{0};
+
     struct pw_main_loop* main_loop_;
     struct pw_context* context_;
     struct pw_core* core_;
     struct pw_stream* stream_;
     struct pw_registry* registry_;
-    
+
     struct spa_hook stream_listener_;
     struct spa_hook registry_listener_;
     
     std::optional<std::string> target_node_;
     std::map<std::string, std::string> properties_;
-    
+
     // Volume control
     std::chrono::time_point<std::chrono::steady_clock> last_change_;
     uint32_t node_id_;
-    
+
     // Stream parameters
     struct spa_audio_info_raw audio_info_;
     uint32_t frame_size_;
-    
+    struct spa_io_position* position_ = nullptr;
+
     static inline const struct pw_stream_events stream_events_ = {
         .version = PW_VERSION_STREAM_EVENTS,
         .destroy = nullptr,
@@ -111,7 +113,7 @@ private:
         .process = on_process,
         .drained = on_drained,
     };
-    
+
     static inline const struct pw_registry_events registry_events_ = {
         .version = PW_VERSION_REGISTRY_EVENTS,
         .global = registry_event_global,

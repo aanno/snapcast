@@ -39,8 +39,12 @@ namespace player
 static constexpr std::chrono::milliseconds BUFFER_TIME = 100ms;
 static constexpr auto LOG_TAG = "PipeWirePlayer";
 
-// Global device list for enumeration
+// Global device list and synchronization data for enumeration
 static std::vector<PcmDevice> g_devices;
+struct EnumData {
+    int pending;
+    struct pw_main_loop* loop;
+};
 
 std::vector<PcmDevice> PipeWirePlayer::pcm_list(const std::string& parameter)
 {
@@ -78,17 +82,35 @@ std::vector<PcmDevice> PipeWirePlayer::pcm_list(const std::string& parameter)
     
     g_devices.clear();
     
+    // Set up enumeration data
+    EnumData enum_data = { 1, main_loop };
+    
+    // Add registry listener
     struct spa_hook registry_hook;
     pw_registry_add_listener(registry, &registry_hook, &registry_events_, nullptr);
     
-    // Run the main loop for a short time to enumerate devices
-    auto start_time = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start_time < 2s)
-    {
-        pw_main_loop_run(main_loop);
-        std::this_thread::sleep_for(10ms);
-    }
+    // Add core listener for synchronization
+    struct spa_hook core_listener;
+    static const struct pw_core_events core_events = {
+        PW_VERSION_CORE_EVENTS,
+        .done = [](void *data, uint32_t id, int seq) {
+            auto* d = static_cast<EnumData*>(data);
+            if (id == PW_ID_CORE && seq == 0) {
+                d->pending--;
+                if (d->pending <= 0)
+                    pw_main_loop_quit(d->loop);
+            }
+        }
+    };
     
+    pw_core_add_listener(core, &core_listener, &core_events, &enum_data);
+    pw_core_sync(core, PW_ID_CORE, 0);
+    
+    // Run until enumeration is complete
+    pw_main_loop_run(main_loop);
+    
+    // Cleanup
+    spa_hook_remove(&core_listener);
     spa_hook_remove(&registry_hook);
     pw_proxy_destroy((struct pw_proxy*)registry);
     pw_core_disconnect(core);
@@ -141,13 +163,23 @@ PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const Client
     if (params.find("target") != params.end())
         target_node_ = params["target"].front();
     
+    // Set default properties
     properties_[PW_KEY_MEDIA_TYPE] = "Audio";
     properties_[PW_KEY_MEDIA_CATEGORY] = "Playback";
     properties_[PW_KEY_MEDIA_ROLE] = "Music";
     properties_[PW_KEY_APP_NAME] = "Snapcast";
     properties_[PW_KEY_APP_ID] = "snapcast";
     properties_[PW_KEY_APP_ICON_NAME] = "snapcast";
+    properties_[PW_KEY_NODE_NAME] = "Snapcast";
+    properties_[PW_KEY_NODE_DESCRIPTION] = "Snapcast Audio Stream";
     
+    // Calculate latency in samples
+    const SampleFormat& format = stream_->getFormat();
+    uint32_t latency_samples = (latency_.count() * format.rate()) / 1000;
+    properties_[PW_KEY_NODE_LATENCY] = std::to_string(latency_samples) + "/" + std::to_string(format.rate());
+    properties_[PW_KEY_NODE_RATE] = "1/" + std::to_string(format.rate());
+    
+    // Process custom properties
     if (params.find("property") != params.end())
     {
         for (const auto& p : params["property"])
@@ -288,7 +320,7 @@ void PipeWirePlayer::connect()
     // Add stream listener
     pw_stream_add_listener(stream_, &stream_listener_, &stream_events_, this);
     
-    // Create audio format parameters
+    // Create audio format parameters using spa_pod_builder
     uint8_t buffer[1024];
     struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
     
@@ -297,7 +329,9 @@ void PipeWirePlayer::connect()
     
     // Connect stream
     if (pw_stream_connect(stream_, PW_DIRECTION_OUTPUT, PW_ID_ANY,
-                         static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS),
+                         static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | 
+                                                      PW_STREAM_FLAG_MAP_BUFFERS | 
+                                                      PW_STREAM_FLAG_RT_PROCESS),
                          params, 1) < 0)
     {
         throw SnapException("Failed to connect PipeWire stream");
@@ -323,6 +357,7 @@ void PipeWirePlayer::stop()
 {
     LOG(INFO, LOG_TAG) << "Stop\n";
     
+    active_ = false;
     this->disconnect();
     Player::stop();
 }
@@ -365,15 +400,29 @@ void PipeWirePlayer::disconnect()
 
 void PipeWirePlayer::setHardwareVolume(const Volume& volume)
 {
-    // PipeWire volume control would be implemented here
-    // This is more complex than PulseAudio and requires separate implementation
-    std::ignore = volume;
-    LOG(DEBUG, LOG_TAG) << "Hardware volume control not yet implemented for PipeWire\n";
+    if (!stream_ || !stream_ready_)
+        return;
+    
+    float values[2] = { volume.left / 100.0f, volume.right / 100.0f };
+    int ret = pw_stream_set_control(stream_, SPA_PROP_channelVolumes, 2, values, 0);
+    
+    if (ret >= 0)
+        LOG(DEBUG, LOG_TAG) << "Set hardware volume to L:" << volume.left << " R:" << volume.right << "\n";
+    else
+        LOG(ERROR, LOG_TAG) << "Failed to set hardware volume: " << spa_strerror(ret) << "\n";
 }
 
 bool PipeWirePlayer::getHardwareVolume(Volume& volume)
 {
-    std::ignore = volume;
+    if (!stream_ || !stream_ready_)
+        return false;
+    
+    float values[2] = { 0.0f, 0.0f };
+    uint32_t n_values = 2;
+    
+    // Note: pw_stream_get_control is not yet available in all PipeWire versions
+    // This is a placeholder for when it becomes available
+    // For now, we track volume internally
     return false;
 }
 
@@ -391,11 +440,35 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
     {
         case PW_STREAM_STATE_STREAMING:
             self->stream_ready_ = true;
+            self->node_id_ = pw_stream_get_node_id(self->stream_);
+            LOG(INFO, LOG_TAG) << "Stream node " << self->node_id_ << " streaming\n";
+            
+            // Set initial volume
+            if (!self->muted_ && (self->volume_.left != 100 || self->volume_.right != 100))
+            {
+                self->setHardwareVolume(self->volume_);
+            }
             break;
+            
         case PW_STREAM_STATE_ERROR:
             LOG(ERROR, LOG_TAG) << "Stream error: " << (error ? error : "unknown") << "\n";
             self->stream_ready_ = false;
+            if (self->active_.load(std::memory_order_acquire))
+            {
+                // Attempt reconnection by breaking out of main loop
+                pw_main_loop_quit(self->main_loop_, 0);
+            }
             break;
+            
+        case PW_STREAM_STATE_UNCONNECTED:
+            LOG(INFO, LOG_TAG) << "Stream disconnected\n";
+            self->stream_ready_ = false;
+            break;
+            
+        case PW_STREAM_STATE_PAUSED:
+            LOG(DEBUG, LOG_TAG) << "Stream paused\n";
+            break;
+            
         default:
             break;
     }
@@ -405,6 +478,10 @@ void PipeWirePlayer::on_process(void* userdata)
 {
     auto* self = static_cast<PipeWirePlayer*>(userdata);
     
+    // Use atomic operations for thread-safe access
+    if (!self->active_.load(std::memory_order_acquire))
+        return;
+    
     struct pw_buffer* buffer = pw_stream_dequeue_buffer(self->stream_);
     if (!buffer)
     {
@@ -413,60 +490,100 @@ void PipeWirePlayer::on_process(void* userdata)
     }
     
     struct spa_buffer* spa_buffer = buffer->buffer;
-    void* data = spa_buffer->datas[0].data;
-    if (!data)
+    struct spa_data* d = &spa_buffer->datas[0];
+    
+    if (!d->data)
     {
         pw_stream_queue_buffer(self->stream_, buffer);
         return;
     }
     
-    uint32_t stride = spa_buffer->datas[0].maxsize;
-    uint32_t num_frames = stride / self->frame_size_;
+    uint32_t offset = SPA_MIN(d->chunk->offset, d->maxsize);
+    uint32_t stride = self->frame_size_;
+    uint32_t n_frames = (d->maxsize - offset) / stride;
     
-    if (self->buffer_.size() < stride)
-        self->buffer_.resize(stride);
+    // Handle requested frames
+    if (buffer->requested)
+        n_frames = SPA_MIN(n_frames, buffer->requested);
     
-    if (!self->stream_->getPlayerChunkOrSilence(self->buffer_.data(), std::chrono::microseconds(0), num_frames))
+    void* dst = SPA_PTROFF(d->data, offset, void);
+    
+    if (!self->stream_->getPlayerChunkOrSilence(dst, std::chrono::microseconds(0), n_frames))
     {
-        // if we haven't got a chunk for a while, it's time to disconnect
-        if (chronos::getTickCount() - self->last_chunk_tick_ > 5000)
+        // Check timeout with more sophisticated mechanism
+        auto now = chronos::getTickCount();
+        if (now - self->last_chunk_tick_ > 5000)
         {
-            LOG(INFO, LOG_TAG) << "No chunk received for 5000ms, disconnecting from PipeWire.\n";
-            self->disconnect();
-            return;
+            LOG(INFO, LOG_TAG) << "No chunk received for 5000ms, producing silence\n";
+            self->underflows_++;
+            
+            // Fill with silence instead of disconnecting immediately
+            memset(dst, 0, n_frames * stride);
+            
+            // Consider disconnecting after too many underflows
+            if (self->underflows_ > 10)
+            {
+                LOG(ERROR, LOG_TAG) << "Too many underflows, disconnecting\n";
+                pw_stream_set_error(self->stream_, -EPIPE, "No data");
+                pw_stream_queue_buffer(self->stream_, buffer);
+                return;
+            }
+        }
+        else
+        {
+            // Still within timeout, just fill with silence
+            memset(dst, 0, n_frames * stride);
         }
     }
     else
     {
         self->last_chunk_tick_ = chronos::getTickCount();
-        self->adjustVolume(static_cast<char*>(self->buffer_.data()), num_frames);
+        self->underflows_ = 0; // Reset underflow counter on successful data
+        self->adjustVolume(static_cast<char*>(dst), n_frames);
     }
     
-    memcpy(data, self->buffer_.data(), stride);
-    spa_buffer->datas[0].chunk->offset = 0;
-    spa_buffer->datas[0].chunk->stride = self->frame_size_;
-    spa_buffer->datas[0].chunk->size = stride;
+    // Properly set chunk metadata
+    d->chunk->offset = offset;
+    d->chunk->stride = stride;
+    d->chunk->size = n_frames * stride;
     
     pw_stream_queue_buffer(self->stream_, buffer);
 }
 
 void PipeWirePlayer::on_param_changed(void* userdata, uint32_t id, const struct spa_pod* param)
 {
-    std::ignore = userdata;
-    std::ignore = id;
-    std::ignore = param;
+    auto* self = static_cast<PipeWirePlayer*>(userdata);
     
-    LOG(TRACE, LOG_TAG) << "Stream param changed\n";
+    LOG(TRACE, LOG_TAG) << "Stream param changed: " << spa_debug_type_find_name(spa_type_param, id) << "\n";
+    
+    if (id != SPA_PARAM_Format || param == NULL)
+        return;
+    
+    struct spa_audio_info_raw info;
+    spa_zero(info);
+    
+    if (spa_format_audio_raw_parse(param, &info) < 0)
+        return;
+    
+    LOG(DEBUG, LOG_TAG) << "Format changed - rate: " << info.rate 
+                        << ", channels: " << info.channels 
+                        << ", format: " << spa_debug_type_find_name(spa_type_audio_format, info.format) << "\n";
 }
 
 void PipeWirePlayer::on_io_changed(void* userdata, uint32_t id, void* area, uint32_t size)
 {
-    std::ignore = userdata;
-    std::ignore = id;
-    std::ignore = area;
-    std::ignore = size;
+    auto* self = static_cast<PipeWirePlayer*>(userdata);
     
-    LOG(TRACE, LOG_TAG) << "Stream IO changed\n";
+    switch (id)
+    {
+        case SPA_IO_Position:
+            self->position_ = static_cast<struct spa_io_position*>(area);
+            LOG(TRACE, LOG_TAG) << "Position IO changed\n";
+            break;
+        default:
+            LOG(TRACE, LOG_TAG) << "IO changed: " << id << "\n";
+            break;
+    }
 }
 
 void PipeWirePlayer::on_drained(void* userdata)
