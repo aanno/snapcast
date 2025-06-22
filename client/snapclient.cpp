@@ -87,7 +87,7 @@ PcmDevice getPcmDevice(const std::string& player, const std::string& parameter, 
 #endif
 #if defined(HAS_PIPEWIRE)
     if (player == player::PIPEWIRE)
-        pcm_devices = PipeWirePlayer::pcm_list();
+        pcm_devices = PipeWirePlayer::pcm_list(parameter);
 #endif
     if (player == player::FILE)
         return FilePlayer::pcm_list(parameter).front();
@@ -263,7 +263,7 @@ int main(int argc, char** argv)
 #endif
 #if defined(HAS_PIPEWIRE)
                 if (settings.player.player_name == player::PIPEWIRE)
-                    pcm_devices = PipeWirePlayer::pcm_list();
+                    pcm_devices = PipeWirePlayer::pcm_list(settings.player.parameter);
 #endif
 #ifdef WINDOWS
                 // Set console code page to UTF-8 so console known how to interpret string data
