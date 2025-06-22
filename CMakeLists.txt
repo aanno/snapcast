@@ -103,6 +103,7 @@ option(BUILD_WITH_AVAHI "Build with AVAHI support" ON)
 option(BUILD_WITH_EXPAT "Build with EXPAT support" ON)
 option(BUILD_WITH_PULSE "Build with PulseAudio support" ON)
 option(BUILD_WITH_JACK "Build with JACK support" ON)
+option(BUILD_WITH_PIPEWIRE "Build with PIPEWIRE support" ON)
 
 if(NOT BUILD_SHARED_LIBS AND NOT BUILD_STATIC_LIBS)
   message(
@@ -220,6 +221,15 @@ if(NOT WIN32 AND NOT ANDROID)
         add_compile_definitions(HAS_PULSE)
       endif(PULSE_FOUND)
     endif(BUILD_WITH_PULSE)
+
+    if(BUILD_WITH_PIPEWIRE)
+      pkg_search_module(PIPEWIRE libpipewire-0.3)
+      if(PIPEWIRE_FOUND)
+        add_compile_definitions(HAS_PIPEWIRE)
+      else()
+        message(STATUS "PipeWire not found")
+      endif(PIPEWIRE_FOUND)
+    endif(BUILD_WITH_PIPEWIRE)
 
     if(BUILD_WITH_AVAHI)
       pkg_search_module(AVAHI avahi-client)

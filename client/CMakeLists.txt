@@ -122,6 +122,24 @@ else()
     include_directories(${SOXR_INCLUDE_DIRS})
     link_directories(${SOXR_LIBRARY_DIRS})
   endif(SOXR_FOUND)
+
+  if(PIPEWIRE_FOUND)
+    list(APPEND CLIENT_SOURCES player/pipewire_player.cpp)
+    list(APPEND CLIENT_LIBRARIES ${PIPEWIRE_LIBRARIES})
+    # Mark PipeWire includes as system headers to suppress warnings
+    include_directories(SYSTEM ${PIPEWIRE_INCLUDE_DIRS})
+    # Some systems have SPA headers in a separate directory
+    if(EXISTS "${PIPEWIRE_INCLUDE_DIRS}/../spa-0.2")
+      include_directories(SYSTEM ${PIPEWIRE_INCLUDE_DIRS}/../spa-0.2)
+    endif()
+    link_directories(${PIPEWIRE_LIBRARY_DIRS})
+    # PipeWire requires threading support
+    list(APPEND SERVER_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+    # Alternative: Disable pedantic warnings for PipeWire stream source
+    # set_source_files_properties(player/pipewire_player.cpp
+    #                             PROPERTIES COMPILE_FLAGS "-Wno-pedantic")
+  endif(PIPEWIRE_FOUND)
+
 endif()
 
 if(ANDROID)

@@ -7,4 +7,4 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     build-essential cmake \
     libasound2-dev libpulse-dev libvorbisidec-dev libvorbis-dev libopus-dev libflac-dev \
     libsoxr-dev alsa-utils libavahi-client-dev avahi-daemon libexpat1-dev libboost-dev \
-    cmake-format ccache
+    cmake-format ccache pipewire libpipewire-0.3-dev
