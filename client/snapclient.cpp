@@ -31,6 +31,9 @@
 #ifdef HAS_WASAPI
 #include "player/wasapi_player.hpp"
 #endif
+#ifdef HAS_PIPEWIRE
+#include "player/pipewire_player.hpp"
+#endif
 #include "player/file_player.hpp"
 #ifdef HAS_DAEMON
 #include "common/daemon.hpp"
@@ -168,7 +171,7 @@ int main(int argc, char** argv)
             op.add<Implicit<std::filesystem::path>>("", "server-cert", "Verify server with CA certificate (PEM format)", "default certificates");
 
 // PCM device specific
-#if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI)
+#if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI) || defined(HAS_PIPEWIRE)
         auto listSwitch = op.add<Switch>("l", "list", "List PCM devices");
         /*auto soundcardValue =*/op.add<Value<string>>("s", "Soundcard", "index or name of the pcm device", pcm_device, &pcm_device);
 #endif
@@ -240,7 +243,7 @@ int main(int argc, char** argv)
 
         settings.player.player_name = utils::string::split_left(settings.player.player_name, ':', settings.player.parameter);
 
-#if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI)
+#if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI) || defined(HAS_PIPEWIRE)
         if (listSwitch->is_set())
         {
             try
