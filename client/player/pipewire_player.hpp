@@ -51,7 +51,7 @@ public:
     void stop() override;
 
     /// List the system's audio output devices
-    static std::vector<PcmDevice> pcm_list(const std::string& parameter);
+    static std::vector<PcmDevice> pcm_list(const std::string& parameter = "");
 
 private:
     bool needsThread() const override;
@@ -76,14 +76,14 @@ private:
 
     std::vector<char> buffer_;
     std::chrono::microseconds latency_;
-    std::atomic<int> underflows_{0};
-    std::atomic<bool> stream_ready_{false};
-    std::atomic<long> last_chunk_tick_{0};
+    std::atomic<int> underflows_;
+    std::atomic<bool> stream_ready_;
+    std::atomic<long> last_chunk_tick_;
 
     struct pw_main_loop* main_loop_;
     struct pw_context* context_;
     struct pw_core* core_;
-    struct pw_stream* stream_;
+    struct pw_stream* pw_stream_;
     struct pw_registry* registry_;
 
     struct spa_hook stream_listener_;
@@ -99,26 +99,11 @@ private:
     // Stream parameters
     struct spa_audio_info_raw audio_info_;
     uint32_t frame_size_;
-    struct spa_io_position* position_ = nullptr;
+    struct spa_io_position* position_;
 
-    static inline const struct pw_stream_events stream_events_ = {
-        .version = PW_VERSION_STREAM_EVENTS,
-        .destroy = nullptr,
-        .state_changed = on_state_changed,
-        .control_info = nullptr,
-        .io_changed = on_io_changed,
-        .param_changed = on_param_changed,
-        .add_buffer = nullptr,
-        .remove_buffer = nullptr,
-        .process = on_process,
-        .drained = on_drained,
-    };
-
-    static inline const struct pw_registry_events registry_events_ = {
-        .version = PW_VERSION_REGISTRY_EVENTS,
-        .global = registry_event_global,
-        .global_remove = registry_event_global_remove,
-    };
+    // PipeWire stream events - C++11 compatible initialization
+    static struct pw_stream_events get_stream_events();
+    static struct pw_registry_events get_registry_events();
 };
 
 } // namespace player

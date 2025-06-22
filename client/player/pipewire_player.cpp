@@ -29,6 +29,7 @@
 // standard headers
 #include <iostream>
 #include <thread>
+#include <cstring>
 
 using namespace std::chrono_literals;
 using namespace std;
@@ -45,6 +46,33 @@ struct EnumData {
     int pending;
     struct pw_main_loop* loop;
 };
+
+// C++11 compatible stream events initialization
+struct pw_stream_events PipeWirePlayer::get_stream_events()
+{
+    struct pw_stream_events events = {};
+    events.version = PW_VERSION_STREAM_EVENTS;
+    events.destroy = nullptr;
+    events.state_changed = on_state_changed;
+    events.control_info = nullptr;
+    events.io_changed = on_io_changed;
+    events.param_changed = on_param_changed;
+    events.add_buffer = nullptr;
+    events.remove_buffer = nullptr;
+    events.process = on_process;
+    events.drained = on_drained;
+    return events;
+}
+
+// C++11 compatible registry events initialization
+struct pw_registry_events PipeWirePlayer::get_registry_events()
+{
+    struct pw_registry_events events = {};
+    events.version = PW_VERSION_REGISTRY_EVENTS;
+    events.global = registry_event_global;
+    events.global_remove = registry_event_global_remove;
+    return events;
+}
 
 std::vector<PcmDevice> PipeWirePlayer::pcm_list(const std::string& parameter)
 {
@@ -87,19 +115,19 @@ std::vector<PcmDevice> PipeWirePlayer::pcm_list(const std::string& parameter)
     
     // Add registry listener
     struct spa_hook registry_hook;
-    pw_registry_add_listener(registry, &registry_hook, &registry_events_, nullptr);
+    auto registry_events = get_registry_events();
+    pw_registry_add_listener(registry, &registry_hook, &registry_events, nullptr);
     
     // Add core listener for synchronization
     struct spa_hook core_listener;
-    static const struct pw_core_events core_events = {
-        PW_VERSION_CORE_EVENTS,
-        .done = [](void *data, uint32_t id, int seq) {
-            auto* d = static_cast<EnumData*>(data);
-            if (id == PW_ID_CORE && seq == 0) {
-                d->pending--;
-                if (d->pending <= 0)
-                    pw_main_loop_quit(d->loop);
-            }
+    struct pw_core_events core_events = {};
+    core_events.version = PW_VERSION_CORE_EVENTS;
+    core_events.done = [](void *data, uint32_t id, int seq) {
+        auto* d = static_cast<EnumData*>(data);
+        if (id == PW_ID_CORE && seq == 0) {
+            d->pending--;
+            if (d->pending <= 0)
+                pw_main_loop_quit(d->loop);
         }
     };
     
@@ -151,9 +179,20 @@ void PipeWirePlayer::registry_event_global_remove(void* data, uint32_t id)
 }
 
 PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const ClientSettings::Player& settings, std::shared_ptr<Stream> stream)
-    : Player(io_context, settings, std::move(stream)), latency_(BUFFER_TIME), last_chunk_tick_(0),
-      main_loop_(nullptr), context_(nullptr), core_(nullptr), stream_(nullptr), registry_(nullptr),
-      stream_ready_(false), target_node_(std::nullopt), node_id_(0), frame_size_(0)
+    : Player(io_context, settings, std::move(stream)), 
+      latency_(BUFFER_TIME), 
+      underflows_(0),
+      stream_ready_(false),
+      last_chunk_tick_(0),
+      main_loop_(nullptr), 
+      context_(nullptr), 
+      core_(nullptr), 
+      pw_stream_(nullptr), 
+      registry_(nullptr),
+      target_node_(std::nullopt), 
+      node_id_(0), 
+      frame_size_(0),
+      position_(nullptr)
 {
     auto params = utils::string::split_pairs_to_container<std::vector<std::string>>(settings.parameter, ',', '=');
     
@@ -177,7 +216,6 @@ PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const Client
     const SampleFormat& format = stream_->getFormat();
     uint32_t latency_samples = (latency_.count() * format.rate()) / 1000;
     properties_[PW_KEY_NODE_LATENCY] = std::to_string(latency_samples) + "/" + std::to_string(format.rate());
-    properties_[PW_KEY_NODE_RATE] = "1/" + std::to_string(format.rate());
     
     // Process custom properties
     if (params.find("property") != params.end())
@@ -308,17 +346,18 @@ void PipeWirePlayer::connect()
     
     // Set target node if specified
     if (target_node_.has_value() && target_node_.value() != DEFAULT_DEVICE)
-        pw_properties_set(props, PW_KEY_TARGET_OBJECT, target_node_.value().c_str());
+        pw_properties_set(props, PW_KEY_NODE_TARGET, target_node_.value().c_str());
     else if (settings_.pcm_device.name != DEFAULT_DEVICE)
-        pw_properties_set(props, PW_KEY_TARGET_OBJECT, settings_.pcm_device.name.c_str());
+        pw_properties_set(props, PW_KEY_NODE_TARGET, settings_.pcm_device.name.c_str());
     
     // Create playback stream
-    stream_ = pw_stream_new(core_, "Snapcast Playback", props);
-    if (!stream_)
+    pw_stream_ = pw_stream_new(core_, "Snapcast Playback", props);
+    if (!pw_stream_)
         throw SnapException("Failed to create PipeWire stream");
     
     // Add stream listener
-    pw_stream_add_listener(stream_, &stream_listener_, &stream_events_, this);
+    auto stream_events = get_stream_events();
+    pw_stream_add_listener(pw_stream_, &stream_listener_, &stream_events, this);
     
     // Create audio format parameters using spa_pod_builder
     uint8_t buffer[1024];
@@ -328,7 +367,7 @@ void PipeWirePlayer::connect()
     params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &audio_info_);
     
     // Connect stream
-    if (pw_stream_connect(stream_, PW_DIRECTION_OUTPUT, PW_ID_ANY,
+    if (pw_stream_connect(pw_stream_, PW_DIRECTION_OUTPUT, PW_ID_ANY,
                          static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | 
                                                       PW_STREAM_FLAG_MAP_BUFFERS | 
                                                       PW_STREAM_FLAG_RT_PROCESS),
@@ -370,13 +409,13 @@ void PipeWirePlayer::disconnect()
     stream_ready_ = false;
     
     if (main_loop_)
-        pw_main_loop_quit(main_loop_, 0);
+        pw_main_loop_quit(main_loop_);
     
-    if (stream_)
+    if (pw_stream_)
     {
         spa_hook_remove(&stream_listener_);
-        pw_stream_destroy(stream_);
-        stream_ = nullptr;
+        pw_stream_destroy(pw_stream_);
+        pw_stream_ = nullptr;
     }
     
     if (core_)
@@ -400,30 +439,43 @@ void PipeWirePlayer::disconnect()
 
 void PipeWirePlayer::setHardwareVolume(const Volume& volume)
 {
-    if (!stream_ || !stream_ready_)
+    if (!pw_stream_ || !stream_ready_)
         return;
     
-    float values[2] = { volume.left / 100.0f, volume.right / 100.0f };
-    int ret = pw_stream_set_control(stream_, SPA_PROP_channelVolumes, 2, values, 0);
+    // Volume struct has volume in range [0..1] and mute flag
+    float vol = static_cast<float>(volume.volume);
+    
+    // If muted, set volume to 0
+    if (volume.mute)
+        vol = 0.0f;
+    
+    float values[2] = { vol, vol };  // Same volume for both channels
+    
+    int ret = pw_stream_set_control(pw_stream_, SPA_PROP_channelVolumes, 2, values, 0);
     
     if (ret >= 0)
-        LOG(DEBUG, LOG_TAG) << "Set hardware volume to L:" << volume.left << " R:" << volume.right << "\n";
+    {
+        LOG(DEBUG, LOG_TAG) << "Set hardware volume to " << (volume.volume * 100.0) 
+                            << "% (mute: " << volume.mute << ")\n";
+        
+        // Update our internal volume state
+        volume_ = volume;
+    }
     else
-        LOG(ERROR, LOG_TAG) << "Failed to set hardware volume: " << spa_strerror(ret) << "\n";
+    {
+        LOG(ERROR, LOG_TAG) << "Failed to set hardware volume\n";
+    }
 }
 
 bool PipeWirePlayer::getHardwareVolume(Volume& volume)
 {
-    if (!stream_ || !stream_ready_)
+    if (!pw_stream_ || !stream_ready_)
         return false;
     
-    float values[2] = { 0.0f, 0.0f };
-    uint32_t n_values = 2;
-    
-    // Note: pw_stream_get_control is not yet available in all PipeWire versions
-    // This is a placeholder for when it becomes available
-    // For now, we track volume internally
-    return false;
+    // PipeWire doesn't have a standard way to get volume yet
+    // For now, return the last set volume from the base class
+    volume = volume_;
+    return false;  // Indicate we can't retrieve actual hardware volume
 }
 
 void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, enum pw_stream_state state, const char* error)
@@ -440,11 +492,11 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
     {
         case PW_STREAM_STATE_STREAMING:
             self->stream_ready_ = true;
-            self->node_id_ = pw_stream_get_node_id(self->stream_);
+            self->node_id_ = pw_stream_get_node_id(self->pw_stream_);
             LOG(INFO, LOG_TAG) << "Stream node " << self->node_id_ << " streaming\n";
             
-            // Set initial volume
-            if (!self->muted_ && (self->volume_.left != 100 || self->volume_.right != 100))
+            // Set initial volume if not muted
+            if (!self->volume_.mute && self->volume_.volume > 0.0)
             {
                 self->setHardwareVolume(self->volume_);
             }
@@ -456,7 +508,7 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
             if (self->active_.load(std::memory_order_acquire))
             {
                 // Attempt reconnection by breaking out of main loop
-                pw_main_loop_quit(self->main_loop_, 0);
+                pw_main_loop_quit(self->main_loop_);
             }
             break;
             
@@ -482,7 +534,7 @@ void PipeWirePlayer::on_process(void* userdata)
     if (!self->active_.load(std::memory_order_acquire))
         return;
     
-    struct pw_buffer* buffer = pw_stream_dequeue_buffer(self->stream_);
+    struct pw_buffer* buffer = pw_stream_dequeue_buffer(self->pw_stream_);
     if (!buffer)
     {
         LOG(ERROR, LOG_TAG) << "Failed to dequeue buffer\n";
@@ -494,7 +546,7 @@ void PipeWirePlayer::on_process(void* userdata)
     
     if (!d->data)
     {
-        pw_stream_queue_buffer(self->stream_, buffer);
+        pw_stream_queue_buffer(self->pw_stream_, buffer);
         return;
     }
     
@@ -502,11 +554,7 @@ void PipeWirePlayer::on_process(void* userdata)
     uint32_t stride = self->frame_size_;
     uint32_t n_frames = (d->maxsize - offset) / stride;
     
-    // Handle requested frames
-    if (buffer->requested)
-        n_frames = SPA_MIN(n_frames, buffer->requested);
-    
-    void* dst = SPA_PTROFF(d->data, offset, void);
+    void* dst = static_cast<uint8_t*>(d->data) + offset;
     
     if (!self->stream_->getPlayerChunkOrSilence(dst, std::chrono::microseconds(0), n_frames))
     {
@@ -524,8 +572,8 @@ void PipeWirePlayer::on_process(void* userdata)
             if (self->underflows_ > 10)
             {
                 LOG(ERROR, LOG_TAG) << "Too many underflows, disconnecting\n";
-                pw_stream_set_error(self->stream_, -EPIPE, "No data");
-                pw_stream_queue_buffer(self->stream_, buffer);
+                pw_stream_set_error(self->pw_stream_, -EPIPE, "No data");
+                pw_stream_queue_buffer(self->pw_stream_, buffer);
                 return;
             }
         }
@@ -547,14 +595,14 @@ void PipeWirePlayer::on_process(void* userdata)
     d->chunk->stride = stride;
     d->chunk->size = n_frames * stride;
     
-    pw_stream_queue_buffer(self->stream_, buffer);
+    pw_stream_queue_buffer(self->pw_stream_, buffer);
 }
 
 void PipeWirePlayer::on_param_changed(void* userdata, uint32_t id, const struct spa_pod* param)
 {
     auto* self = static_cast<PipeWirePlayer*>(userdata);
     
-    LOG(TRACE, LOG_TAG) << "Stream param changed: " << spa_debug_type_find_name(spa_type_param, id) << "\n";
+    LOG(TRACE, LOG_TAG) << "Stream param changed: " << id << "\n";
     
     if (id != SPA_PARAM_Format || param == NULL)
         return;
@@ -566,13 +614,15 @@ void PipeWirePlayer::on_param_changed(void* userdata, uint32_t id, const struct 
         return;
     
     LOG(DEBUG, LOG_TAG) << "Format changed - rate: " << info.rate 
-                        << ", channels: " << info.channels 
-                        << ", format: " << spa_debug_type_find_name(spa_type_audio_format, info.format) << "\n";
+                        << ", channels: " << info.channels << "\n";
+    
+    std::ignore = self;
 }
 
 void PipeWirePlayer::on_io_changed(void* userdata, uint32_t id, void* area, uint32_t size)
 {
     auto* self = static_cast<PipeWirePlayer*>(userdata);
+    std::ignore = size;
     
     switch (id)
     {
