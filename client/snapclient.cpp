@@ -82,6 +82,10 @@ PcmDevice getPcmDevice(const std::string& player, const std::string& parameter, 
     if (player == player::WASAPI)
         pcm_devices = WASAPIPlayer::pcm_list();
 #endif
+#if defined(HAS_PIPEWIRE)
+    if (player == player::PIPEWIRE)
+        pcm_devices = PipeWirePlayer::pcm_list();
+#endif
     if (player == player::FILE)
         return FilePlayer::pcm_list(parameter).front();
     try
@@ -253,6 +257,10 @@ int main(int argc, char** argv)
 #if defined(HAS_WASAPI)
                 if (settings.player.player_name == player::WASAPI)
                     pcm_devices = WASAPIPlayer::pcm_list();
+#endif
+#if defined(HAS_PIPEWIRE)
+                if (settings.player.player_name == player::PIPEWIRE)
+                    pcm_devices = PipeWirePlayer::pcm_list();
 #endif
 #ifdef WINDOWS
                 // Set console code page to UTF-8 so console known how to interpret string data
@@ -480,6 +488,15 @@ int main(int argc, char** argv)
 #ifdef HAS_ALSA
             else if (settings.player.player_name == player::ALSA)
             {
+                cout << "Options are a comma separated list of:\n"
+                     << " \"buffer_time=<total buffer size [ms]>\" - default 80, min 10\n"
+                     << " \"fragments=<number of buffers>\" - default 4, min 2\n";
+            }
+#endif
+#ifdef HAS_PIPEWIRE
+            else if (settings.player.player_name == player::PIPEWIRE)
+            {
+                // TODO: add pipewire options
                 cout << "Options are a comma separated list of:\n"
                      << " \"buffer_time=<total buffer size [ms]>\" - default 80, min 10\n"
                      << " \"fragments=<number of buffers>\" - default 4, min 2\n";
