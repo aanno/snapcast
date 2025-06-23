@@ -6,14 +6,14 @@ RUN dnf -y update \
     && dnf -y install @development-tools cmake ccache \
     && dnf -y install alsa-lib-devel avahi-devel gcc-c++ libatomic libvorbis-devel opus-devel \
     pulseaudio-libs-devel flac-devel soxr-devel libstdc++-static expat-devel boost-devel \
-    pipewire-devel pipewire-pulseaudio \
+    pipewire-devel pipewire-pulseaudio openssl-devel \
     pipewire pipewire-alsa pipewire-pulse wireplumber dbus \
     pipewire-jack-audio-connection-kit-devel \
     dbus-daemon dbus-tools dbus-broker pulseaudio-utils pipewire-utils alsa-utils\
     procps-ng tree nano \
     && dnf clean all
 
-RUN useradd -rm -d /home/vscode -s /bin/bash -g root -u 1000 vscode
+RUN useradd -rm -d /home/vscode -s /bin/bash -g root -G audio,wheel,users -u 1000 -p vscode123 vscode
 
 # Set up environment variables for PulseAudio/PipeWire compatibility
 ENV XDG_RUNTIME_DIR=/run/user/1000
