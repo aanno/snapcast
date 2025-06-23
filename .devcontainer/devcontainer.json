@@ -9,6 +9,8 @@
 	"runArgs": [
 		"--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined",
 		"--device", "/dev/snd", "--group-add", "audio",
+		// TODO: without this, no access to /dev/snd/ (all files there are nobody:nobody)
+		"--privileged",
 		// to use the local dbus, pipewire and wireplumber session
 		"--userns=keep-id",
 		// TODO: $(id -u) is not supported in devcontainer.json

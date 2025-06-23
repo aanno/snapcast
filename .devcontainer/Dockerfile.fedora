@@ -9,7 +9,7 @@ RUN dnf -y update \
     pipewire-devel pipewire-pulseaudio \
     pipewire pipewire-alsa pipewire-pulse wireplumber dbus \
     pipewire-jack-audio-connection-kit-devel \
-    dbus-daemon dbus-tools pulseaudio-utils pipewire-utils\
+    dbus-daemon dbus-tools dbus-broker pulseaudio-utils pipewire-utils alsa-utils\
     procps-ng tree nano \
     && dnf clean all
 
