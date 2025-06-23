@@ -31,6 +31,8 @@
 #include <atomic>
 #include <cstdio>
 #include <memory>
+#include <string>
+#include <map>
 
 namespace player
 {
@@ -76,8 +78,8 @@ private:
 
     std::vector<char> buffer_;
     std::chrono::microseconds latency_;
-    std::atomic<int> underflows_;
     std::atomic<bool> stream_ready_;
+    std::atomic<bool> connected_;
     std::atomic<long> last_chunk_tick_;
 
     struct pw_main_loop* main_loop_;
