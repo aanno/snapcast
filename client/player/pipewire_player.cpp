@@ -272,7 +272,27 @@ PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const Client
 PipeWirePlayer::~PipeWirePlayer()
 {
     LOG(DEBUG, LOG_TAG) << "Destructor\n";
-    stop();
+    try
+    {
+        // Only call stop if we're still active
+        if (active_)
+        {
+            stop();
+        }
+        else
+        {
+            // If not active, just ensure we're disconnected
+            disconnect();
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG(ERROR, LOG_TAG) << "Exception in destructor: " << e.what() << "\n";
+    }
+    catch (...)
+    {
+        LOG(ERROR, LOG_TAG) << "Unknown exception in destructor\n";
+    }
 }
 
 bool PipeWirePlayer::needsThread() const
@@ -282,6 +302,8 @@ bool PipeWirePlayer::needsThread() const
 
 void PipeWirePlayer::worker()
 {
+    LOG(DEBUG, LOG_TAG) << "Worker thread starting\n";
+    
     try
     {
         // Initial connection
@@ -290,15 +312,17 @@ void PipeWirePlayer::worker()
         // Run the main loop until stop() is called
         while (active_)
         {
-            if (main_loop_)
+            if (main_loop_ && connected_)
             {
+                LOG(DEBUG, LOG_TAG) << "Starting PipeWire main loop\n";
                 // This will run until pw_main_loop_quit() is called
                 pw_main_loop_run(main_loop_);
+                LOG(DEBUG, LOG_TAG) << "PipeWire main loop exited\n";
                 
                 // If we get here and still active, it means there was an error
                 if (active_)
                 {
-                    LOG(ERROR, LOG_TAG) << "PipeWire main loop exited unexpectedly, attempting to reconnect\n";
+                    LOG(ERROR, LOG_TAG) << "PipeWire main loop exited unexpectedly\n";
                     
                     // Disconnect and wait a bit before reconnecting
                     disconnect();
@@ -330,15 +354,27 @@ void PipeWirePlayer::worker()
             }
             else
             {
-                // No main loop, wait a bit
+                // No main loop or not connected, wait a bit
                 std::this_thread::sleep_for(100ms);
             }
         }
+        
+        LOG(DEBUG, LOG_TAG) << "Worker thread exiting normally\n";
     }
     catch (const std::exception& e)
     {
         LOG(ERROR, LOG_TAG) << "Fatal error in worker thread: " << e.what() << "\n";
+        active_ = false;
     }
+    catch (...)
+    {
+        LOG(ERROR, LOG_TAG) << "Unknown fatal error in worker thread\n";
+        active_ = false;
+    }
+    
+    // Ensure active_ is false when we exit
+    active_ = false;
+    LOG(DEBUG, LOG_TAG) << "Worker thread exited\n";
 }
 
 void PipeWirePlayer::start()
@@ -470,19 +506,22 @@ void PipeWirePlayer::stop()
 {
     LOG(INFO, LOG_TAG) << "Stop\n";
     
+    // Signal shutdown
     active_ = false;
     
-    // Quit the main loop if it's running
+    // Quit the main loop from outside the loop thread
+    // This is safe and will cause pw_main_loop_run() to return
     if (main_loop_)
     {
         pw_main_loop_quit(main_loop_);
     }
     
-    // Call base class stop() which will join the worker thread
+    // Wait for the worker thread to finish
+    // This ensures the main loop has exited
     Player::stop();
     
-    // Now disconnect after the thread has stopped
-    this->disconnect();
+    // Now we can safely clean up
+    disconnect();
 }
 
 void PipeWirePlayer::disconnect()
@@ -497,6 +536,7 @@ void PipeWirePlayer::disconnect()
     connected_ = false;
     stream_ready_ = false;
     
+    // Clean up in reverse order of creation
     if (pw_stream_)
     {
         spa_hook_remove(&stream_listener_);
@@ -574,6 +614,13 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
         LOG(DEBUG, LOG_TAG) << " (error: " << error << ")";
     LOG(DEBUG, LOG_TAG) << "\n";
     
+    // Check if we're shutting down
+    if (!self->active_.load(std::memory_order_acquire))
+    {
+        LOG(DEBUG, LOG_TAG) << "Ignoring state change during shutdown\n";
+        return;
+    }
+    
     switch (state)
     {
         case PW_STREAM_STATE_STREAMING:
@@ -592,7 +639,7 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
             LOG(ERROR, LOG_TAG) << "Stream error: " << (error ? error : "unknown") << "\n";
             self->stream_ready_ = false;
             // Exit the main loop on error so the worker thread can handle reconnection
-            if (self->main_loop_)
+            if (self->main_loop_ && self->active_.load(std::memory_order_acquire))
             {
                 pw_main_loop_quit(self->main_loop_);
             }
@@ -602,7 +649,7 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
             LOG(INFO, LOG_TAG) << "Stream disconnected\n";
             self->stream_ready_ = false;
             // Also exit main loop on disconnect
-            if (self->main_loop_)
+            if (self->main_loop_ && self->active_.load(std::memory_order_acquire))
             {
                 pw_main_loop_quit(self->main_loop_);
             }
@@ -621,16 +668,13 @@ void PipeWirePlayer::on_process(void* userdata)
 {
     auto* self = static_cast<PipeWirePlayer*>(userdata);
     
-    // Use atomic operations for thread-safe access
+    // Check if we're shutting down
     if (!self->active_.load(std::memory_order_acquire))
         return;
     
     struct pw_buffer* buffer = pw_stream_dequeue_buffer(self->pw_stream_);
     if (!buffer)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to dequeue buffer\n";
         return;
-    }
     
     struct spa_buffer* spa_buffer = buffer->buffer;
     struct spa_data* d = &spa_buffer->datas[0];
@@ -647,28 +691,32 @@ void PipeWirePlayer::on_process(void* userdata)
     
     void* dst = static_cast<uint8_t*>(d->data) + offset;
     
-    // Try to get audio data from the stream
-    if (!self->stream_->getPlayerChunkOrSilence(dst, std::chrono::microseconds(0), n_frames))
+    // Always produce audio even during shutdown to avoid underruns
+    bool got_data = false;
+    if (self->stream_ && self->active_.load(std::memory_order_acquire))
     {
-        // No data available - just produce silence and continue
-        // This is normal when the stream is buffering or temporarily has no data
+        got_data = self->stream_->getPlayerChunkOrSilence(dst, std::chrono::microseconds(0), n_frames);
+    }
+    
+    if (!got_data)
+    {
+        // Fill with silence
         memset(dst, 0, n_frames * stride);
         
-        // Log occasionally to avoid spam
+        // Log occasionally
         auto now = chronos::getTickCount();
-        if (now - self->last_chunk_tick_ > 1000) // Log every second
+        if (now - self->last_chunk_tick_ > 1000)
         {
             LOG(DEBUG, LOG_TAG) << "No audio data available, producing silence\n";
         }
     }
     else
     {
-        // We got data successfully
         self->last_chunk_tick_ = chronos::getTickCount();
         self->adjustVolume(static_cast<char*>(dst), n_frames);
     }
     
-    // Always set chunk metadata and queue the buffer
+    // Set chunk metadata and queue
     d->chunk->offset = offset;
     d->chunk->stride = stride;
     d->chunk->size = n_frames * stride;
