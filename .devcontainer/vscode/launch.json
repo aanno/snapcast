@@ -13,6 +13,7 @@
       "stopAtEntry": true,
       "cwd": "${workspaceFolder}",
       "environment": [],
+      "preLaunchTask": "cmake-build",
       "externalConsole": false,
       "MIMode": "gdb",
       "setupCommands": [
@@ -22,6 +23,18 @@
           "ignoreFailures": true
         }
       ],
+    },
+    {
+      "name": "Debug CMake Target",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb"
     }
   ]
 }
