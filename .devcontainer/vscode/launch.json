@@ -6,7 +6,9 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/bin/snapclient",
-      "args": ["--player", "pipewire", "tcp://localhost:1704"],
+      "args": [
+        "--player", "pipewire", "tcp://localhost:1704", 
+        "--logsink", "stdout", "--logfilter", "*:trace"],
       "stopAtEntry": true,
       "cwd": "${workspaceFolder}",
       "environment": [],

@@ -110,35 +110,22 @@ std::vector<PcmDevice> PipeWirePlayer::pcm_list(const std::string& parameter)
     
     g_devices.clear();
     
-    // Set up enumeration data
-    EnumData enum_data = { 1, main_loop };
-    
     // Add registry listener
     struct spa_hook registry_hook;
     auto registry_events = get_registry_events();
     pw_registry_add_listener(registry, &registry_hook, &registry_events, nullptr);
     
-    // Add core listener for synchronization
-    struct spa_hook core_listener;
-    struct pw_core_events core_events = {};
-    core_events.version = PW_VERSION_CORE_EVENTS;
-    core_events.done = [](void *data, uint32_t id, int seq) {
-        auto* d = static_cast<EnumData*>(data);
-        if (id == PW_ID_CORE && seq == 0) {
-            d->pending--;
-            if (d->pending <= 0)
-                pw_main_loop_quit(d->loop);
-        }
-    };
-    
-    pw_core_add_listener(core, &core_listener, &core_events, &enum_data);
-    pw_core_sync(core, PW_ID_CORE, 0);
-    
-    // Run until enumeration is complete
-    pw_main_loop_run(main_loop);
+    // Process events to enumerate devices
+    // Instead of running the main loop indefinitely, we iterate a fixed number of times
+    // This gives PipeWire enough time to discover devices without hanging
+    auto* loop = pw_main_loop_get_loop(main_loop);
+    for (int i = 0; i < 100; ++i)
+    {
+        if (pw_loop_iterate(loop, 10) < 0)
+            break;
+    }
     
     // Cleanup
-    spa_hook_remove(&core_listener);
     spa_hook_remove(&registry_hook);
     pw_proxy_destroy((struct pw_proxy*)registry);
     pw_core_disconnect(core);
