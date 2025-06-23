@@ -6,7 +6,7 @@ RUN dnf -y update \
     && dnf -y install @development-tools cmake ccache \
     && dnf -y install alsa-lib-devel avahi-devel gcc-c++ libatomic libvorbis-devel opus-devel \
     pulseaudio-libs-devel flac-devel soxr-devel libstdc++-static expat-devel boost-devel \
-    pipewire-devel pipewire-pulseaudio openssl-devel \
+    pipewire-devel pipewire-pulseaudio openssl-devel gdb \
     pipewire pipewire-alsa pipewire-pulse wireplumber dbus \
     pipewire-jack-audio-connection-kit-devel \
     dbus-daemon dbus-tools dbus-broker pulseaudio-utils pipewire-utils alsa-utils\
