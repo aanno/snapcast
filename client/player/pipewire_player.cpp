@@ -272,26 +272,31 @@ PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const Client
 PipeWirePlayer::~PipeWirePlayer()
 {
     LOG(DEBUG, LOG_TAG) << "Destructor\n";
+    
+    // Signal shutdown without calling stop()
+    // This allows the player to be destroyed while still connecting
+    active_ = false;
+    
+    // Signal the main loop to quit if it exists
+    if (main_loop_)
+    {
+        pw_main_loop_quit(main_loop_);
+    }
+    
+    // Wait for the worker thread to finish
+    if (playerThread_.joinable())
+    {
+        playerThread_.join();
+    }
+    
+    // Now clean up
     try
     {
-        // Only call stop if we're still active
-        if (active_)
-        {
-            stop();
-        }
-        else
-        {
-            // If not active, just ensure we're disconnected
-            disconnect();
-        }
+        disconnect();
     }
     catch (const std::exception& e)
     {
-        LOG(ERROR, LOG_TAG) << "Exception in destructor: " << e.what() << "\n";
-    }
-    catch (...)
-    {
-        LOG(ERROR, LOG_TAG) << "Unknown exception in destructor\n";
+        LOG(ERROR, LOG_TAG) << "Exception during cleanup: " << e.what() << "\n";
     }
 }
 
@@ -352,9 +357,29 @@ void PipeWirePlayer::worker()
                     }
                 }
             }
+            else if (!connected_ && active_)
+            {
+                // Not connected but still active, try to connect
+                try
+                {
+                    connect();
+                }
+                catch (const std::exception& e)
+                {
+                    if (active_)
+                    {
+                        LOG(ERROR, LOG_TAG) << "Failed to connect: " << e.what() << "\n";
+                        // Wait before retry
+                        for (int i = 0; i < 50 && active_; ++i)
+                        {
+                            std::this_thread::sleep_for(100ms);
+                        }
+                    }
+                }
+            }
             else
             {
-                // No main loop or not connected, wait a bit
+                // Either not active or waiting for connection
                 std::this_thread::sleep_for(100ms);
             }
         }
@@ -397,10 +422,19 @@ void PipeWirePlayer::connect()
         return;
     }
     
+    if (!active_)
+    {
+        LOG(DEBUG, LOG_TAG) << "Connect called during shutdown, ignoring\n";
+        return;
+    }
+    
     LOG(INFO, LOG_TAG) << "Connecting to PipeWire\n";
     
-    if (settings_.pcm_device.idx == -1)
-        throw SnapException("Can't open " + settings_.pcm_device.name + ", error: No such device");
+    // Check if device exists (only for non-default devices)
+    if (settings_.pcm_device.idx == -1 && settings_.pcm_device.name != DEFAULT_DEVICE)
+    {
+        LOG(WARNING, LOG_TAG) << "Device '" << settings_.pcm_device.name << "' not found, using default\n";
+    }
     
     const SampleFormat& format = stream_->getFormat();
     
@@ -489,10 +523,23 @@ void PipeWirePlayer::connect()
     {
         auto now = std::chrono::steady_clock::now();
         if (now - wait_start > 5s)
-            throw SnapException("Timeout while waiting for PipeWire stream to become ready");
+        {
+            if (active_)
+                throw SnapException("Timeout while waiting for PipeWire stream to become ready");
+            else
+                break; // Shutting down, exit gracefully
+        }
         
         // Process events without blocking indefinitely
         pw_loop_iterate(loop, 10); // 10ms timeout
+    }
+    
+    // Check if we're shutting down
+    if (!active_)
+    {
+        LOG(DEBUG, LOG_TAG) << "Connect aborted due to shutdown\n";
+        connected_ = false;
+        return;
     }
     
     if (!stream_ready_)
@@ -614,13 +661,6 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
         LOG(DEBUG, LOG_TAG) << " (error: " << error << ")";
     LOG(DEBUG, LOG_TAG) << "\n";
     
-    // Check if we're shutting down
-    if (!self->active_.load(std::memory_order_acquire))
-    {
-        LOG(DEBUG, LOG_TAG) << "Ignoring state change during shutdown\n";
-        return;
-    }
-    
     switch (state)
     {
         case PW_STREAM_STATE_STREAMING:
@@ -628,8 +668,8 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
             self->node_id_ = pw_stream_get_node_id(self->pw_stream_);
             LOG(INFO, LOG_TAG) << "Stream node " << self->node_id_ << " streaming\n";
             
-            // Set initial volume if not muted
-            if (!self->volume_.mute && self->volume_.volume > 0.0)
+            // Set initial volume if not muted and still active
+            if (self->active_ && !self->volume_.mute && self->volume_.volume > 0.0)
             {
                 self->setHardwareVolume(self->volume_);
             }
@@ -648,7 +688,7 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
         case PW_STREAM_STATE_UNCONNECTED:
             LOG(INFO, LOG_TAG) << "Stream disconnected\n";
             self->stream_ready_ = false;
-            // Also exit main loop on disconnect
+            // Also exit main loop on disconnect, but only if still active
             if (self->main_loop_ && self->active_.load(std::memory_order_acquire))
             {
                 pw_main_loop_quit(self->main_loop_);
