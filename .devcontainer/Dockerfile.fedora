@@ -13,7 +13,7 @@ RUN dnf -y update \
     procps-ng tree nano \
     && dnf clean all
 
-RUN useradd -rm -d /home/vscode -s /bin/bash -g root -u 1001 vscode
+RUN useradd -rm -d /home/vscode -s /bin/bash -g root -u 1000 vscode
 
 # Set up environment variables for PulseAudio/PipeWire compatibility
 ENV XDG_RUNTIME_DIR=/run/user/1000
@@ -25,5 +25,6 @@ RUN chmod +x /home/vscode/entrypoint.sh
 
 ENTRYPOINT ["/home/user/entrypoint.sh"]
 
+# Disabling this is (relatively) safe with podman rootless only
 USER vscode
 WORKDIR /home/vscode
