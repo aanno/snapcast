@@ -7,8 +7,21 @@ RUN dnf -y update \
     && dnf -y install alsa-lib-devel avahi-devel gcc-c++ libatomic libvorbis-devel opus-devel \
     pulseaudio-libs-devel flac-devel soxr-devel libstdc++-static expat-devel boost-devel \
     pipewire-devel pipewire-pulseaudio \
+    pipewire pipewire-alsa pipewire-pulse wireplumber dbus \
+    pipewire-jack-audio-connection-kit-devel \
     && dnf clean all
 
 RUN useradd -rm -d /home/vscode -s /bin/bash -g root -u 1001 vscode
+
+# Set up environment variables for PulseAudio/PipeWire compatibility
+ENV XDG_RUNTIME_DIR=/run/user/1000
+RUN mkdir -p $XDG_RUNTIME_DIR && chmod 700 $XDG_RUNTIME_DIR
+
+# Copy or create a simple script to launch PipeWire and WirePlumber
+COPY entrypoint.sh /home/vscode/entrypoint.sh
+RUN chmod +x /home/vscode/entrypoint.sh
+
+ENTRYPOINT ["/home/user/entrypoint.sh"]
+
 USER vscode
 WORKDIR /home/vscode
