@@ -10,7 +10,10 @@
 		"--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined",
 		"--device", "/dev/snd", "--group-add", "audio",
 		// TODO: without this, no access to /dev/snd/ (all files there are nobody:nobody)
-		"--privileged",
+		// not possible
+		// "--privileged",
+		// TODO: dirty device hack
+		"-v", "/tmp/snd-pcmC0D0p:/dev/snd/pcmC0D0p",
 		// to use the local dbus, pipewire and wireplumber session
 		"--userns=keep-id",
 		// TODO: $(id -u) is not supported in devcontainer.json
