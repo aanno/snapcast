@@ -31,7 +31,6 @@
 #include <atomic>
 #include <cstdio>
 #include <memory>
-#include <optional>
 
 namespace player
 {
@@ -90,7 +89,8 @@ private:
     struct spa_hook stream_listener_;
     struct spa_hook registry_listener_;
     
-    std::optional<std::string> target_node_;
+    bool has_target_node_;
+    std::string target_node_;
     std::map<std::string, std::string> properties_;
 
     // Volume control

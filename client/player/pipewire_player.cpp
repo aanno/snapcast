@@ -207,15 +207,16 @@ void PipeWirePlayer::registry_event_global_remove(void* data, uint32_t id)
 PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const ClientSettings::Player& settings, std::shared_ptr<Stream> stream)
     : Player(io_context, settings, std::move(stream)), 
       latency_(BUFFER_TIME), 
-      underflows_(0),
       stream_ready_(false),
+      connected_(false),
       last_chunk_tick_(0),
       main_loop_(nullptr), 
       context_(nullptr), 
       core_(nullptr), 
       pw_stream_(nullptr), 
       registry_(nullptr),
-      target_node_(std::nullopt), 
+      has_target_node_(false),
+      target_node_(""),
       node_id_(0), 
       frame_size_(0),
       position_(nullptr)
@@ -226,7 +227,10 @@ PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const Client
         latency_ = std::chrono::milliseconds(std::max(cpt::stoi(params["buffer_time"].front()), 10));
     
     if (params.find("target") != params.end())
+    {
         target_node_ = params["target"].front();
+        has_target_node_ = true;
+    }
     
     // Set default properties
     properties_[PW_KEY_MEDIA_TYPE] = "Audio";
@@ -261,7 +265,8 @@ PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const Client
             LOG(INFO, LOG_TAG) << "Setting property \"" << property.first << "\" to \"" << property.second << "\"\n";
     }
     
-    LOG(INFO, LOG_TAG) << "Using buffer_time: " << latency_.count() / 1000 << " ms, target: " << target_node_.value_or("default") << "\n";
+    LOG(INFO, LOG_TAG) << "Using buffer_time: " << latency_.count() / 1000 << " ms, target: " 
+                       << (has_target_node_ ? target_node_ : "default") << "\n";
 }
 
 PipeWirePlayer::~PipeWirePlayer()
@@ -277,33 +282,62 @@ bool PipeWirePlayer::needsThread() const
 
 void PipeWirePlayer::worker()
 {
-    while (active_)
+    try
     {
-        if (main_loop_)
-            pw_main_loop_run(main_loop_);
+        // Initial connection
+        connect();
         
-        // if we are still active, wait for a chunk and attempt to reconnect
-        while (active_ && !stream_->waitForChunk(100ms))
-        {
-            static utils::logging::TimeConditional cond(2s);
-            LOG(DEBUG, LOG_TAG) << cond << "Waiting for a chunk to become available before reconnecting\n";
-        }
-        
+        // Run the main loop until stop() is called
         while (active_)
         {
-            LOG(INFO, LOG_TAG) << "Chunk available, reconnecting to PipeWire\n";
-            try
+            if (main_loop_)
             {
-                connect();
-                break;
+                // This will run until pw_main_loop_quit() is called
+                pw_main_loop_run(main_loop_);
+                
+                // If we get here and still active, it means there was an error
+                if (active_)
+                {
+                    LOG(ERROR, LOG_TAG) << "PipeWire main loop exited unexpectedly, attempting to reconnect\n";
+                    
+                    // Disconnect and wait a bit before reconnecting
+                    disconnect();
+                    
+                    // Wait before reconnecting, but check active_ flag
+                    for (int i = 0; i < 10 && active_; ++i)
+                    {
+                        std::this_thread::sleep_for(100ms);
+                    }
+                    
+                    // Try to reconnect if still active
+                    if (active_)
+                    {
+                        try
+                        {
+                            connect();
+                        }
+                        catch (const std::exception& e)
+                        {
+                            LOG(ERROR, LOG_TAG) << "Failed to reconnect: " << e.what() << "\n";
+                            // Wait longer before next attempt
+                            for (int i = 0; i < 50 && active_; ++i)
+                            {
+                                std::this_thread::sleep_for(100ms);
+                            }
+                        }
+                    }
+                }
             }
-            catch (const std::exception& e)
+            else
             {
-                LOG(ERROR, LOG_TAG) << "Exception while connecting to PipeWire: " << e.what() << "\n";
-                disconnect();
-                chronos::sleep(100);
+                // No main loop, wait a bit
+                std::this_thread::sleep_for(100ms);
             }
         }
+    }
+    catch (const std::exception& e)
+    {
+        LOG(ERROR, LOG_TAG) << "Fatal error in worker thread: " << e.what() << "\n";
     }
 }
 
@@ -312,13 +346,21 @@ void PipeWirePlayer::start()
     LOG(INFO, LOG_TAG) << "Start\n";
     
     pw_init(nullptr, nullptr);
-    this->connect();
+    
+    // The worker thread will handle the connection
     Player::start();
 }
 
 void PipeWirePlayer::connect()
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    
+    if (connected_)
+    {
+        LOG(WARNING, LOG_TAG) << "Already connected to PipeWire\n";
+        return;
+    }
+    
     LOG(INFO, LOG_TAG) << "Connecting to PipeWire\n";
     
     if (settings_.pcm_device.idx == -1)
@@ -371,8 +413,8 @@ void PipeWirePlayer::connect()
     }
     
     // Set target node if specified
-    if (target_node_.has_value() && target_node_.value() != DEFAULT_DEVICE)
-        pw_properties_set(props, PW_KEY_NODE_TARGET, target_node_.value().c_str());
+    if (has_target_node_ && target_node_ != DEFAULT_DEVICE)
+        pw_properties_set(props, PW_KEY_NODE_TARGET, target_node_.c_str());
     else if (settings_.pcm_device.name != DEFAULT_DEVICE)
         pw_properties_set(props, PW_KEY_NODE_TARGET, settings_.pcm_device.name.c_str());
     
@@ -405,16 +447,22 @@ void PipeWirePlayer::connect()
     // Wait for stream to be ready
     stream_ready_ = false;
     auto wait_start = std::chrono::steady_clock::now();
+    auto* loop = pw_main_loop_get_loop(main_loop_);
+    
     while (!stream_ready_ && active_)
     {
         auto now = std::chrono::steady_clock::now();
         if (now - wait_start > 5s)
             throw SnapException("Timeout while waiting for PipeWire stream to become ready");
         
-        pw_main_loop_run(main_loop_);
-        std::this_thread::sleep_for(1ms);
+        // Process events without blocking indefinitely
+        pw_loop_iterate(loop, 10); // 10ms timeout
     }
     
+    if (!stream_ready_)
+        throw SnapException("Stream failed to become ready");
+    
+    connected_ = true;
     last_chunk_tick_ = chronos::getTickCount();
 }
 
@@ -423,19 +471,31 @@ void PipeWirePlayer::stop()
     LOG(INFO, LOG_TAG) << "Stop\n";
     
     active_ = false;
-    this->disconnect();
+    
+    // Quit the main loop if it's running
+    if (main_loop_)
+    {
+        pw_main_loop_quit(main_loop_);
+    }
+    
+    // Call base class stop() which will join the worker thread
     Player::stop();
+    
+    // Now disconnect after the thread has stopped
+    this->disconnect();
 }
 
 void PipeWirePlayer::disconnect()
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    
+    if (!connected_)
+        return;
+    
     LOG(INFO, LOG_TAG) << "Disconnecting from PipeWire\n";
     
+    connected_ = false;
     stream_ready_ = false;
-    
-    if (main_loop_)
-        pw_main_loop_quit(main_loop_);
     
     if (pw_stream_)
     {
@@ -531,9 +591,9 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
         case PW_STREAM_STATE_ERROR:
             LOG(ERROR, LOG_TAG) << "Stream error: " << (error ? error : "unknown") << "\n";
             self->stream_ready_ = false;
-            if (self->active_.load(std::memory_order_acquire))
+            // Exit the main loop on error so the worker thread can handle reconnection
+            if (self->main_loop_)
             {
-                // Attempt reconnection by breaking out of main loop
                 pw_main_loop_quit(self->main_loop_);
             }
             break;
@@ -541,6 +601,11 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
         case PW_STREAM_STATE_UNCONNECTED:
             LOG(INFO, LOG_TAG) << "Stream disconnected\n";
             self->stream_ready_ = false;
+            // Also exit main loop on disconnect
+            if (self->main_loop_)
+            {
+                pw_main_loop_quit(self->main_loop_);
+            }
             break;
             
         case PW_STREAM_STATE_PAUSED:
@@ -582,41 +647,28 @@ void PipeWirePlayer::on_process(void* userdata)
     
     void* dst = static_cast<uint8_t*>(d->data) + offset;
     
+    // Try to get audio data from the stream
     if (!self->stream_->getPlayerChunkOrSilence(dst, std::chrono::microseconds(0), n_frames))
     {
-        // Check timeout with more sophisticated mechanism
+        // No data available - just produce silence and continue
+        // This is normal when the stream is buffering or temporarily has no data
+        memset(dst, 0, n_frames * stride);
+        
+        // Log occasionally to avoid spam
         auto now = chronos::getTickCount();
-        if (now - self->last_chunk_tick_ > 5000)
+        if (now - self->last_chunk_tick_ > 1000) // Log every second
         {
-            LOG(INFO, LOG_TAG) << "No chunk received for 5000ms, producing silence\n";
-            self->underflows_++;
-            
-            // Fill with silence instead of disconnecting immediately
-            memset(dst, 0, n_frames * stride);
-            
-            // Consider disconnecting after too many underflows
-            if (self->underflows_ > 10)
-            {
-                LOG(ERROR, LOG_TAG) << "Too many underflows, disconnecting\n";
-                pw_stream_set_error(self->pw_stream_, -EPIPE, "No data");
-                pw_stream_queue_buffer(self->pw_stream_, buffer);
-                return;
-            }
-        }
-        else
-        {
-            // Still within timeout, just fill with silence
-            memset(dst, 0, n_frames * stride);
+            LOG(DEBUG, LOG_TAG) << "No audio data available, producing silence\n";
         }
     }
     else
     {
+        // We got data successfully
         self->last_chunk_tick_ = chronos::getTickCount();
-        self->underflows_ = 0; // Reset underflow counter on successful data
         self->adjustVolume(static_cast<char*>(dst), n_frames);
     }
     
-    // Properly set chunk metadata
+    // Always set chunk metadata and queue the buffer
     d->chunk->offset = offset;
     d->chunk->stride = stride;
     d->chunk->size = n_frames * stride;
