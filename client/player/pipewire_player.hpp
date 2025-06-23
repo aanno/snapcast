@@ -25,6 +25,7 @@
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/format-utils.h>
 #include <spa/param/props.h>
+#include <spa/utils/result.h>
 
 // standard headers
 #include <atomic>

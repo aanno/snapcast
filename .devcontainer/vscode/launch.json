@@ -7,7 +7,8 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/snapclient",
       "args": [
-        "--player", "pipewire", "tcp://localhost:1704", 
+        "--player", "pipewire", "tcp://localhost:1704",
+        "-s", "1",
         "--logsink", "stdout", "--logfilter", "*:trace"],
       "stopAtEntry": true,
       "cwd": "${workspaceFolder}",
@@ -20,7 +21,7 @@
           "text": "-enable-pretty-printing",
           "ignoreFailures": true
         }
-      ]
+      ],
     }
   ]
 }

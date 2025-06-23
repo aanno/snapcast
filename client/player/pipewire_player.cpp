@@ -26,10 +26,18 @@
 #include "common/utils/logging.hpp"
 #include "common/utils/string_utils.hpp"
 
+// 3rd party headers
+#include <pipewire/pipewire.h>
+#include <spa/param/audio/format-utils.h>
+#include <spa/param/props.h>
+#include <spa/utils/result.h>
+
 // standard headers
 #include <iostream>
 #include <thread>
 #include <cstring>
+#include <chrono>
+#include <mutex>
 
 using namespace std::chrono_literals;
 using namespace std;
@@ -40,12 +48,9 @@ namespace player
 static constexpr std::chrono::milliseconds BUFFER_TIME = 100ms;
 static constexpr auto LOG_TAG = "PipeWirePlayer";
 
-// Global device list and synchronization data for enumeration
+// Global device list for enumeration
 static std::vector<PcmDevice> g_devices;
-struct EnumData {
-    int pending;
-    struct pw_main_loop* loop;
-};
+static std::mutex g_devices_mutex;
 
 // C++11 compatible stream events initialization
 struct pw_stream_events PipeWirePlayer::get_stream_events()
@@ -80,22 +85,35 @@ std::vector<PcmDevice> PipeWirePlayer::pcm_list(const std::string& parameter)
     
     pw_init(nullptr, nullptr);
     
-    auto* main_loop = pw_main_loop_new(nullptr);
-    if (!main_loop)
-        throw SnapException("Failed to create PipeWire main loop");
+    // Create a threaded loop for device enumeration
+    auto* loop = pw_thread_loop_new("snapcast-enum", nullptr);
+    if (!loop)
+        throw SnapException("Failed to create PipeWire thread loop");
     
-    auto* context = pw_context_new(pw_main_loop_get_loop(main_loop), nullptr, 0);
+    auto* context = pw_context_new(pw_thread_loop_get_loop(loop), nullptr, 0);
     if (!context)
     {
-        pw_main_loop_destroy(main_loop);
+        pw_thread_loop_destroy(loop);
         throw SnapException("Failed to create PipeWire context");
+    }
+    
+    pw_thread_loop_lock(loop);
+    
+    if (pw_thread_loop_start(loop) < 0)
+    {
+        pw_thread_loop_unlock(loop);
+        pw_context_destroy(context);
+        pw_thread_loop_destroy(loop);
+        throw SnapException("Failed to start thread loop");
     }
     
     auto* core = pw_context_connect(context, nullptr, 0);
     if (!core)
     {
+        pw_thread_loop_unlock(loop);
+        pw_thread_loop_stop(loop);
         pw_context_destroy(context);
-        pw_main_loop_destroy(main_loop);
+        pw_thread_loop_destroy(loop);
         throw SnapException("Failed to connect to PipeWire core");
     }
     
@@ -103,39 +121,51 @@ std::vector<PcmDevice> PipeWirePlayer::pcm_list(const std::string& parameter)
     if (!registry)
     {
         pw_core_disconnect(core);
+        pw_thread_loop_unlock(loop);
+        pw_thread_loop_stop(loop);
         pw_context_destroy(context);
-        pw_main_loop_destroy(main_loop);
+        pw_thread_loop_destroy(loop);
         throw SnapException("Failed to get PipeWire registry");
     }
     
-    g_devices.clear();
+    {
+        std::lock_guard<std::mutex> lock(g_devices_mutex);
+        g_devices.clear();
+    }
     
     // Add registry listener
     struct spa_hook registry_hook;
     auto registry_events = get_registry_events();
     pw_registry_add_listener(registry, &registry_hook, &registry_events, nullptr);
     
-    // Process events to enumerate devices
-    // Instead of running the main loop indefinitely, we iterate a fixed number of times
-    // This gives PipeWire enough time to discover devices without hanging
-    auto* loop = pw_main_loop_get_loop(main_loop);
-    for (int i = 0; i < 100; ++i)
-    {
-        if (pw_loop_iterate(loop, 10) < 0)
-            break;
-    }
+    // Let it run for a short time to enumerate devices
+    pw_thread_loop_unlock(loop);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    pw_thread_loop_lock(loop);
     
     // Cleanup
     spa_hook_remove(&registry_hook);
     pw_proxy_destroy((struct pw_proxy*)registry);
     pw_core_disconnect(core);
+    
+    pw_thread_loop_unlock(loop);
+    pw_thread_loop_stop(loop);
     pw_context_destroy(context);
-    pw_main_loop_destroy(main_loop);
+    pw_thread_loop_destroy(loop);
+    
+    // Copy devices with mutex held
+    std::vector<PcmDevice> devices;
+    {
+        std::lock_guard<std::mutex> lock(g_devices_mutex);
+        devices = g_devices;
+    }
     
     // Add default device
-    g_devices.emplace(g_devices.begin(), -1, DEFAULT_DEVICE, "Let PipeWire choose the device");
+    devices.emplace(devices.begin(), -1, DEFAULT_DEVICE, "Let PipeWire choose the device");
     
-    return g_devices;
+    LOG(INFO, LOG_TAG) << "Found " << devices.size() << " audio devices\n";
+    
+    return devices;
 }
 
 void PipeWirePlayer::registry_event_global(void* data, uint32_t id, uint32_t permissions, const char* type, uint32_t version, const struct spa_dict* props)
@@ -144,17 +174,26 @@ void PipeWirePlayer::registry_event_global(void* data, uint32_t id, uint32_t per
     std::ignore = permissions;
     std::ignore = version;
     
-    if (strcmp(type, PW_TYPE_INTERFACE_Node) == 0)
+    // Only process Node interfaces
+    if (strcmp(type, PW_TYPE_INTERFACE_Node) != 0)
+        return;
+    
+    const char* media_class = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
+    if (!media_class)
+        return;
+    
+    // Only process Audio/Sink nodes
+    if (strcmp(media_class, "Audio/Sink") != 0)
+        return;
+    
+    const char* name = spa_dict_lookup(props, PW_KEY_NODE_NAME);
+    const char* description = spa_dict_lookup(props, PW_KEY_NODE_DESCRIPTION);
+    
+    if (name && description)
     {
-        const char* media_class = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
-        const char* name = spa_dict_lookup(props, PW_KEY_NODE_NAME);
-        const char* description = spa_dict_lookup(props, PW_KEY_NODE_DESCRIPTION);
-        
-        if (media_class && strcmp(media_class, "Audio/Sink") == 0 && name && description)
-        {
-            g_devices.emplace_back(id, name, description);
-            LOG(DEBUG, LOG_TAG) << "Found audio sink: " << name << " (" << description << ")\n";
-        }
+        std::lock_guard<std::mutex> lock(g_devices_mutex);
+        g_devices.emplace_back(id, name, description);
+        LOG(DEBUG, LOG_TAG) << "Found audio sink: " << name << " (" << description << ")\n";
     }
 }
 
