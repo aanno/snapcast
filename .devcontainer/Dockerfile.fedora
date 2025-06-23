@@ -9,6 +9,8 @@ RUN dnf -y update \
     pipewire-devel pipewire-pulseaudio \
     pipewire pipewire-alsa pipewire-pulse wireplumber dbus \
     pipewire-jack-audio-connection-kit-devel \
+    dbus-daemon dbus-tools pulseaudio-utils pipewire-utils\
+    procps-ng tree nano \
     && dnf clean all
 
 RUN useradd -rm -d /home/vscode -s /bin/bash -g root -u 1001 vscode
