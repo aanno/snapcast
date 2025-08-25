@@ -4,7 +4,11 @@
 			"path": "."
 		}
 	],
-	"settings": {},
+	"settings": {
+		"projectManager.git.baseFolders": [
+			"/workspaces/cpp"
+		]
+	},
 	"extensions": {
 		"recommendations": [
 			"ms-vscode.cpptools",
