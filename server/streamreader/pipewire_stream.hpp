@@ -22,10 +22,10 @@
 #include "pcm_stream.hpp"
 
 // 3rd party headers
+#include <boost/asio/io_context.hpp>
 #include <pipewire/pipewire.h>
 #include <spa/param/audio/format-utils.h>
 #include <spa/param/audio/raw.h>
-#include <boost/asio/io_context.hpp>
 
 // standard headers
 #include <memory>
@@ -59,7 +59,7 @@ private:
     static void on_param_changed(void* userdata, uint32_t id, const struct spa_pod* param);
     static void on_core_info(void* userdata, const struct pw_core_info* info);
     static void on_core_error(void* userdata, uint32_t id, int seq, int res, const char* message);
-    
+
     void initPipeWire();
     void uninitPipeWire();
     void processAudio();
@@ -70,7 +70,7 @@ private:
     struct pw_core* pw_core_;
     struct pw_stream* pw_stream_;
     struct pw_properties* props_;
-    
+
     // PipeWire event handlers
     struct pw_core_events core_events_;
     struct spa_hook core_listener_;
@@ -81,23 +81,23 @@ private:
     std::string target_device_;
     std::string stream_name_;
     bool capture_sink_;
-    
+
     // Audio buffer management
     std::mutex buffer_mutex_;
     std::vector<uint8_t> temp_buffer_;
-    
+
     // Timing and state
     bool first_;
     std::chrono::microseconds silence_;
-    
+
     // Configuration
     bool send_silence_;
     std::chrono::milliseconds idle_threshold_;
-    
+
     // Stream state
     enum pw_stream_state stream_state_;
     bool running_;
-    
+
     // PipeWire thread
     std::thread pw_thread_;
 };
