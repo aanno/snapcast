@@ -4,6 +4,8 @@
 
 This implementation adds native PipeWire support to Snapcast server, allowing direct audio capture from PipeWire without going through ALSA or JACK compatibility layers.
 
+It is the solution to [issue 1371](https://github.com/badaix/snapcast/issues/1371).
+
 ## Building with PipeWire Support
 
 1. Ensure PipeWire development packages are installed:
@@ -105,3 +107,37 @@ source = pipewire://?capture_sink=true&target=alsa_output.platform-snd_aloop.0.a
 ```
 
 This eliminates the need for FIFOs and external processes, providing better performance and lower latency.
+
+## Using with sound loopback devices
+
+It is possible (but not needed) to use pipewire-stream with sound loopback.
+
+Load the loopback module temporarily with:
+
+```bash
+sudo modprobe snd-aloop
+```
+
+Or permanently by creating a file `/etc/modules-load.d/snd_aloop.conf` like this:
+
+```bash
+$ cat /etc/modules-load.d/snd_aloop.conf 
+snd_aloop
+```
+
+## Alternative: Use the `libpipewire-module-snapcast-discover` from PipeWire
+
+An alternative to using the `pipewire-stream` source in Snapcast is to use the `libpipewire-module-snapcast-discover` module from PipeWire. This module allows PipeWire clients to automatically discover and connect to snapserver.
+
+For details, see the [PipeWire documentation](https://docs.pipewire.org/page_module_snapcast_discover.html)
+and [issue 1371](https://github.com/badaix/snapcast/issues/1371).
+
+Using `libpipewire-module-snapcast-discover` allows for discover snapserver on the (sub) network. 
+
+Using pipewire-stream is more direct, avoids loopback networking, but is restricted to snapserver on the local machine. It is - of course - better integrated with PipeWire and may feel more naturally because of that.
+
+## Acknowledgements
+
+Research for this implementation was done with perplexity AI. Most of the inital code was written by Claude Code AI, including this documentation.
+
+However, all tests, prompt directions, and the initial PR were done by [aanno](https://github.com/aanno).

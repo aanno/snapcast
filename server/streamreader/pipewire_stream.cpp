@@ -335,6 +335,7 @@ void PipeWireStream::initPipeWire()
         PW_KEY_MEDIA_CATEGORY, "Capture",
         PW_KEY_MEDIA_ROLE, "Music",
         PW_KEY_APP_NAME, "Snapcast",
+        PW_KEY_MEDIA_CLASS, "Audio/Sink",
         PW_KEY_NODE_NAME, stream_name_.c_str(),
         nullptr);
     
