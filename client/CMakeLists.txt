@@ -134,7 +134,7 @@ else()
     endif()
     link_directories(${PIPEWIRE_LIBRARY_DIRS})
     # PipeWire requires threading support
-    list(APPEND SERVER_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+    list(APPEND CLIENT_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
     # Alternative: Disable pedantic warnings for PipeWire stream source
     # set_source_files_properties(player/pipewire_player.cpp
     #                             PROPERTIES COMPILE_FLAGS "-Wno-pedantic")
