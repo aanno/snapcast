@@ -3,8 +3,8 @@
 {
 	"name": "Snapcast-dev",
 	"build": {
-		"dockerfile": "Dockerfile.fedora",
-		"args": { "VARIANT": "42" }
+		"dockerfile": "Dockerfile.my-fedora",
+		// "args": { "VARIANT": "42" }
 	},
 	"runArgs": [
 		"--device", "/dev/snd",
