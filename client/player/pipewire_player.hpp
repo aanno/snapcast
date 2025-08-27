@@ -30,9 +30,9 @@
 // standard headers
 #include <atomic>
 #include <cstdio>
+#include <map>
 #include <memory>
 #include <string>
-#include <map>
 
 namespace player
 {
@@ -90,7 +90,7 @@ private:
 
     struct spa_hook stream_listener_;
     struct spa_hook registry_listener_;
-    
+
     bool has_target_node_;
     std::string target_node_;
     std::map<std::string, std::string> properties_;
