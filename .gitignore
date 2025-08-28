@@ -1,3 +1,10 @@
+# Misc
+*.diff
+*.log
+*.orig
+/cmake.sh
+/snap*.conf
+
 # Compiled Object files
 *.slo
 *.lo
