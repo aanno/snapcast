@@ -95,7 +95,6 @@ The PipeWire player includes intelligent resource management:
 
 - **Silence Detection**: Automatically disconnects from the audio device after 5 seconds of silence
 - **Fast Reconnection**: Immediately reconnects when audio data becomes available
-- **Device Sharing**: Allows other applications to use the audio device during silent periods
 
 This behavior matches the PulseAudio player exactly and helps prevent audio device conflicts.
 
@@ -110,7 +109,7 @@ This behavior matches the PulseAudio player exactly and helps prevent audio devi
 ## Troubleshooting
 
 1. **No audio output**: 
-   - Check available devices: `snapclient --player pipewire:list`
+   - Check available devices: `snapclient -l`
    - Verify PipeWire is running: `systemctl --user status pipewire`
 
 2. **Permission issues**: 
@@ -142,3 +141,9 @@ The PipeWire player provides identical functionality with potentially lower late
 ## Acknowledgements
 
 This implementation was developed and tested as part of adding comprehensive PipeWire support to Snapcast. The implementation closely follows PipeWire best practices and official examples for robust audio playback.
+
+## References
+
+* [pipewire examples](https://docs.pipewire.org/examples.html)
+* [pw-cat (pw-play) documentation](https://docs.pipewire.org/page_man_pw-cat_1.html)
+  + [pw-cat source code](https://github.com/PipeWire/pipewire/blob/master/src/tools/pw-cat.c)
