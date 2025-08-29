@@ -23,6 +23,7 @@
 #include "common/aixlog.hpp"
 #include "common/snap_exception.hpp"
 #include "common/str_compat.hpp"
+#include "common/time_defs.hpp"
 #include "common/utils/logging.hpp"
 #include "common/utils/string_utils.hpp"
 
@@ -707,23 +708,36 @@ void PipeWirePlayer::on_process(void* userdata)
         return;
     }
 
-    uint32_t offset = SPA_MIN(d->chunk->offset, d->maxsize);
-    uint32_t stride = self->frame_size_;
-    uint32_t n_frames = (d->maxsize - offset) / stride;
+    if (!d->chunk)
+    {
+        pw_stream_queue_buffer(self->pw_stream_, buffer);
+        return;
+    }
 
-    void* dst = static_cast<uint8_t*>(d->data) + offset;
+    // Calculate frames directly from maxsize (official PipeWire pattern - don't use chunk->offset)
+    uint32_t stride = self->frame_size_;
+    uint32_t n_frames = d->maxsize / stride;
+    
+    // Limit to requested frames if specified
+    if (buffer->requested)
+        n_frames = SPA_MIN(n_frames, buffer->requested);
+
+    uint8_t* p = static_cast<uint8_t*>(d->data);
 
     // Always produce audio even during shutdown to avoid underruns
     bool got_data = false;
     if (self->stream_ && self->active_.load(std::memory_order_acquire))
     {
-        got_data = self->stream_->getPlayerChunkOrSilence(dst, std::chrono::microseconds(0), n_frames);
+        // Calculate latency: buffer time in microseconds
+        // This is an estimate based on the buffer size and sample rate
+        auto latency_us = std::chrono::microseconds((n_frames * 1000000) / self->audio_info_.rate);
+        got_data = self->stream_->getPlayerChunkOrSilence(p, latency_us, n_frames);
     }
 
     if (!got_data)
     {
         // Fill with silence
-        memset(dst, 0, n_frames * stride);
+        memset(p, 0, n_frames * stride);
 
         // Log occasionally
         auto now = chronos::getTickCount();
@@ -735,13 +749,12 @@ void PipeWirePlayer::on_process(void* userdata)
     else
     {
         self->last_chunk_tick_ = chronos::getTickCount();
-        self->adjustVolume(static_cast<char*>(dst), n_frames);
+        self->adjustVolume(reinterpret_cast<char*>(p), n_frames);
     }
 
-    // Set chunk metadata and queue
-    d->chunk->offset = offset;
-    d->chunk->stride = stride;
-    d->chunk->size = n_frames * stride;
+    // Set chunk size (official PipeWire pattern - only set size, not offset/stride)
+    if (d->chunk)
+        d->chunk->size = n_frames * stride;
 
     pw_stream_queue_buffer(self->pw_stream_, buffer);
 }
