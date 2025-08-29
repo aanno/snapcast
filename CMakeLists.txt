@@ -71,6 +71,8 @@ else()
   if(WERROR)
     add_compile_options(-Werror)
     add_compile_options(-Wno-gnu-statement-expression)
+    # SPA_POD_BUILDER_INIT
+    add_compile_options(-Wno-c99-extensions)
   endif()
 
   if(ASAN)

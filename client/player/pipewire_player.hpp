@@ -87,10 +87,10 @@ private:
     struct pw_context* context_;
     struct pw_core* core_;
     struct pw_stream* pw_stream_;
-    struct pw_registry* registry_;
+
+    [[maybe_unused]] struct pw_registry* registry_;
 
     struct spa_hook stream_listener_;
-    struct spa_hook registry_listener_;
     struct pw_stream_events stream_events_;
 
     bool has_target_node_;
