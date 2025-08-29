@@ -469,6 +469,8 @@ void PipeWirePlayer::start()
 void PipeWirePlayer::connect()
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    std::array<uint8_t, 1024> buffer;
+    std::array<const struct spa_pod*, 1> params;
 
     if (connected_)
     {
@@ -551,15 +553,13 @@ void PipeWirePlayer::connect()
     pw_stream_add_listener(pw_stream_, &stream_listener_, &stream_events_, this);
 
     // Create audio format parameters using spa_pod_builder
-    uint8_t buffer[1024];
-    struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer, sizeof(buffer));
+    struct spa_pod_builder b = SPA_POD_BUILDER_INIT(buffer.data(), buffer.size());
 
-    const struct spa_pod* params[1];
     params[0] = spa_format_audio_raw_build(&b, SPA_PARAM_EnumFormat, &audio_info_);
 
     // Connect stream
     if (pw_stream_connect(pw_stream_, PW_DIRECTION_OUTPUT, PW_ID_ANY,
-                          static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS), params, 1) < 0)
+                          static_cast<pw_stream_flags>(PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS | PW_STREAM_FLAG_RT_PROCESS), params.data(), params.size()) < 0) // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
     {
         throw SnapException("Failed to connect PipeWire stream");
     }
@@ -666,7 +666,7 @@ void PipeWirePlayer::setHardwareVolume(const Volume& volume)
         return;
 
     // Volume struct has volume in range [0..1] and mute flag
-    float vol = static_cast<float>(volume.volume);
+    auto vol = static_cast<float>(volume.volume);
 
     // If muted, set volume to 0
     if (volume.mute)
