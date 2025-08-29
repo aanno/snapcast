@@ -540,9 +540,9 @@ void PipeWirePlayer::connect()
 
     // Set target node if specified
     if (has_target_node_ && target_node_ != DEFAULT_DEVICE)
-        pw_properties_set(props, PW_KEY_NODE_TARGET, target_node_.c_str());
+        pw_properties_set(props, PW_KEY_TARGET_OBJECT, target_node_.c_str());
     else if (settings_.pcm_device.name != DEFAULT_DEVICE)
-        pw_properties_set(props, PW_KEY_NODE_TARGET, settings_.pcm_device.name.c_str());
+        pw_properties_set(props, PW_KEY_TARGET_OBJECT, settings_.pcm_device.name.c_str());
 
     // Create playback stream
     pw_stream_ = pw_stream_new(core_, "Snapcast Playback", props);
@@ -672,9 +672,9 @@ void PipeWirePlayer::setHardwareVolume(const Volume& volume)
     if (volume.mute)
         vol = 0.0f;
 
-    float values[2] = {vol, vol}; // Same volume for both channels
+    std::array<float, 2> values = {vol, vol}; // Same volume for both channels
 
-    int ret = pw_stream_set_control(pw_stream_, SPA_PROP_channelVolumes, 2, values, 0);
+    int ret = pw_stream_set_control(pw_stream_, SPA_PROP_channelVolumes, 2, values.data(), 0);
 
     if (ret >= 0)
     {
@@ -807,7 +807,7 @@ void PipeWirePlayer::on_process(void* userdata)
     if (buffer->requested)
         n_frames = SPA_MIN(n_frames, buffer->requested);
 
-    uint8_t* p = static_cast<uint8_t*>(d->data);
+    auto p = static_cast<uint8_t*>(d->data);
 
     // Always produce audio even during shutdown to avoid underruns
     bool got_data = false;
