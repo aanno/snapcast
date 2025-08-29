@@ -807,7 +807,7 @@ void PipeWirePlayer::on_process(void* userdata)
     if (buffer->requested)
         n_frames = SPA_MIN(n_frames, buffer->requested);
 
-    auto p = static_cast<uint8_t*>(d->data);
+    auto* p = static_cast<uint8_t*>(d->data);
 
     // Always produce audio even during shutdown to avoid underruns
     bool got_data = false;
