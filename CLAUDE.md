@@ -18,6 +18,7 @@ The PipeWire player implementation has been fixed to resolve segmentation fault 
 The original crash was caused by improper buffer handling in the `on_process` callback. The implementation has been rewritten to follow official PipeWire examples and best practices.
 
 #### Key Issues Resolved:
+
 - **Segmentation fault**: Fixed null pointer dereference in `d->chunk->offset` access
 - **Buffer calculation**: Now uses direct `d->maxsize / stride` calculation (official pattern)
 - **Chunk metadata**: Only sets `chunk->size`, avoids accessing potentially NULL chunk fields
@@ -25,6 +26,7 @@ The original crash was caused by improper buffer handling in the `on_process` ca
 - **Latency calculation**: Improved audio timing calculation based on buffer size
 
 #### Technical References:
+
 - **PipeWire Examples**: https://docs.pipewire.org/examples.html
 - **Reference Implementation**: https://raw.githubusercontent.com/PipeWire/pipewire/refs/heads/master/src/examples/audio-src.c
 - **pw-cat Source**: https://raw.githubusercontent.com/PipeWire/pipewire/refs/heads/master/src/tools/pw-cat.c
@@ -60,6 +62,8 @@ This is the build procedure:
 
 Don't use tool 'vscode-mcp-server - execute_shell_command_code (MCP)' because of
 issues. Instead, use bash directly.
+
+Don't use tool 'vscode-mcp-server - replace_lines_code (MCP)' because of issues. Instead, use direct file editing.
 
 For editing file, use tool 'Opened changes in Visual Studio Code'. This is 
 much better than tool 'update'. But if you use tool 'update', don't forget to 

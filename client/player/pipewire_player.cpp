@@ -751,9 +751,19 @@ void PipeWirePlayer::on_process(void* userdata)
         // Fill with silence
         memset(p, 0, n_frames * stride);
 
-        // Log occasionally
+        // Check for extended silence period (disconnect to free audio device) 
         auto now = chronos::getTickCount();
-        if (now - self->last_chunk_tick_ > 1000)
+        if (now - self->last_chunk_tick_ > 5000) // 5 seconds silence (matching PulseAudio)
+        {
+            LOG(INFO, LOG_TAG) << "No chunk received for 5000ms, disconnecting from PipeWire to free audio device.\n";
+            // Exit main loop to trigger disconnection in worker thread
+            if (self->main_loop_ && self->active_.load(std::memory_order_acquire))
+            {
+                pw_main_loop_quit(self->main_loop_);
+            }
+            return;
+        }
+        else if (now - self->last_chunk_tick_ > 1000)
         {
             LOG(DEBUG, LOG_TAG) << "No audio data available, producing silence\n";
         }
