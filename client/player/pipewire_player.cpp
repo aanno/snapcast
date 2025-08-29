@@ -37,8 +37,8 @@
 #include <chrono>
 #include <cstring>
 #include <iostream>
-#include <mutex>
 #include <thread>
+#include <mutex>
 
 using namespace std::chrono_literals;
 using namespace std;
@@ -206,7 +206,7 @@ void PipeWirePlayer::registry_event_global_remove(void* data, uint32_t id)
 }
 
 PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const ClientSettings::Player& settings, std::shared_ptr<Stream> stream)
-    : Player(io_context, settings, std::move(stream)), latency_(BUFFER_TIME), stream_ready_(false), connected_(false), last_chunk_tick_(0), main_loop_(nullptr),
+    : Player(io_context, settings, std::move(stream)), latency_(BUFFER_TIME), stream_ready_(false), connected_(false), last_chunk_tick_(0), disconnect_requested_(false), main_loop_(nullptr),
       context_(nullptr), core_(nullptr), pw_stream_(nullptr), registry_(nullptr), stream_events_(get_stream_events()), has_target_node_(false), target_node_(""), node_id_(0), frame_size_(0),
       position_(nullptr)
 {
@@ -326,12 +326,60 @@ void PipeWirePlayer::worker()
                 LOG(DEBUG, LOG_TAG) << "Stream state before main loop: " << pw_stream_state_as_string(stream_state) << "\n";
                 
                 LOG(DEBUG, LOG_TAG) << "About to call pw_main_loop_run...\n";
+                
+                // Start a monitoring thread to check for disconnect requests
+                std::thread disconnect_monitor([this]() {
+                    while (active_ && connected_)
+                    {
+                        if (disconnect_requested_.load(std::memory_order_acquire))
+                        {
+                            LOG(DEBUG, LOG_TAG) << "Disconnect monitor: quitting main loop\n";
+                            if (main_loop_)
+                                pw_main_loop_quit(main_loop_);
+                            break;
+                        }
+                        std::this_thread::sleep_for(100ms);
+                    }
+                });
+                
                 // This will run until pw_main_loop_quit() is called
                 int result = pw_main_loop_run(main_loop_);
                 LOG(DEBUG, LOG_TAG) << "PipeWire main loop exited with result: " << result << "\n";
+                
+                // Clean up monitor thread
+                if (disconnect_monitor.joinable())
+                    disconnect_monitor.join();
 
+                // Check if disconnection was requested due to silence
+                if (disconnect_requested_.load(std::memory_order_acquire))
+                {
+                    LOG(INFO, LOG_TAG) << "Disconnecting from PipeWire due to silence.\n";
+                    disconnect();
+                    disconnect_requested_.store(false, std::memory_order_release);
+                    
+                    // Wait for chunks to become available before reconnecting (matching PulseAudio pattern)
+                    while (active_ && !stream_->waitForChunk(100ms))
+                    {
+                        static utils::logging::TimeConditional cond(2s);
+                        LOG(DEBUG, LOG_TAG) << cond << "Waiting for a chunk to become available before reconnecting\n";
+                    }
+                    
+                    if (active_)
+                    {
+                        LOG(INFO, LOG_TAG) << "Chunk available, reconnecting to PipeWire\n";
+                        try
+                        {
+                            connect();
+                        }
+                        catch (const std::exception& e)
+                        {
+                            LOG(ERROR, LOG_TAG) << "Failed to reconnect: " << e.what() << "\n";
+                            // Will retry in next loop iteration
+                        }
+                    }
+                }
                 // If we get here and still active, it means there was an error
-                if (active_)
+                else if (active_)
                 {
                     LOG(ERROR, LOG_TAG) << "PipeWire main loop exited unexpectedly\n";
 
@@ -788,9 +836,16 @@ void PipeWirePlayer::on_process(void* userdata)
         // Fill with silence
         memset(p, 0, n_frames * stride);
 
-        // TODO: Implement safe silence detection using atomic flags (not pw_main_loop_quit from callback)
+        // Safe silence detection using atomic flag (matching PulseAudio pattern)
         auto now = chronos::getTickCount();
-        if (now - self->last_chunk_tick_ > 1000)
+        if (now - self->last_chunk_tick_ > 5000) // 5 seconds silence (matching PulseAudio)
+        {
+            LOG(INFO, LOG_TAG) << "No chunk received for 5000ms, requesting disconnection from PipeWire.\n";
+            // Set atomic flag to request disconnection in worker thread (safe approach)
+            self->disconnect_requested_.store(true, std::memory_order_release);
+            return;
+        }
+        else if (now - self->last_chunk_tick_ > 1000)
         {
             LOG(DEBUG, LOG_TAG) << "No audio data available, producing silence\n";
         }

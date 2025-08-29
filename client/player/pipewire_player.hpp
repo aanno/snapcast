@@ -81,6 +81,7 @@ private:
     std::atomic<bool> stream_ready_;
     std::atomic<bool> connected_;
     std::atomic<long> last_chunk_tick_;
+    std::atomic<bool> disconnect_requested_;
 
     struct pw_main_loop* main_loop_;
     struct pw_context* context_;
