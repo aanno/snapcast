@@ -728,9 +728,21 @@ void PipeWirePlayer::on_process(void* userdata)
     bool got_data = false;
     if (self->stream_ && self->active_.load(std::memory_order_acquire))
     {
-        // Calculate latency: buffer time in microseconds
-        // This is an estimate based on the buffer size and sample rate
-        auto latency_us = std::chrono::microseconds((n_frames * 1000000) / self->audio_info_.rate);
+        // Get accurate latency from PipeWire (similar to pa_stream_get_latency)
+        struct pw_time time;
+        auto latency_us = std::chrono::microseconds(0);
+        
+        if (pw_stream_get_time_n(self->pw_stream_, &time, sizeof(time)) == 0)
+        {
+            // Convert PipeWire timing to latency in microseconds
+            // time.delay contains the total delay including buffering latency
+            latency_us = std::chrono::microseconds(time.delay / 1000); // Convert nanoseconds to microseconds
+        }
+        else
+        {
+            // Fallback to buffer-based estimate if timing query fails
+            latency_us = std::chrono::microseconds((n_frames * 1000000) / self->audio_info_.rate);
+        }
         got_data = self->stream_->getPlayerChunkOrSilence(p, latency_us, n_frames);
     }
 
