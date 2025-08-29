@@ -207,7 +207,7 @@ void PipeWirePlayer::registry_event_global_remove(void* data, uint32_t id)
 
 PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const ClientSettings::Player& settings, std::shared_ptr<Stream> stream)
     : Player(io_context, settings, std::move(stream)), latency_(BUFFER_TIME), stream_ready_(false), connected_(false), last_chunk_tick_(0), disconnect_requested_(false), main_loop_(nullptr),
-      context_(nullptr), core_(nullptr), pw_stream_(nullptr), registry_(nullptr), stream_events_(get_stream_events()), has_target_node_(false), target_node_(""), node_id_(0), frame_size_(0),
+      context_(nullptr), core_(nullptr), pw_stream_(nullptr), registry_(nullptr), stream_events_(get_stream_events()), has_target_node_(false), target_node_(), node_id_(0), frame_size_(0),
       position_(nullptr)
 {
     auto params = utils::string::split_pairs_to_container<std::vector<std::string>>(settings.parameter, ',', '=');
@@ -872,7 +872,7 @@ void PipeWirePlayer::on_param_changed(void* userdata, uint32_t id, const struct 
 
     LOG(TRACE, LOG_TAG) << "Stream param changed: " << id << "\n";
 
-    if (id != SPA_PARAM_Format || param == NULL)
+    if (id != SPA_PARAM_Format || param == nullptr)
         return;
 
     struct spa_audio_info_raw info;
