@@ -90,6 +90,7 @@ private:
 
     struct spa_hook stream_listener_;
     struct spa_hook registry_listener_;
+    struct pw_stream_events stream_events_;
 
     bool has_target_node_;
     std::string target_node_;

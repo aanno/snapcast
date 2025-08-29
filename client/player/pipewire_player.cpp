@@ -207,7 +207,7 @@ void PipeWirePlayer::registry_event_global_remove(void* data, uint32_t id)
 
 PipeWirePlayer::PipeWirePlayer(boost::asio::io_context& io_context, const ClientSettings::Player& settings, std::shared_ptr<Stream> stream)
     : Player(io_context, settings, std::move(stream)), latency_(BUFFER_TIME), stream_ready_(false), connected_(false), last_chunk_tick_(0), main_loop_(nullptr),
-      context_(nullptr), core_(nullptr), pw_stream_(nullptr), registry_(nullptr), has_target_node_(false), target_node_(""), node_id_(0), frame_size_(0),
+      context_(nullptr), core_(nullptr), pw_stream_(nullptr), registry_(nullptr), stream_events_(get_stream_events()), has_target_node_(false), target_node_(""), node_id_(0), frame_size_(0),
       position_(nullptr)
 {
     auto params = utils::string::split_pairs_to_container<std::vector<std::string>>(settings.parameter, ',', '=');
@@ -308,9 +308,27 @@ void PipeWirePlayer::worker()
             if (main_loop_ && connected_)
             {
                 LOG(DEBUG, LOG_TAG) << "Starting PipeWire main loop\n";
+                LOG(DEBUG, LOG_TAG) << "main_loop_: " << main_loop_ << ", pw_stream_: " << pw_stream_ << ", connected_: " << connected_.load() << "\n";
+                
+                // Validate PipeWire objects before main loop
+                if (!main_loop_)
+                {
+                    LOG(ERROR, LOG_TAG) << "main_loop_ is NULL!\n";
+                    break;
+                }
+                if (!pw_stream_)
+                {
+                    LOG(ERROR, LOG_TAG) << "pw_stream_ is NULL!\n";
+                    break;
+                }
+                
+                auto stream_state = pw_stream_get_state(pw_stream_, nullptr);
+                LOG(DEBUG, LOG_TAG) << "Stream state before main loop: " << pw_stream_state_as_string(stream_state) << "\n";
+                
+                LOG(DEBUG, LOG_TAG) << "About to call pw_main_loop_run...\n";
                 // This will run until pw_main_loop_quit() is called
-                pw_main_loop_run(main_loop_);
-                LOG(DEBUG, LOG_TAG) << "PipeWire main loop exited\n";
+                int result = pw_main_loop_run(main_loop_);
+                LOG(DEBUG, LOG_TAG) << "PipeWire main loop exited with result: " << result << "\n";
 
                 // If we get here and still active, it means there was an error
                 if (active_)
@@ -394,7 +412,7 @@ void PipeWirePlayer::start()
 {
     LOG(INFO, LOG_TAG) << "Start\n";
 
-    pw_init(nullptr, nullptr);
+    // pw_init already called in constructor - don't call again
 
     // The worker thread will handle the connection
     Player::start();
@@ -481,9 +499,8 @@ void PipeWirePlayer::connect()
     if (!pw_stream_)
         throw SnapException("Failed to create PipeWire stream");
 
-    // Add stream listener
-    auto stream_events = get_stream_events();
-    pw_stream_add_listener(pw_stream_, &stream_listener_, &stream_events, this);
+    // Add stream listener - use member variable to avoid dangling pointer
+    pw_stream_add_listener(pw_stream_, &stream_listener_, &stream_events_, this);
 
     // Create audio format parameters using spa_pod_builder
     uint8_t buffer[1024];
@@ -637,6 +654,9 @@ bool PipeWirePlayer::getHardwareVolume(Volume& volume)
 
 void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, enum pw_stream_state state, const char* error)
 {
+    if (!userdata)
+        return;
+        
     auto* self = static_cast<PipeWirePlayer*>(userdata);
 
     LOG(DEBUG, LOG_TAG) << "Stream state changed from " << pw_stream_state_as_string(old) << " to " << pw_stream_state_as_string(state);
@@ -689,10 +709,16 @@ void PipeWirePlayer::on_state_changed(void* userdata, enum pw_stream_state old, 
 
 void PipeWirePlayer::on_process(void* userdata)
 {
+    if (!userdata)
+        return;
+        
     auto* self = static_cast<PipeWirePlayer*>(userdata);
 
     // Check if we're shutting down
     if (!self->active_.load(std::memory_order_acquire))
+        return;
+        
+    if (!self->pw_stream_)
         return;
 
     struct pw_buffer* buffer = pw_stream_dequeue_buffer(self->pw_stream_);
@@ -700,7 +726,18 @@ void PipeWirePlayer::on_process(void* userdata)
         return;
 
     struct spa_buffer* spa_buffer = buffer->buffer;
+    if (!spa_buffer || !spa_buffer->datas)
+    {
+        pw_stream_queue_buffer(self->pw_stream_, buffer);
+        return;
+    }
+    
     struct spa_data* d = &spa_buffer->datas[0];
+    if (!d)
+    {
+        pw_stream_queue_buffer(self->pw_stream_, buffer);
+        return;
+    }
 
     if (!d->data)
     {
@@ -751,19 +788,9 @@ void PipeWirePlayer::on_process(void* userdata)
         // Fill with silence
         memset(p, 0, n_frames * stride);
 
-        // Check for extended silence period (disconnect to free audio device) 
+        // TODO: Implement safe silence detection using atomic flags (not pw_main_loop_quit from callback)
         auto now = chronos::getTickCount();
-        if (now - self->last_chunk_tick_ > 5000) // 5 seconds silence (matching PulseAudio)
-        {
-            LOG(INFO, LOG_TAG) << "No chunk received for 5000ms, disconnecting from PipeWire to free audio device.\n";
-            // Exit main loop to trigger disconnection in worker thread
-            if (self->main_loop_ && self->active_.load(std::memory_order_acquire))
-            {
-                pw_main_loop_quit(self->main_loop_);
-            }
-            return;
-        }
-        else if (now - self->last_chunk_tick_ > 1000)
+        if (now - self->last_chunk_tick_ > 1000)
         {
             LOG(DEBUG, LOG_TAG) << "No audio data available, producing silence\n";
         }
@@ -783,6 +810,9 @@ void PipeWirePlayer::on_process(void* userdata)
 
 void PipeWirePlayer::on_param_changed(void* userdata, uint32_t id, const struct spa_pod* param)
 {
+    if (!userdata)
+        return;
+        
     auto* self = static_cast<PipeWirePlayer*>(userdata);
 
     LOG(TRACE, LOG_TAG) << "Stream param changed: " << id << "\n";
@@ -803,6 +833,9 @@ void PipeWirePlayer::on_param_changed(void* userdata, uint32_t id, const struct 
 
 void PipeWirePlayer::on_io_changed(void* userdata, uint32_t id, void* area, uint32_t size)
 {
+    if (!userdata)
+        return;
+        
     auto* self = static_cast<PipeWirePlayer*>(userdata);
     std::ignore = size;
 
@@ -820,6 +853,9 @@ void PipeWirePlayer::on_io_changed(void* userdata, uint32_t id, void* area, uint
 
 void PipeWirePlayer::on_drained(void* userdata)
 {
+    if (!userdata)
+        return;
+        
     auto* self = static_cast<PipeWirePlayer*>(userdata);
     LOG(DEBUG, LOG_TAG) << "Stream drained\n";
     std::ignore = self;
