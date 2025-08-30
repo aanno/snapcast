@@ -141,6 +141,9 @@ private:
     
     /// Process a single completion notification
     void process_completion_notification(const struct sock_extended_err* err);
+    
+    /// Perform the actual zerocopy send operation
+    void perform_zerocopy_send(const std::shared_ptr<std::vector<char>>& buffer, uint32_t seq_id);
 
     tcp::socket socket_;
     boost::asio::steady_timer error_queue_timer_;

@@ -1,4 +1,6 @@
 #!/bin/bash -x
+
+rm snapclient.log
 ./bin/snapclient --player pulse -s 'alsa_output.pci-0000_01_00.1.hdmi-stereo' --logsink stdout --logfilter '*:trace' tcp://192.168.10.139:1704 | tee snapclient.log
 
 # -s 64

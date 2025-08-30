@@ -22,6 +22,7 @@
 // standard headers
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
 // system headers
 #include <sys/socket.h>
@@ -98,6 +99,19 @@ void ZeroCopySocket::async_send_zerocopy(const std::shared_ptr<std::vector<char>
         return;
     }
 
+    // Queue the zerocopy operation to be executed in order
+    uint32_t seq_id = next_sequence_id_++;
+    pending_buffers_.emplace_back(buffer, std::move(handler), seq_id);
+    
+    // Post the actual send operation to the io_context to maintain ordering
+    boost::asio::post(socket_.get_executor(), 
+        [this, buffer, seq_id]() {
+            perform_zerocopy_send(buffer, seq_id);
+        });
+}
+
+void ZeroCopySocket::perform_zerocopy_send(const std::shared_ptr<std::vector<char>>& buffer, uint32_t seq_id)
+{
     // Prepare iovec for sendmsg
     struct iovec iov{};
     iov.iov_base = buffer->data();
@@ -107,8 +121,9 @@ void ZeroCopySocket::async_send_zerocopy(const std::shared_ptr<std::vector<char>
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
 
-    // Use sendmsg syscall directly with MSG_ZEROCOPY
-    ssize_t ret = sendmsg(socket_.native_handle(), &msg, MSG_ZEROCOPY | MSG_DONTWAIT);
+    // Use sendmsg syscall directly with MSG_ZEROCOPY but WITHOUT MSG_DONTWAIT
+    // This ensures proper ordering since we're called from the io_context
+    ssize_t ret = sendmsg(socket_.native_handle(), &msg, MSG_ZEROCOPY);
 
     if (ret == -1)
     {
@@ -121,31 +136,51 @@ void ZeroCopySocket::async_send_zerocopy(const std::shared_ptr<std::vector<char>
             regular_sends_.fetch_add(1);
             regular_bytes_.fetch_add(buffer->size());
             LOG(DEBUG, LOG_TAG) << "Socket would block, falling back to regular send\n";
-            boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
-                [handler = std::move(handler)](boost::system::error_code ec, std::size_t bytes_sent)
-                {
-                    if (handler)
-                        handler(ec, bytes_sent);
-                });
+            
+            // Find and call the handler for this sequence ID
+            auto it = std::find_if(pending_buffers_.begin(), pending_buffers_.end(),
+                [seq_id](const ZeroCopyBuffer& buf) { return buf.sequence_id == seq_id; });
+            
+            if (it != pending_buffers_.end())
+            {
+                auto handler = std::move(it->handler);
+                pending_buffers_.erase(it);
+                
+                boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
+                    [handler = std::move(handler)](boost::system::error_code ec, std::size_t bytes_sent)
+                    {
+                        if (handler)
+                            handler(ec, bytes_sent);
+                    });
+            }
         }
         else
         {
             LOG(ERROR, LOG_TAG) << "sendmsg with MSG_ZEROCOPY failed: " << strerror(errno) << "\n";
-            if (handler)
-                handler(ec, 0);
+            
+            // Find and call the handler with error
+            auto it = std::find_if(pending_buffers_.begin(), pending_buffers_.end(),
+                [seq_id](const ZeroCopyBuffer& buf) { return buf.sequence_id == seq_id; });
+            
+            if (it != pending_buffers_.end())
+            {
+                auto handler = std::move(it->handler);
+                pending_buffers_.erase(it);
+                if (handler)
+                    handler(ec, 0);
+            }
         }
         return;
     }
 
-    // Store buffer and handler to track completion
-    uint32_t seq_id = next_sequence_id_++;
-    pending_buffers_.emplace_back(buffer, std::move(handler), seq_id);
-    
     // Update zerocopy statistics
     zerocopy_sends_.fetch_add(1);
     zerocopy_bytes_.fetch_add(buffer->size());
     
     LOG(DEBUG, LOG_TAG) << "Zerocopy send queued: " << ret << " bytes, sequence: " << seq_id << "\n";
+    
+    // Note: The handler will be called when we receive the completion notification
+    // via the error queue monitoring system
 }
 
 void ZeroCopySocket::start_error_queue_monitor()
