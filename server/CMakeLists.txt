@@ -12,7 +12,6 @@ set(SERVER_SOURCES
     stream_server.cpp
     stream_session.cpp
     stream_session_tcp.cpp
-    stream_session_tcp_zerocopy.cpp
     stream_session_tcp_coordinated.cpp
     stream_session_ws.cpp
     zerocopy_socket.cpp
