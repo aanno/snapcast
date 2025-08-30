@@ -121,10 +121,26 @@ bool StreamSessionTcpCoordinated::initializeZeroCopy()
     return true;
 }
 
-bool StreamSessionTcpCoordinated::canUseZeroCopy() const
+bool StreamSessionTcpCoordinated::tryReserveZeroCopy()
 {
-    // Check if there are any pending async operations
-    return pending_async_operations_.load() == 0;
+    // Atomically check if idle and reserve for zerocopy (race-condition safe)
+    uint32_t expected = 0;
+    while (!pending_async_operations_.compare_exchange_weak(expected, 1))
+    {
+        if (expected != 0)
+        {
+            // Another operation is in progress; cannot do zerocopy now
+            return false;
+        }
+        // If spurious failure, 'expected' is reloaded with current value, retry
+    }
+    return true; // Successfully reserved zerocopy
+}
+
+void StreamSessionTcpCoordinated::releaseZeroCopy()
+{
+    // Release zerocopy reservation
+    pending_async_operations_.store(0);
 }
 
 void StreamSessionTcpCoordinated::sendAsync(const shared_const_buffer& buffer, WriteHandler&& handler)
@@ -134,7 +150,7 @@ void StreamSessionTcpCoordinated::sendAsync(const shared_const_buffer& buffer, W
     // Decide whether to attempt zerocopy based on size and availability
     bool should_use_zerocopy = zerocopy_available_ && 
                               buffer_size >= ZEROCOPY_THRESHOLD &&
-                              canUseZeroCopy();
+                              tryReserveZeroCopy();
     
     if (should_use_zerocopy)
     {
@@ -199,12 +215,14 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
         {
             LOG(DEBUG, LOG_TAG) << "ZeroCopy send would block, falling back to regular send";
+            releaseZeroCopy(); // Release reservation before fallback
             sendRegularCoordinated(buffer, std::move(handler));
             return;
         }
         else
         {
             LOG(ERROR, LOG_TAG) << "ZeroCopy sendmsg failed: " << strerror(errno);
+            releaseZeroCopy(); // Release reservation on error
             if (handler)
                 handler(boost::system::error_code(errno, boost::system::system_category()), 0);
             return;
@@ -214,6 +232,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     if (static_cast<size_t>(result) != buffer_size)
     {
         LOG(ERROR, LOG_TAG) << "ZeroCopy partial send: " << result << "/" << buffer_size << " bytes";
+        releaseZeroCopy(); // Release reservation on partial send error
         if (handler)
             handler(boost::asio::error::message_size, result);
         return;
@@ -224,6 +243,9 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     zerocopy_bytes_ += buffer_size;
     
     LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << "\n";
+    
+    // Release zerocopy reservation
+    releaseZeroCopy();
     
     // Complete the handler immediately
     if (handler)
@@ -237,7 +259,7 @@ void StreamSessionTcpCoordinated::processPendingSends()
         return;
     
     std::lock_guard<std::mutex> lock(pending_sends_mutex_);
-    while (!pending_sends_.empty() && canUseZeroCopy())
+    while (!pending_sends_.empty() && tryReserveZeroCopy())
     {
         auto pending = std::move(pending_sends_.front());
         pending_sends_.pop();

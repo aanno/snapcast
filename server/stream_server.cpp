@@ -22,6 +22,7 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "config.hpp"
+#include "stream_session_tcp.hpp"
 #include "stream_session_tcp_coordinated.hpp"
 
 // standard headers
@@ -212,7 +213,19 @@ void StreamServer::handleAccept(tcp::socket socket)
         socket.set_option(tcp::no_delay(true));
 
         LOG(NOTICE, LOG_TAG) << "StreamServer::NewConnection: " << socket.remote_endpoint().address().to_string() << "\n";
-        shared_ptr<StreamSession> session = make_shared<StreamSessionTcpCoordinated>(this, settings_, std::move(socket));
+        
+        shared_ptr<StreamSession> session;
+        if (settings_.stream.zerocopy)
+        {
+            LOG(INFO, LOG_TAG) << "Creating zerocopy-enabled session for " << socket.remote_endpoint().address().to_string() << "\n";
+            session = make_shared<StreamSessionTcpCoordinated>(this, settings_, std::move(socket));
+        }
+        else
+        {
+            LOG(DEBUG, LOG_TAG) << "Creating regular TCP session for " << socket.remote_endpoint().address().to_string() << "\n";
+            session = make_shared<StreamSessionTcp>(this, settings_, std::move(socket));
+        }
+        
         addSession(session);
     }
     catch (const std::exception& e)
@@ -293,7 +306,7 @@ void StreamServer::startDiagnosticsTimer()
                         // Zerocopy diagnostics disabled
                         if (auto coordinated_session = std::dynamic_pointer_cast<StreamSessionTcpCoordinated>(session))
                         {
-                            LOG(INFO, LOG_TAG) << "=== Periodic ZeroCopy Status (every 30s) ===";
+                            LOG(INFO, LOG_TAG) << "=== Periodic ZeroCopy Status (every 30s) ===\n";
                             printZeroCopyDiagnostics(coordinated_session.get());
                         }
                     }
