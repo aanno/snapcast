@@ -85,9 +85,11 @@ bool ZeroCopySocket::enableZeroCopy()
 void ZeroCopySocket::async_send_zerocopy(const std::shared_ptr<std::vector<char>>& buffer,
                                          ZeroCopyHandler handler)
 {
-    if (!zerocopy_enabled_ || buffer->empty())
+    // Simplified approach: Only use zerocopy for large buffers (>4KB audio chunks)
+    // Keep small control messages on regular TCP to avoid timing issues
+    if (!zerocopy_enabled_ || buffer->empty() || buffer->size() < 4096)
     {
-        // Fallback to regular async_write
+        // Use regular async_write for small messages and when zerocopy disabled
         regular_sends_.fetch_add(1);
         regular_bytes_.fetch_add(buffer->size());
         boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
@@ -99,14 +101,59 @@ void ZeroCopySocket::async_send_zerocopy(const std::shared_ptr<std::vector<char>
         return;
     }
 
-    // Queue the zerocopy operation to be executed in order
-    uint32_t seq_id = next_sequence_id_++;
-    pending_buffers_.emplace_back(buffer, std::move(handler), seq_id);
-    
-    // Post the actual send operation to the io_context to maintain ordering
-    boost::asio::post(socket_.get_executor(), 
-        [this, buffer, seq_id]() {
-            perform_zerocopy_send(buffer, seq_id);
+    // For large buffers, try immediate zerocopy (no waiting)
+    try_immediate_zerocopy_send(buffer, std::move(handler));
+}
+
+void ZeroCopySocket::try_immediate_zerocopy_send(const std::shared_ptr<std::vector<char>>& buffer, ZeroCopyHandler handler)
+{
+    // Prepare iovec for sendmsg
+    struct iovec iov{};
+    iov.iov_base = buffer->data();
+    iov.iov_len = buffer->size();
+
+    struct msghdr msg{};
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+
+    // Attempt immediate zerocopy send with MSG_DONTWAIT
+    // Since socket is writable, this should succeed or immediately return EAGAIN
+    ssize_t ret = sendmsg(socket_.native_handle(), &msg, MSG_ZEROCOPY | MSG_DONTWAIT);
+
+    if (ret >= 0)
+    {
+        // Success! Track buffer for completion notification
+        uint32_t seq_id = next_sequence_id_++;
+        pending_buffers_.emplace_back(buffer, std::move(handler), seq_id);
+        
+        // Update statistics
+        zerocopy_sends_.fetch_add(1);
+        zerocopy_bytes_.fetch_add(buffer->size());
+        
+        LOG(DEBUG, LOG_TAG) << "Immediate zerocopy send successful: " << ret << " bytes, sequence: " << seq_id << "\n";
+        return;
+    }
+
+    // Failed - fallback to regular async_write
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
+    {
+        // Expected: socket not immediately writable or no zerocopy buffers available
+        fallbacks_.fetch_add(1);
+        LOG(DEBUG, LOG_TAG) << "Zerocopy not available (" << strerror(errno) << "), falling back to regular send\n";
+    }
+    else
+    {
+        LOG(WARNING, LOG_TAG) << "Zerocopy sendmsg failed: " << strerror(errno) << ", falling back to regular send\n";
+    }
+
+    // Fallback to regular async_write
+    regular_sends_.fetch_add(1);
+    regular_bytes_.fetch_add(buffer->size());
+    boost::asio::async_write(socket_, boost::asio::buffer(*buffer),
+        [handler = std::move(handler)](boost::system::error_code ec, std::size_t bytes_sent)
+        {
+            if (handler)
+                handler(ec, bytes_sent);
         });
 }
 

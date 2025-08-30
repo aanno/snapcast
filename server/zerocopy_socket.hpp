@@ -144,6 +144,9 @@ private:
     
     /// Perform the actual zerocopy send operation
     void perform_zerocopy_send(const std::shared_ptr<std::vector<char>>& buffer, uint32_t seq_id);
+    
+    /// Try immediate zerocopy send when socket is writable
+    void try_immediate_zerocopy_send(const std::shared_ptr<std::vector<char>>& buffer, ZeroCopyHandler handler);
 
     tcp::socket socket_;
     boost::asio::steady_timer error_queue_timer_;
