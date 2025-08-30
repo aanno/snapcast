@@ -75,11 +75,17 @@ public:
     session_ptr getStreamSession(const std::string& clientId) const;
     /// @return stream session for @p session
     session_ptr getStreamSession(StreamSession* session) const;
+    
+    /// Print zerocopy diagnostics for all sessions
+    void printZeroCopyDiagnostics() const;
 
 private:
     void startAccept();
     void handleAccept(tcp::socket socket);
     void cleanup();
+    
+    /// Start periodic diagnostics timer
+    void startDiagnosticsTimer();
 
     /// Implementation of StreamMessageReceiver
     void onMessageReceived(const std::shared_ptr<StreamSession>& streamSession, const msg::BaseMessage& baseMessage, char* buffer) override;
@@ -90,6 +96,7 @@ private:
     boost::asio::io_context& io_context_;
     std::vector<acceptor_ptr> acceptor_;
     boost::asio::steady_timer config_timer_;
+    boost::asio::steady_timer diagnostics_timer_;
 
     ServerSettings settings_;
     Queue<std::shared_ptr<msg::BaseMessage>> messages_;
