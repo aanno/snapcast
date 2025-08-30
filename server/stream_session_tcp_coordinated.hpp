@@ -88,6 +88,12 @@ private:
     /// Process pending send queue
     void processPendingSends();
     
+    /// Try to reserve zerocopy access (thread-safe)
+    bool tryReserveZeroCopy();
+    
+    /// Release zerocopy reservation
+    void releaseZeroCopy();
+    
     /// Error queue monitoring for zerocopy completions
     void startErrorQueueMonitoring();
     void stopErrorQueueMonitoring();

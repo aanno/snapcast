@@ -139,8 +139,7 @@ int main(int argc, char* argv[])
         conf.add<Value<int>>("", "stream.buffer", "Buffer [ms]", settings.stream.bufferMs, &settings.stream.bufferMs);
         conf.add<Value<bool>>("", "stream.send_to_muted", "Send audio to muted clients", settings.stream.sendAudioToMutedClients,
                               &settings.stream.sendAudioToMutedClients);
-        conf.add<Value<bool>>("z", "stream.zerocopy", "Enable zerocopy networking for improved performance", settings.stream.zerocopy,
-                              &settings.stream.zerocopy);
+        auto zerocopy_option = conf.add<Value<bool>>("z", "stream.zerocopy", "Enable zerocopy networking for improved performance", settings.stream.zerocopy, &settings.stream.zerocopy);
 
         // streaming_client options
         conf.add<Value<uint16_t>>("", "streaming_client.initial_volume", "Volume [percent] assigned to new streaming clients",
@@ -322,6 +321,8 @@ int main(int argc, char* argv[])
         }
 
         LOG(INFO, LOG_TAG) << "Version " << version::code << (!version::rev().empty() ? (", revision " + version::rev(8)) : ("")) << "\n";
+
+        LOG(INFO, LOG_TAG) << "ZeroCopy setting: " << (settings.stream.zerocopy ? "enabled" : "disabled") << "\n";
 
         if (settings.ssl.enabled())
             LOG(INFO, LOG_TAG) << "SSL enabled - certificate file: '" << settings.ssl.certificate.native() << "', certificate key file: '"
