@@ -25,6 +25,7 @@
 #include "control_server.hpp"
 #include "server_settings.hpp"
 #include "stream_session.hpp"
+#include "stream_session_tcp_coordinated.hpp"
 
 // 3rd party headers
 #include <boost/asio/io_context.hpp>
@@ -77,7 +78,7 @@ public:
     session_ptr getStreamSession(StreamSession* session) const;
     
     /// Print zerocopy diagnostics for all sessions
-    void printZeroCopyDiagnostics() const;
+    void printZeroCopyDiagnostics(StreamSessionTcpCoordinated* coordinated_session) const;
 
 private:
     void startAccept();

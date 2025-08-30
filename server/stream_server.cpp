@@ -259,10 +259,18 @@ void StreamServer::stop()
     }
 }
 
-void StreamServer::printZeroCopyDiagnostics() const
+void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* coordinated_session) const
 {
-    // Zerocopy diagnostics disabled - using regular TCP sessions now
-    LOG(INFO, LOG_TAG) << "ZeroCopy diagnostics disabled - using regular TCP";
+    StreamSessionTcpCoordinated::ZeroCopyStats stats = coordinated_session->getZeroCopyStats();
+    LOG(INFO, LOG_TAG) << "Zerocopy Stats for session " << coordinated_session->getIP()
+                       << "\n\tZC Attempts: " << stats.zerocopy_attempts << ", "
+                       << "\n\tZC Successful: " << stats.zerocopy_successful << ", "
+                       << "\n\tZC Bytes: " << stats.zerocopy_bytes << ", "
+                       << "\n\tRegular Sends: " << stats.regular_sends << ", "
+                       << "\n\tRegular Bytes: " << stats.regular_bytes << ", "
+                       << "\n\tCoordination Fallbacks: " << stats.coordination_fallbacks << ", "
+                       << std::fixed << std::setprecision(2)
+                       << "\n\tZC Success Rate: " << stats.zerocopy_percentage() << "%\n";
 }
 
 void StreamServer::startDiagnosticsTimer()
@@ -278,27 +286,17 @@ void StreamServer::startDiagnosticsTimer()
             std::lock_guard<std::recursive_mutex> mlock(sessionsMutex_);
             if (!sessions_.empty())
             {
-                bool has_zerocopy_sessions = false;
                 for (const auto& s : sessions_)
                 {
                     if (auto session = s.lock())
                     {
                         // Zerocopy diagnostics disabled
-                        // if (auto zerocopy_session = std::dynamic_pointer_cast<StreamSessionTcpZeroCopy>(session))
-                        // {
-                        //     if (zerocopy_session->isZeroCopyEnabled())
-                        //     {
-                        //         has_zerocopy_sessions = true;
-                        //         break;
-                        //     }
-                        // }
+                        if (auto coordinated_session = std::dynamic_pointer_cast<StreamSessionTcpCoordinated>(session))
+                        {
+                            LOG(INFO, LOG_TAG) << "=== Periodic ZeroCopy Status (every 30s) ===";
+                            printZeroCopyDiagnostics(coordinated_session.get());
+                        }
                     }
-                }
-                
-                if (has_zerocopy_sessions)
-                {
-                    LOG(INFO, LOG_TAG) << "=== Periodic ZeroCopy Status (every 30s) ===";
-                    printZeroCopyDiagnostics();
                 }
             }
         }
