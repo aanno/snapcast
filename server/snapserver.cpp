@@ -74,6 +74,7 @@ int main(int argc, char* argv[])
         auto daemonOption = op.add<Implicit<int>>("d", "daemon", "Daemonize\noptional process priority [-20..19]", 0, &processPriority);
 #endif
         auto config_file_option = op.add<Value<string>>("c", "config", "Path to the configuration file", config_file, &config_file);
+        auto zerocopy_switch = op.add<Switch>("z", "zerocopy", "Enable zerocopy networking for improved performance");
 
         OptionParser conf("Overridable config file options");
 
@@ -139,7 +140,7 @@ int main(int argc, char* argv[])
         conf.add<Value<int>>("", "stream.buffer", "Buffer [ms]", settings.stream.bufferMs, &settings.stream.bufferMs);
         conf.add<Value<bool>>("", "stream.send_to_muted", "Send audio to muted clients", settings.stream.sendAudioToMutedClients,
                               &settings.stream.sendAudioToMutedClients);
-        auto zerocopy_option = conf.add<Value<bool>>("z", "stream.zerocopy", "Enable zerocopy networking for improved performance", settings.stream.zerocopy, &settings.stream.zerocopy);
+        conf.add<Value<bool>>("", "stream.zerocopy", "Enable zerocopy networking for improved performance", settings.stream.zerocopy, &settings.stream.zerocopy);
 
         // streaming_client options
         conf.add<Value<uint16_t>>("", "streaming_client.initial_volume", "Volume [percent] assigned to new streaming clients",
@@ -206,6 +207,12 @@ int main(int argc, char* argv[])
             }
             else
                 cerr << "Warning - Failed to load config file '" << config_file << "': " << e.what() << "\n";
+        }
+
+        // Override zerocopy setting if -z flag is provided
+        if (zerocopy_switch->is_set())
+        {
+            settings.stream.zerocopy = true;
         }
 
         if (settings.stream.codec.find(":?") != string::npos)
