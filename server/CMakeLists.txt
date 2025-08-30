@@ -14,7 +14,6 @@ set(SERVER_SOURCES
     stream_session_tcp.cpp
     stream_session_tcp_coordinated.cpp
     stream_session_ws.cpp
-    zerocopy_socket.cpp
     encoder/encoder_factory.cpp
     encoder/pcm_encoder.cpp
     encoder/null_encoder.cpp
