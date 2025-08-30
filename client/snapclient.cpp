@@ -31,7 +31,7 @@
 #ifdef HAS_WASAPI
 #include "player/wasapi_player.hpp"
 #endif
-#ifdef HAS_PIPEWIRE
+#ifdef HAS_USEABLE_PIPEWIRE
 #include "player/pipewire_player.hpp"
 #endif
 #include "player/file_player.hpp"
@@ -85,7 +85,7 @@ PcmDevice getPcmDevice(const std::string& player, const std::string& parameter, 
     if (player == player::WASAPI)
         pcm_devices = WASAPIPlayer::pcm_list();
 #endif
-#if defined(HAS_PIPEWIRE)
+#if defined(HAS_USEABLE_PIPEWIRE)
     if (player == player::PIPEWIRE)
         pcm_devices = PipeWirePlayer::pcm_list(parameter);
 #endif
@@ -171,7 +171,7 @@ int main(int argc, char** argv)
             op.add<Implicit<std::filesystem::path>>("", "server-cert", "Verify server with CA certificate (PEM format)", "default certificates");
 
 // PCM device specific
-#if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI) || defined(HAS_PIPEWIRE)
+#if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI) || defined(HAS_USEABLE_PIPEWIRE)
         auto listSwitch = op.add<Switch>("l", "list", "List PCM devices");
         op.add<Value<string>>("s", "soundcard", "Index or name of the PCM device", pcm_device, &pcm_device);
 #endif
@@ -243,7 +243,7 @@ int main(int argc, char** argv)
 
         settings.player.player_name = utils::string::split_left(settings.player.player_name, ':', settings.player.parameter);
 
-#if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI) || defined(HAS_PIPEWIRE)
+#if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI) || defined(HAS_USEABLE_PIPEWIRE)
         if (listSwitch->is_set())
         {
             try
@@ -261,7 +261,7 @@ int main(int argc, char** argv)
                 if (settings.player.player_name == player::WASAPI)
                     pcm_devices = WASAPIPlayer::pcm_list();
 #endif
-#if defined(HAS_PIPEWIRE)
+#if defined(HAS_USEABLE_PIPEWIRE)
                 if (settings.player.player_name == player::PIPEWIRE)
                     pcm_devices = PipeWirePlayer::pcm_list(settings.player.parameter);
 #endif
@@ -496,7 +496,7 @@ int main(int argc, char** argv)
                      << " \"fragments=<number of buffers>\" - default 4, min 2\n";
             }
 #endif
-#ifdef HAS_PIPEWIRE
+#ifdef HAS_USEABLE_PIPEWIRE
             else if (settings.player.player_name == player::PIPEWIRE)
             {
                 // TODO: add pipewire options
