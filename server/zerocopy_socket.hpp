@@ -143,7 +143,7 @@ private:
     void process_completion_notification(const struct sock_extended_err* err);
 
     tcp::socket socket_;
-    boost::asio::posix::stream_descriptor error_queue_monitor_;
+    boost::asio::steady_timer error_queue_timer_;
     
     bool zerocopy_enabled_;
     uint32_t next_sequence_id_;

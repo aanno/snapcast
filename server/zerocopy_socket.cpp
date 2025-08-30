@@ -33,14 +33,14 @@
 static constexpr auto LOG_TAG = "ZeroCopySocket";
 
 ZeroCopySocket::ZeroCopySocket(boost::asio::io_context& io_context)
-    : socket_(io_context), error_queue_monitor_(io_context), 
+    : socket_(io_context), error_queue_timer_(io_context), 
       zerocopy_enabled_(false), next_sequence_id_(1), error_queue_buffer_(1024),
       start_time_(std::chrono::steady_clock::now())
 {
 }
 
 ZeroCopySocket::ZeroCopySocket(tcp::socket&& socket)
-    : socket_(std::move(socket)), error_queue_monitor_(socket_.get_executor()),
+    : socket_(std::move(socket)), error_queue_timer_(socket_.get_executor()),
       zerocopy_enabled_(false), next_sequence_id_(1), error_queue_buffer_(1024),
       start_time_(std::chrono::steady_clock::now())
 {
@@ -50,8 +50,7 @@ ZeroCopySocket::ZeroCopySocket(tcp::socket&& socket)
 ZeroCopySocket::~ZeroCopySocket()
 {
     boost::system::error_code ec;
-    if (error_queue_monitor_.is_open())
-        error_queue_monitor_.close(ec);
+    error_queue_timer_.cancel(ec);
 }
 
 bool ZeroCopySocket::enableZeroCopy()
@@ -75,19 +74,9 @@ bool ZeroCopySocket::enableZeroCopy()
 
     zerocopy_enabled_ = true;
     
-    // Set up error queue monitoring using the same socket file descriptor
-    try 
-    {
-        error_queue_monitor_.assign(socket_.native_handle());
-        start_error_queue_monitor();
-        LOG(INFO, LOG_TAG) << "MSG_ZEROCOPY enabled successfully\n";
-    }
-    catch (const std::exception& e)
-    {
-        LOG(WARNING, LOG_TAG) << "Failed to setup error queue monitoring: " << e.what() << "\n";
-        zerocopy_enabled_ = false;
-        return false;
-    }
+    // Start error queue monitoring (will be triggered by zerocopy operations)
+    LOG(INFO, LOG_TAG) << "MSG_ZEROCOPY enabled successfully\n";
+    start_error_queue_monitor();
 
     return true;
 }
@@ -169,56 +158,58 @@ void ZeroCopySocket::start_error_queue_monitor()
 
 void ZeroCopySocket::handle_error_queue_notification()
 {
-    error_queue_monitor_.async_wait(boost::asio::posix::stream_descriptor::wait_read,
-        [this](boost::system::error_code ec)
+    // Check for pending error queue messages with non-blocking read
+    char control_buffer[1024];
+    struct iovec iov{};
+    iov.iov_base = error_queue_buffer_.data();
+    iov.iov_len = error_queue_buffer_.size();
+
+    struct msghdr msg{};
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = control_buffer;
+    msg.msg_controllen = sizeof(control_buffer);
+
+    ssize_t ret = recvmsg(socket_.native_handle(), &msg, MSG_ERRQUEUE | MSG_DONTWAIT);
+    
+    if (ret >= 0)
+    {
+        // Parse control messages for zerocopy completions
+        struct cmsghdr* cmsg;
+        for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg))
         {
-            if (ec)
+            if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
             {
-                if (ec != boost::asio::error::operation_aborted)
-                    LOG(ERROR, LOG_TAG) << "Error queue monitor failed: " << ec.message() << "\n";
-                return;
-            }
-
-            // Read from error queue
-            char control_buffer[1024];
-            struct iovec iov{};
-            iov.iov_base = error_queue_buffer_.data();
-            iov.iov_len = error_queue_buffer_.size();
-
-            struct msghdr msg{};
-            msg.msg_iov = &iov;
-            msg.msg_iovlen = 1;
-            msg.msg_control = control_buffer;
-            msg.msg_controllen = sizeof(control_buffer);
-
-            ssize_t ret = recvmsg(socket_.native_handle(), &msg, MSG_ERRQUEUE | MSG_DONTWAIT);
-            
-            if (ret >= 0)
-            {
-                // Parse control messages for zerocopy completions
-                struct cmsghdr* cmsg;
-                for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg))
+                struct sock_extended_err* err = 
+                    reinterpret_cast<struct sock_extended_err*>(CMSG_DATA(cmsg));
+                
+                if (err->ee_origin == SO_EE_ORIGIN_ZEROCOPY)
                 {
-                    if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
-                    {
-                        struct sock_extended_err* err = 
-                            reinterpret_cast<struct sock_extended_err*>(CMSG_DATA(cmsg));
-                        
-                        if (err->ee_origin == SO_EE_ORIGIN_ZEROCOPY)
-                        {
-                            process_completion_notification(err);
-                        }
-                    }
+                    process_completion_notification(err);
                 }
             }
-            else if (errno != EAGAIN && errno != EWOULDBLOCK)
-            {
-                LOG(WARNING, LOG_TAG) << "recvmsg error queue failed: " << strerror(errno) << "\n";
-            }
+        }
+        
+        // If we got a message, check immediately for more
+        error_queue_timer_.expires_after(std::chrono::milliseconds(1));
+    }
+    else if (errno == EAGAIN || errno == EWOULDBLOCK)
+    {
+        // No messages available, check again in 10ms
+        error_queue_timer_.expires_after(std::chrono::milliseconds(10));
+    }
+    else
+    {
+        LOG(WARNING, LOG_TAG) << "recvmsg error queue failed: " << strerror(errno) << "\n";
+        error_queue_timer_.expires_after(std::chrono::milliseconds(100));
+    }
 
-            // Continue monitoring
+    // Schedule next check
+    error_queue_timer_.async_wait([this](boost::system::error_code ec)
+    {
+        if (ec != boost::asio::error::operation_aborted)
             handle_error_queue_notification();
-        });
+    });
 }
 
 void ZeroCopySocket::process_completion_notification(const struct sock_extended_err* err)
