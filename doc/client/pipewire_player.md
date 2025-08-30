@@ -142,6 +142,10 @@ The PipeWire player provides identical functionality with potentially lower late
 
 This implementation was developed and tested as part of adding comprehensive PipeWire support to Snapcast. The implementation closely follows PipeWire best practices and official examples for robust audio playback.
 
+Research for this implementation was done with perplexity AI. Most of the inital code was written by Claude Code AI, including this documentation.
+
+However, all tests, prompt directions, and the initial PR were done by [aanno](https://github.com/aanno).
+
 ## References
 
 * [pipewire examples](https://docs.pipewire.org/examples.html)

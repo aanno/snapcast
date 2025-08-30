@@ -142,6 +142,7 @@ else()
       # set_source_files_properties(player/pipewire_player.cpp
       #                             PROPERTIES COMPILE_FLAGS "-Wno-pedantic")
     else()
+      set(HAS_PIPEWIRE OFF)
       message(STATUS "PipeWire client support NOT enabled. Required version: ${MIN_PIPEWIRE_VERSION}, found: ${PIPEWIRE_VERSION}")
     endif()
   endif(PIPEWIRE_FOUND)
