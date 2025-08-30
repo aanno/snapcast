@@ -85,9 +85,9 @@ bool ZeroCopySocket::enableZeroCopy()
 void ZeroCopySocket::async_send_zerocopy(const std::shared_ptr<std::vector<char>>& buffer,
                                          ZeroCopyHandler handler)
 {
-    // Simplified approach: Only use zerocopy for large buffers (>4KB audio chunks)
-    // Keep small control messages on regular TCP to avoid timing issues
-    if (!zerocopy_enabled_ || buffer->empty() || buffer->size() < 4096)
+    // Only use zerocopy for larger audio chunks to avoid handler coordination issues
+    // Small messages use regular TCP to maintain proper async flow
+    if (!zerocopy_enabled_ || buffer->empty() || buffer->size() < 1000)
     {
         // Use regular async_write for small messages and when zerocopy disabled
         regular_sends_.fetch_add(1);
@@ -307,11 +307,19 @@ void ZeroCopySocket::process_completion_notification(const struct sock_extended_
     {
         if (it->sequence_id >= lo && it->sequence_id <= hi)
         {
-            // This buffer completed
+            // This buffer completed - defer handler call to maintain async semantics
             if (it->handler)
             {
-                boost::system::error_code ec;
-                it->handler(ec, it->data->size());
+                auto handler = std::move(it->handler);
+                size_t bytes_sent = it->data->size();
+                
+                // Post handler call to io_context to maintain proper async ordering
+                boost::asio::post(socket_.get_executor(), 
+                    [handler = std::move(handler), bytes_sent]() mutable
+                    {
+                        boost::system::error_code ec;
+                        handler(ec, bytes_sent);
+                    });
             }
             it = pending_buffers_.erase(it);
         }

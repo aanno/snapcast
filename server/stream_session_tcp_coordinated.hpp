@@ -1,0 +1,130 @@
+/***
+    This file is part of snapcast
+    Copyright (C) 2014-2025  Johannes Pohl
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+***/
+
+#pragma once
+
+// local headers
+#include "stream_session_tcp.hpp"
+
+// 3rd party headers
+#include <boost/asio/steady_timer.hpp>
+
+// standard headers
+#include <atomic>
+#include <memory>
+#include <queue>
+#include <mutex>
+#include <sys/socket.h>
+#include <linux/errqueue.h>
+
+using boost::asio::ip::tcp;
+
+/// Coordinated TCP session with zerocopy when async operations are idle
+/**
+ * This session extends the regular TCP session with coordinated zerocopy capability.
+ * - Uses regular Boost.Asio async_write when there are pending operations
+ * - Uses direct MSG_ZEROCOPY sendmsg() only when socket is idle from Boost.Asio perspective
+ * - Maintains strict coordination to prevent mixing async and direct operations
+ * - Provides graceful fallback when zerocopy is not available
+ */
+class StreamSessionTcpCoordinated : public StreamSessionTcp
+{
+public:
+    StreamSessionTcpCoordinated(StreamMessageReceiver* receiver, const ServerSettings& server_settings, tcp::socket&& socket);
+    ~StreamSessionTcpCoordinated() override;
+
+    void start() override;
+    void stop() override;
+
+    /// Get zerocopy statistics for this session
+    struct ZeroCopyStats
+    {
+        uint64_t zerocopy_attempts{0};      // Total zerocopy send attempts
+        uint64_t zerocopy_successful{0};    // Successful zerocopy sends
+        uint64_t zerocopy_bytes{0};         // Total bytes sent via zerocopy
+        uint64_t regular_sends{0};          // Messages sent via regular async_write
+        uint64_t regular_bytes{0};          // Total bytes sent via regular async_write
+        uint64_t coordination_fallbacks{0}; // Fallbacks due to pending async ops
+        double zerocopy_percentage() const 
+        { 
+            return (zerocopy_attempts + regular_sends) > 0 ? 
+                   (double(zerocopy_successful) / double(zerocopy_attempts + regular_sends)) * 100.0 : 0.0; 
+        }
+    };
+    
+    ZeroCopyStats getZeroCopyStats() const;
+
+protected:
+    void sendAsync(const shared_const_buffer& buffer, WriteHandler&& handler) override;
+
+private:
+    /// Initialize zerocopy capability
+    bool initializeZeroCopy();
+    
+    /// Check if we can safely use zerocopy (no pending async operations)
+    bool canUseZeroCopy() const;
+    
+    /// Send using zerocopy (only when socket is idle)
+    void sendZeroCopy(const shared_const_buffer& buffer, WriteHandler&& handler);
+    
+    /// Send using regular async_write (coordinated with async operations)
+    void sendRegularCoordinated(const shared_const_buffer& buffer, WriteHandler&& handler);
+    
+    /// Process pending send queue
+    void processPendingSends();
+    
+    /// Error queue monitoring for zerocopy completions
+    void startErrorQueueMonitoring();
+    void stopErrorQueueMonitoring();
+    void processErrorQueue();
+    
+    /// Pending send operation
+    struct PendingSend
+    {
+        shared_const_buffer buffer;
+        WriteHandler handler;
+        size_t size;
+        bool use_zerocopy;
+    };
+    
+    // Configuration
+    static constexpr size_t ZEROCOPY_THRESHOLD = 1024;  // Use zerocopy for messages >1KB
+    
+    // Zerocopy state
+    bool zerocopy_available_{false};
+    int native_socket_{-1};
+    std::atomic<uint32_t> next_buffer_id_{1};
+    
+    // Coordination state
+    std::atomic<uint32_t> pending_async_operations_{0};
+    std::queue<PendingSend> pending_sends_;
+    std::mutex pending_sends_mutex_;
+    std::atomic<bool> processing_queue_{false};
+    
+    // Statistics (thread-safe)
+    mutable std::atomic<uint64_t> zerocopy_attempts_{0};
+    mutable std::atomic<uint64_t> zerocopy_successful_{0};
+    mutable std::atomic<uint64_t> zerocopy_bytes_{0};
+    mutable std::atomic<uint64_t> regular_sends_{0};
+    mutable std::atomic<uint64_t> regular_bytes_{0};
+    mutable std::atomic<uint64_t> coordination_fallbacks_{0};
+    
+    // Error queue monitoring
+    std::unique_ptr<boost::asio::steady_timer> error_queue_timer_;
+    bool monitoring_active_{false};
+};

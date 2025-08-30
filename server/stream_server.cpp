@@ -22,7 +22,7 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "config.hpp"
-#include "stream_session_tcp_zerocopy.hpp"
+#include "stream_session_tcp_coordinated.hpp"
 
 // standard headers
 #include <iomanip>
@@ -212,7 +212,7 @@ void StreamServer::handleAccept(tcp::socket socket)
         socket.set_option(tcp::no_delay(true));
 
         LOG(NOTICE, LOG_TAG) << "StreamServer::NewConnection: " << socket.remote_endpoint().address().to_string() << "\n";
-        shared_ptr<StreamSession> session = make_shared<StreamSessionTcpZeroCopy>(this, settings_, std::move(socket));
+        shared_ptr<StreamSession> session = make_shared<StreamSessionTcpCoordinated>(this, settings_, std::move(socket));
         addSession(session);
     }
     catch (const std::exception& e)
@@ -261,53 +261,8 @@ void StreamServer::stop()
 
 void StreamServer::printZeroCopyDiagnostics() const
 {
-    std::lock_guard<std::recursive_mutex> mlock(sessionsMutex_);
-    LOG(INFO, LOG_TAG) << "=== ZeroCopy Diagnostics Summary ===";
-    LOG(INFO, LOG_TAG) << "Active sessions: " << sessions_.size();
-    
-    int zerocopy_enabled_count = 0;
-    uint64_t total_zerocopy_sends = 0;
-    uint64_t total_regular_sends = 0;
-    uint64_t total_zerocopy_bytes = 0;
-    uint64_t total_regular_bytes = 0;
-    
-    for (const auto& s : sessions_)
-    {
-        if (auto session = s.lock())
-        {
-            // Try to cast to zerocopy session
-            if (auto zerocopy_session = std::dynamic_pointer_cast<StreamSessionTcpZeroCopy>(session))
-            {
-                if (zerocopy_session->isZeroCopyEnabled())
-                {
-                    zerocopy_enabled_count++;
-                    auto stats = zerocopy_session->getZeroCopyStats();
-                    total_zerocopy_sends += stats.zerocopy_sends;
-                    total_regular_sends += stats.regular_sends;
-                    total_zerocopy_bytes += stats.zerocopy_bytes;
-                    total_regular_bytes += stats.regular_bytes;
-                    
-                    // Print individual session diagnostics
-                    zerocopy_session->printZeroCopyDiagnostics();
-                }
-            }
-        }
-    }
-    
-    LOG(INFO, LOG_TAG) << "ZeroCopy enabled sessions: " << zerocopy_enabled_count;
-    LOG(INFO, LOG_TAG) << "Total zerocopy sends: " << total_zerocopy_sends << " (" << total_zerocopy_bytes << " bytes)";
-    LOG(INFO, LOG_TAG) << "Total regular sends: " << total_regular_sends << " (" << total_regular_bytes << " bytes)";
-    
-    if (total_zerocopy_sends > 0 || total_regular_sends > 0) {
-        uint64_t total_sends = total_zerocopy_sends + total_regular_sends;
-        uint64_t total_bytes = total_zerocopy_bytes + total_regular_bytes;
-        double zerocopy_ratio = (double)total_zerocopy_sends / total_sends * 100.0;
-        double zerocopy_byte_ratio = (double)total_zerocopy_bytes / total_bytes * 100.0;
-        LOG(INFO, LOG_TAG) << "Overall zerocopy ratio: " << std::fixed << std::setprecision(1) 
-                           << zerocopy_ratio << "% (by count), " << zerocopy_byte_ratio << "% (by bytes)";
-    }
-    
-    LOG(INFO, LOG_TAG) << "=== End ZeroCopy Diagnostics ===";
+    // Zerocopy diagnostics disabled - using regular TCP sessions now
+    LOG(INFO, LOG_TAG) << "ZeroCopy diagnostics disabled - using regular TCP";
 }
 
 void StreamServer::startDiagnosticsTimer()
@@ -328,14 +283,15 @@ void StreamServer::startDiagnosticsTimer()
                 {
                     if (auto session = s.lock())
                     {
-                        if (auto zerocopy_session = std::dynamic_pointer_cast<StreamSessionTcpZeroCopy>(session))
-                        {
-                            if (zerocopy_session->isZeroCopyEnabled())
-                            {
-                                has_zerocopy_sessions = true;
-                                break;
-                            }
-                        }
+                        // Zerocopy diagnostics disabled
+                        // if (auto zerocopy_session = std::dynamic_pointer_cast<StreamSessionTcpZeroCopy>(session))
+                        // {
+                        //     if (zerocopy_session->isZeroCopyEnabled())
+                        //     {
+                        //         has_zerocopy_sessions = true;
+                        //         break;
+                        //     }
+                        // }
                     }
                 }
                 
