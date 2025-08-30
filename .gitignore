@@ -5,6 +5,10 @@
 /cmake.sh
 /snap*.conf
 
+# aanno
+/.claude/
+/tmp/
+
 # Compiled Object files
 *.slo
 *.lo
