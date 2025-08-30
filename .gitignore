@@ -4,6 +4,11 @@
 *.o
 *.obj
 
+# aanno
+/tmp/
+/scripts2/
+/.claude/
+
 # Precompiled Headers
 *.gch
 *.pch
