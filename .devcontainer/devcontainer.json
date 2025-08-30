@@ -40,8 +40,8 @@
 		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/lib/dnf,target=/var/lib/dnf,type=bind,z,consistency=cached",
 		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/cache/dnf,target=/var/cache/dnf,type=bind,z,consistency=cached",
 		"source=${localEnv:PIP_CACHE_DIR},target=/pip,type=bind,z,consistency=cached",
-		"source=${localEnv:PNPM_CACHE_DIR},target=/pnpm,type=bind,z,consistency=cached",
-		"source=${localEnv:VOLTA_HOME}/tools,target=/home/vscode/.volta/tools,type=bind,z,consistency=cached"
+		"source=${localEnv:PNPM_CACHE_DIR},target=/pnpm,type=bind,z,consistency=cached"
+		// "source=${localEnv:VOLTA_HOME}/tools,target=/home/vscode/.volta/tools,type=bind,z,consistency=cached"
 	],
 	"workspaceFolder": "/workspaces/cpp",
 	"workspaceMount": "source=.,target=/workspaces/cpp,type=bind,z,consistency=cached",
