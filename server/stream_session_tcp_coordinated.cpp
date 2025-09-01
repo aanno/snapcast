@@ -352,11 +352,10 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     LOG(DEBUG, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "]";
                     
                     // Decrement outstanding operations for completed range
-                    uint32_t completed_operations = (hi >= lo) ? (hi - lo + 1) : 1;
-                    for (uint32_t i = 0; i < completed_operations; ++i) {
-                        if (outstanding_operations_.load() > 0) {
-                            outstanding_operations_--;
-                        }
+                    // Each zerocopy send gets a unique buffer ID, so we decrement once per notification
+                    if (outstanding_operations_.load() > 0) {
+                        outstanding_operations_--;
+                        LOG(TRACE, LOG_TAG) << "ZeroCopy operation completed, outstanding: " << outstanding_operations_.load();
                     }
                 }
             }
