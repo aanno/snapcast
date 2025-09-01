@@ -295,6 +295,7 @@ void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* /* coor
                 aggregated_stats.buffer_reuse_count += stats.buffer_reuse_count;
                 aggregated_stats.completion_notifications_received += stats.completion_notifications_received;
                 aggregated_stats.completion_notifications_missing += stats.completion_notifications_missing;
+                aggregated_stats.buffers_completed_via_notifications += stats.buffers_completed_via_notifications;
                 
                 // Global shared buffers is same for all sessions, so just use first value
                 if (zerocopy_session_count == 0) {
