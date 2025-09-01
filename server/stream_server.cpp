@@ -282,7 +282,7 @@ void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* coordin
                        << "\n\tRegular Sends: " << stats.regular_sends << ", "
                        << "\n\tRegular Bytes: " << stats.regular_bytes << ", "
                        << "\n\tCoordination Fallbacks: " << stats.coordination_fallbacks << ", "
-                       << "\n\tOutstanding Operations: " << stats.outstanding_operations << ", "
+                       << "\n\tPending Async Operations: " << stats.pending_async_operations << ", "
                        << std::fixed << std::setprecision(2)
                        << "\n\tZC Success Rate: " << stats.zerocopy_percentage() << "%\n";
     

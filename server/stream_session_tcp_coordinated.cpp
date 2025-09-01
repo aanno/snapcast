@@ -140,7 +140,7 @@ bool StreamSessionTcpCoordinated::tryReserveZeroCopy()
 void StreamSessionTcpCoordinated::releaseZeroCopy()
 {
     // Release zerocopy reservation
-    pending_async_operations_.store(0);
+    pending_async_operations_--;
 }
 
 void StreamSessionTcpCoordinated::sendAsync(const shared_const_buffer& buffer, WriteHandler&& handler)
@@ -241,7 +241,6 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     // Success - zerocopy send completed immediately (synchronously from our perspective)
     zerocopy_successful_++;
     zerocopy_bytes_ += buffer_size;
-    outstanding_operations_++; // Track outstanding operation in kernel
     
     LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << "\n";
     
@@ -320,6 +319,10 @@ void StreamSessionTcpCoordinated::stopErrorQueueMonitoring()
 
 void StreamSessionTcpCoordinated::processErrorQueue()
 {
+    static int call_count = 0;
+    if (++call_count % 100 == 1) { // Log every 100th call to avoid spam
+        LOG(TRACE, LOG_TAG) << "Processing error queue (call #" << call_count << ")";
+    }
     char control_buf[512];
     struct msghdr msg = {};
     msg.msg_control = control_buf;
@@ -355,7 +358,9 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     // Each zerocopy send gets a unique buffer ID, so we decrement once per notification
                     if (outstanding_operations_.load() > 0) {
                         outstanding_operations_--;
-                        LOG(TRACE, LOG_TAG) << "ZeroCopy operation completed, outstanding: " << outstanding_operations_.load();
+                        LOG(DEBUG, LOG_TAG) << "Decremented outstanding_operations to: " << outstanding_operations_.load() << " (range [" << lo << "-" << hi << "])";
+                    } else {
+                        LOG(WARNING, LOG_TAG) << "Received completion notification but outstanding_operations is already 0!";
                     }
                 }
             }
@@ -372,7 +377,7 @@ StreamSessionTcpCoordinated::ZeroCopyStats StreamSessionTcpCoordinated::getZeroC
     stats.regular_sends = regular_sends_.load();
     stats.regular_bytes = regular_bytes_.load();
     stats.coordination_fallbacks = coordination_fallbacks_.load();
-    stats.outstanding_operations = outstanding_operations_.load();
+    stats.pending_async_operations = pending_async_operations_.load();
     
     return stats;
 }

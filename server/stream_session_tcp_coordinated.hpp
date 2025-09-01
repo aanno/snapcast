@@ -60,7 +60,7 @@ public:
         uint64_t regular_sends{0};          // Messages sent via regular async_write
         uint64_t regular_bytes{0};          // Total bytes sent via regular async_write
         uint64_t coordination_fallbacks{0}; // Fallbacks due to pending async ops
-        uint64_t outstanding_operations{0}; // Currently outstanding zerocopy operations in kernel
+        uint64_t pending_async_operations{0}; // Currently pending async_write operations
         double zerocopy_percentage() const 
         { 
             return (zerocopy_attempts + regular_sends) > 0 ? 
