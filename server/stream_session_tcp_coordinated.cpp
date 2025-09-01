@@ -359,10 +359,13 @@ void StreamSessionTcpCoordinated::startErrorQueueMonitoring()
                 }
                 else
                 {
-                    LOG(DEBUG, LOG_TAG) << "Error queue monitoring timer cancelled or error: " << ec2.message() << "\n";
+                    LOG(DEBUG, LOG_TAG) << "Error queue monitoring timer cancelled or error (2): " << ec2.message() << "\n";
                     // startErrorQueueMonitoring(); // Continue monitoring even on error
                 }
             });
+        } else {
+            LOG(DEBUG, LOG_TAG) << "Error queue monitoring timer cancelled or error (1): " << ec.message() << "\n";
+            // startErrorQueueMonitoring(); // Continue monitoring even on error
         }
     });
 }
