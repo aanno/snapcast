@@ -436,7 +436,7 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     LOG(TRACE, LOG_TAG_COMPLETION) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "] (" << buffers_in_range << " buffers), tracking " << pending_zerocopy_buffers_.size() << " buffers\n";
                     completion_notifications_received_++;
                     buffers_completed_via_notifications_ += buffers_in_range;
-                    LOG(DEBUG, LOG_TAG_STATS) << "Added " << buffers_in_range << " completed buffers, total now: " << buffers_completed_via_notifications_.load() << "\n";
+                    LOG(TRACE, LOG_TAG_STATS) << "Added " << buffers_in_range << " completed buffers, total now: " << buffers_completed_via_notifications_.load() << "\n";
                     
                     // Release buffers in the completed range with reference counting
                     {
