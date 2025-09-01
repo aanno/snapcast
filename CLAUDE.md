@@ -9,6 +9,10 @@ Currently, we want to enhance networking using zerocopy on server and client. Re
 
 We will begin with the server side.
 
+## Coding Guidelines
+
+* Please ensure that all usage of `LOG(...)` includes a newline character (`\n`) at the end of the log message. This ensures proper formatting in the log output.
+
 #### Technical References:
 
 - **PipeWire Examples**: https://docs.pipewire.org/examples.html
@@ -59,7 +63,7 @@ following error: File has not been read yet. Read it first before writing to it.
 
 Snapcast is a multiroom client-server audio player, where all clients are time synchronized with the server to play perfectly synced audio. It's not a standalone player, but an extension that turns your existing audio player into a Sonos-like multiroom solution.
 
-The project is written in C++ with cmake as build system and consists of several components:
+The project is written in C++17 with cmake as build system and consists of several components:
 
 - **snapserver**: The server component that streams audio to clients, source folder `server`.
 - **snapclient**: The client component that receives and plays audio, source folder `client`.

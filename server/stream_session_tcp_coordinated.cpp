@@ -42,17 +42,17 @@ StreamSessionTcpCoordinated::StreamSessionTcpCoordinated(StreamMessageReceiver* 
     : StreamSessionTcp(receiver, server_settings, std::move(socket))
 {
     native_socket_ = socket_.native_handle();
-    LOG(DEBUG, LOG_TAG) << "Native socket handle: " << native_socket_;
+    LOG(DEBUG, LOG_TAG) << "Native socket handle: " << native_socket_ << "\n";
     zerocopy_available_ = initializeZeroCopy();
     
     if (zerocopy_available_)
     {
-        LOG(INFO, LOG_TAG) << "Coordinated ZeroCopy enabled for session " << getIP();
+        LOG(INFO, LOG_TAG) << "Coordinated ZeroCopy enabled for session " << getIP() << "\n";
         error_queue_timer_ = std::make_unique<boost::asio::steady_timer>(socket_.get_executor());
     }
     else
     {
-        LOG(INFO, LOG_TAG) << "ZeroCopy not available for session " << getIP() << ", using regular TCP";
+        LOG(INFO, LOG_TAG) << "ZeroCopy not available for session " << getIP() << ", using regular TCP\n";
     }
 }
 
@@ -66,7 +66,7 @@ StreamSessionTcpCoordinated::~StreamSessionTcpCoordinated()
         auto stats = getZeroCopyStats();
         LOG(INFO, LOG_TAG) << "Session " << getIP() << " final stats - ZC: " << stats.zerocopy_successful 
                            << "/" << stats.zerocopy_attempts << " (" << stats.zerocopy_percentage() << "%), "
-                           << "Regular: " << stats.regular_sends << ", Fallbacks: " << stats.coordination_fallbacks;
+                           << "Regular: " << stats.regular_sends << ", Fallbacks: " << stats.coordination_fallbacks << "\n";
     }
 }
 
@@ -101,15 +101,15 @@ void StreamSessionTcpCoordinated::stop()
     
     StreamSessionTcp::stop();
 
-    
+
 }
 
 bool StreamSessionTcpCoordinated::initializeZeroCopy()
 {
-    LOG(DEBUG, LOG_TAG) << "initializeZeroCopy called with native_socket_: " << native_socket_;
+    LOG(DEBUG, LOG_TAG) << "initializeZeroCopy called with native_socket_: " << native_socket_ << "\n";
     if (native_socket_ < 0)
     {
-        LOG(DEBUG, LOG_TAG) << "Invalid native socket handle: " << native_socket_;
+        LOG(DEBUG, LOG_TAG) << "Invalid native socket handle: " << native_socket_ << "\n";
         return false;
     }
     
@@ -117,7 +117,7 @@ bool StreamSessionTcpCoordinated::initializeZeroCopy()
     int enable = 1;
     if (setsockopt(native_socket_, SOL_SOCKET, SO_ZEROCOPY, &enable, sizeof(enable)) < 0)
     {
-        LOG(DEBUG, LOG_TAG) << "Failed to enable SO_ZEROCOPY: " << strerror(errno);
+        LOG(DEBUG, LOG_TAG) << "Failed to enable SO_ZEROCOPY: " << strerror(errno) << "\n";
         return false;
     }
     
@@ -126,7 +126,7 @@ bool StreamSessionTcpCoordinated::initializeZeroCopy()
     socklen_t len = sizeof(enabled);
     if (getsockopt(native_socket_, SOL_SOCKET, SO_ZEROCOPY, &enabled, &len) < 0 || !enabled)
     {
-        LOG(DEBUG, LOG_TAG) << "SO_ZEROCOPY verification failed";
+        LOG(DEBUG, LOG_TAG) << "SO_ZEROCOPY verification failed\n";
         return false;
     }
     
@@ -175,7 +175,7 @@ void StreamSessionTcpCoordinated::sendAsync(const shared_const_buffer& buffer, W
         if (zerocopy_available_ && buffer_size >= ZEROCOPY_THRESHOLD)
         {
             coordination_fallbacks_++;
-            LOG(DEBUG, LOG_TAG) << "Zerocopy fallback due to pending async ops for " << buffer_size << " bytes";
+            LOG(DEBUG, LOG_TAG) << "Zerocopy fallback due to pending async ops for " << buffer_size << " bytes\n";
         }
         sendRegularCoordinated(buffer, std::move(handler));
     }
@@ -226,7 +226,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
             global_buffer_ref->ref_count++;
             zerocopy_buffer = global_buffer_ref->buffer;
             buffer_reuse_count_++;
-            LOG(TRACE, LOG_TAG) << "Reusing shared zerocopy buffer ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load();
+            LOG(TRACE, LOG_TAG) << "Reusing shared zerocopy buffer ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load() << "\n";
         } else {
             // Create new shared buffer
             zerocopy_buffer = std::make_shared<std::vector<char>>(buffer_size);
@@ -238,7 +238,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
             global_buffer_ref->create_time = std::chrono::steady_clock::now();
             
             global_buffer_registry_[buffer_id] = global_buffer_ref;
-            LOG(TRACE, LOG_TAG) << "Created new shared zerocopy buffer ID " << buffer_id << ", size: " << buffer_size;
+            LOG(TRACE, LOG_TAG) << "Created new shared zerocopy buffer ID " << buffer_id << ", size: " << buffer_size << "\n";
         }
     }
     
@@ -249,20 +249,22 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     msg.msg_iovlen = 1;
     
     // Send with MSG_ZEROCOPY
+    LOG(DEBUG, LOG_TAG) << "Attempting sendmsg with MSG_ZEROCOPY|MSG_DONTWAIT, buffer_size: " << buffer_size << "\n";
     ssize_t result = sendmsg(native_socket_, &msg, MSG_ZEROCOPY | MSG_DONTWAIT);
+    LOG(DEBUG, LOG_TAG) << "sendmsg result: " << result << ", errno: " << (result < 0 ? strerror(errno) : "success") << "\n";
     
     if (result < 0)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
         {
-            LOG(DEBUG, LOG_TAG) << "ZeroCopy send would block, falling back to regular send";
+            LOG(DEBUG, LOG_TAG) << "ZeroCopy send would block, falling back to regular send\n";
             releaseZeroCopy(); // Release reservation before fallback
             sendRegularCoordinated(buffer, std::move(handler));
             return;
         }
         else
         {
-            LOG(ERROR, LOG_TAG) << "ZeroCopy sendmsg failed: " << strerror(errno);
+            LOG(ERROR, LOG_TAG) << "ZeroCopy sendmsg failed: " << strerror(errno) << "\n";
             releaseZeroCopy(); // Release reservation on error
             if (handler)
                 handler(boost::system::error_code(errno, boost::system::system_category()), 0);
@@ -272,7 +274,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     
     if (static_cast<size_t>(result) != buffer_size)
     {
-        LOG(ERROR, LOG_TAG) << "ZeroCopy partial send: " << result << "/" << buffer_size << " bytes";
+        LOG(ERROR, LOG_TAG) << "ZeroCopy partial send: " << result << "/" << buffer_size << " bytes\n";
         releaseZeroCopy(); // Release reservation on partial send error
         if (handler)
             handler(boost::asio::error::message_size, result);
@@ -294,7 +296,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
         };
     }
     
-    LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << ", tracking for completion";
+    LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << ", tracking for completion\n";
     
     // Release zerocopy reservation
     releaseZeroCopy();
@@ -336,7 +338,7 @@ void StreamSessionTcpCoordinated::startErrorQueueMonitoring()
         return;
     
     monitoring_active_ = true;
-    LOG(DEBUG, LOG_TAG) << "Starting error queue monitoring for session " << getIP();
+    LOG(DEBUG, LOG_TAG) << "Starting error queue monitoring for session " << getIP() << "\n";
     
     // Start with 10ms polling for error queue
     auto self = shared_from_this();
@@ -373,8 +375,12 @@ void StreamSessionTcpCoordinated::stopErrorQueueMonitoring()
 void StreamSessionTcpCoordinated::processErrorQueue()
 {
     static int call_count = 0;
+    static int debug_call_count = 0;
     if (++call_count % 100 == 1) { // Log every 100th call to avoid spam
-        LOG(TRACE, LOG_TAG) << "Processing error queue (call #" << call_count << ")";
+        LOG(TRACE, LOG_TAG) << "Processing error queue (call #" << call_count << ")\n";
+    }
+    if (++debug_call_count % 1000 == 1) { // Log every 1000th call for proof it's running
+        LOG(DEBUG, LOG_TAG) << "processErrorQueue() is active (call #" << debug_call_count << "), pending buffers: " << pending_zerocopy_buffers_.size() << "\n";
     }
     char control_buf[512];
     struct msghdr msg = {};
@@ -388,17 +394,17 @@ void StreamSessionTcpCoordinated::processErrorQueue()
         {
             if (errno != EAGAIN && errno != EWOULDBLOCK)
             {
-                LOG(DEBUG, LOG_TAG) << "Error queue recv failed: " << strerror(errno);
+                LOG(DEBUG, LOG_TAG) << "Error queue recv failed: " << strerror(errno) << "\n";
             }
             break; // No more messages or error
         }
         
-        LOG(TRACE, LOG_TAG) << "Received error queue message, size: " << ret;
+        LOG(TRACE, LOG_TAG) << "Received error queue message, size: " << ret << "\n";
         
         // Process control messages
         for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg))
         {
-            LOG(TRACE, LOG_TAG) << "Control message: level=" << cmsg->cmsg_level << ", type=" << cmsg->cmsg_type;
+            LOG(TRACE, LOG_TAG) << "Control message: level=" << cmsg->cmsg_level << ", type=" << cmsg->cmsg_type << "\n";
             if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
             {
                 struct sock_extended_err* ee = reinterpret_cast<struct sock_extended_err*>(CMSG_DATA(cmsg));
@@ -408,7 +414,7 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     uint32_t lo = ee->ee_info;
                     uint32_t hi = ee->ee_data;
                     
-                    LOG(DEBUG, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "], tracking " << pending_zerocopy_buffers_.size() << " buffers";
+                    LOG(DEBUG, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "], tracking " << pending_zerocopy_buffers_.size() << " buffers\n";
                     completion_notifications_received_++;
                     
                     // Release buffers in the completed range with reference counting
@@ -426,24 +432,24 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                                     auto global_it = global_buffer_registry_.find(buffer_id);
                                     if (global_it != global_buffer_registry_.end()) {
                                         auto ref_count = --global_it->second->ref_count;
-                                        LOG(DEBUG, LOG_TAG) << "Completed zerocopy buffer ID " << buffer_id << " after " << duration_ms << "ms, remaining refs: " << ref_count;
+                                        LOG(DEBUG, LOG_TAG) << "Completed zerocopy buffer ID " << buffer_id << " after " << duration_ms << "ms, remaining refs: " << ref_count << "\n";
                                         
                                         if (ref_count <= 0) {
                                             // Last reference - can release global buffer
                                             auto total_duration = std::chrono::steady_clock::now() - global_it->second->create_time;
                                             auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration).count();
-                                            LOG(DEBUG, LOG_TAG) << "Releasing global zerocopy buffer ID " << buffer_id << " after " << total_ms << "ms total lifetime";
+                                            LOG(DEBUG, LOG_TAG) << "Releasing global zerocopy buffer ID " << buffer_id << " after " << total_ms << "ms total lifetime\n";
                                             global_buffer_registry_.erase(global_it);
                                         }
                                     } else {
-                                        LOG(WARNING, LOG_TAG) << "Completion notification for buffer ID " << buffer_id << " not found in global registry";
+                                        LOG(WARNING, LOG_TAG) << "Completion notification for buffer ID " << buffer_id << " not found in global registry\n";
                                     }
                                 }
                                 
                                 pending_zerocopy_buffers_.erase(session_it);
                                 outstanding_zerocopy_buffers_--;
                             } else {
-                                LOG(WARNING, LOG_TAG) << "Completion notification for unknown session buffer ID " << buffer_id;
+                                LOG(WARNING, LOG_TAG) << "Completion notification for unknown session buffer ID " << buffer_id << "\n";
                             }
                         }
                     }
@@ -502,7 +508,7 @@ void StreamSessionTcpCoordinated::cleanupStaleBuffers()
     while (it != global_buffer_registry_.end()) {
         if (now - it->second->create_time > BUFFER_TIMEOUT) {
             LOG(TRACE, LOG_TAG) << "Timeout cleanup of stale buffer ID " << it->first << " after " 
-                                  << std::chrono::duration_cast<std::chrono::seconds>(now - it->second->create_time).count() << "s";
+                                  << std::chrono::duration_cast<std::chrono::seconds>(now - it->second->create_time).count() << "s\n";
             cleaned_count++;
             it = global_buffer_registry_.erase(it);
         } else {
@@ -511,6 +517,6 @@ void StreamSessionTcpCoordinated::cleanupStaleBuffers()
     }
     
     if (cleaned_count > 0) {
-        LOG(DEBUG, LOG_TAG) << "Cleaned up " << cleaned_count << " stale zerocopy buffers due to missing completion notifications";
+        LOG(DEBUG, LOG_TAG) << "Cleaned up " << cleaned_count << " stale zerocopy buffers due to missing completion notifications\n";
     }
 }
