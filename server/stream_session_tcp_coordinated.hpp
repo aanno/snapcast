@@ -152,7 +152,7 @@ private:
     // Zerocopy state
     bool zerocopy_available_{false};
     int native_socket_{-1};
-    std::atomic<uint32_t> next_buffer_id_{1};
+    std::atomic<uint32_t> next_buffer_id_{0};
     
     // Coordination state
     std::atomic<uint32_t> pending_async_operations_{0};

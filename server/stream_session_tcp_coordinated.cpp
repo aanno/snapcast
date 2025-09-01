@@ -27,6 +27,11 @@
 #include <linux/net_tstamp.h>
 #include <cstring>
 
+// MSG_ZEROCOPY definition for compatibility with older headers
+#ifndef MSG_ZEROCOPY
+#define MSG_ZEROCOPY 0x4000000
+#endif
+
 static constexpr auto LOG_TAG = "StreamSessionTcpCoordinated";
 
 // Global buffer registry for multi-client reference counting
@@ -95,6 +100,8 @@ void StreamSessionTcpCoordinated::stop()
     }
     
     StreamSessionTcp::stop();
+
+    
 }
 
 bool StreamSessionTcpCoordinated::initializeZeroCopy()
@@ -202,18 +209,9 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     
     size_t buffer_size = boost::asio::buffer_size(buffer);
     
-    // Generate buffer ID based on content and timestamp for multi-client coordination
-    // Use the buffer message timestamp and type to create consistent ID across sessions
-    uint32_t buffer_id;
-    if (buffer.message().is_pcm_chunk) {
-        // Use PCM chunk timestamp as ID for multi-session coordination
-        auto time_point = buffer.message().rec_time;
-        auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(time_point.time_since_epoch()).count();
-        buffer_id = static_cast<uint32_t>(time_ns & 0xFFFFFFFF);
-    } else {
-        // Fallback to per-session ID for non-PCM messages
-        buffer_id = next_buffer_id_++;
-    }
+    // Generate simple sequential buffer ID that matches kernel MSG_ZEROCOPY numbering
+    // MSG_ZEROCOPY assigns IDs sequentially per socket, we must match this scheme
+    uint32_t buffer_id = next_buffer_id_++;
     
     // Get or create shared buffer for multi-client zerocopy
     std::shared_ptr<GlobalBufferRef> global_buffer_ref;
@@ -296,7 +294,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
         };
     }
     
-    LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << ", tracking for completion\n";
+    LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << ", tracking for completion";
     
     // Release zerocopy reservation
     releaseZeroCopy();
@@ -410,7 +408,7 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     uint32_t lo = ee->ee_info;
                     uint32_t hi = ee->ee_data;
                     
-                    LOG(DEBUG, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "]";
+                    LOG(DEBUG, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "], tracking " << pending_zerocopy_buffers_.size() << " buffers";
                     completion_notifications_received_++;
                     
                     // Release buffers in the completed range with reference counting
