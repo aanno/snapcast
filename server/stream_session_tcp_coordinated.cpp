@@ -241,6 +241,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     // Success - zerocopy send completed immediately (synchronously from our perspective)
     zerocopy_successful_++;
     zerocopy_bytes_ += buffer_size;
+    outstanding_operations_++; // Track outstanding operation in kernel
     
     LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << "\n";
     
@@ -349,7 +350,14 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     uint32_t hi = ee->ee_data;
                     
                     LOG(DEBUG, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "]";
-                    // Note: We complete handlers immediately in sendZeroCopy, so we don't need to track pending buffers
+                    
+                    // Decrement outstanding operations for completed range
+                    uint32_t completed_operations = (hi >= lo) ? (hi - lo + 1) : 1;
+                    for (uint32_t i = 0; i < completed_operations; ++i) {
+                        if (outstanding_operations_.load() > 0) {
+                            outstanding_operations_--;
+                        }
+                    }
                 }
             }
         }
@@ -365,6 +373,18 @@ StreamSessionTcpCoordinated::ZeroCopyStats StreamSessionTcpCoordinated::getZeroC
     stats.regular_sends = regular_sends_.load();
     stats.regular_bytes = regular_bytes_.load();
     stats.coordination_fallbacks = coordination_fallbacks_.load();
+    stats.outstanding_operations = outstanding_operations_.load();
     
     return stats;
+}
+
+void StreamSessionTcpCoordinated::resetZeroCopyStats()
+{
+    zerocopy_attempts_.store(0);
+    zerocopy_successful_.store(0);
+    zerocopy_bytes_.store(0);
+    regular_sends_.store(0);
+    regular_bytes_.store(0);
+    coordination_fallbacks_.store(0);
+    // Note: outstanding_operations_ is not reset as it represents current state, not cumulative stats
 }

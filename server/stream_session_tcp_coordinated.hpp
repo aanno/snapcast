@@ -60,6 +60,7 @@ public:
         uint64_t regular_sends{0};          // Messages sent via regular async_write
         uint64_t regular_bytes{0};          // Total bytes sent via regular async_write
         uint64_t coordination_fallbacks{0}; // Fallbacks due to pending async ops
+        uint64_t outstanding_operations{0}; // Currently outstanding zerocopy operations in kernel
         double zerocopy_percentage() const 
         { 
             return (zerocopy_attempts + regular_sends) > 0 ? 
@@ -68,6 +69,7 @@ public:
     };
     
     ZeroCopyStats getZeroCopyStats() const;
+    void resetZeroCopyStats();
 
 protected:
     void sendAsync(const shared_const_buffer& buffer, WriteHandler&& handler) override;
@@ -129,6 +131,7 @@ private:
     mutable std::atomic<uint64_t> regular_sends_{0};
     mutable std::atomic<uint64_t> regular_bytes_{0};
     mutable std::atomic<uint64_t> coordination_fallbacks_{0};
+    mutable std::atomic<uint64_t> outstanding_operations_{0};
     
     // Error queue monitoring
     std::unique_ptr<boost::asio::steady_timer> error_queue_timer_;

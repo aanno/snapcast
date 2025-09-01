@@ -17,7 +17,7 @@ We will begin with the server side.
 
 The implementation now follows the official `audio-src.c` example pattern exactly, ensuring compatibility and stability.
 
-- If you are technically stuck or unsure about the next step, ask for help.
+- If you are technically stuck or unsure about the next step, ask for help. We do elaborated things like RCP and networking optimizations. It is ok to ask for help.
 - Use gw-memory to store and retrieve information about the codebase.
   + Tag all entries with 'snapcast' to indicate they are related to this project.
   + After you have been started, it is a good idea to retrieve what's has been stored lately, so you have the latest context.

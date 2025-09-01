@@ -164,11 +164,13 @@ The implementation includes comprehensive statistics with atomic counters for th
 - **Zerocopy Operations**: Count and bytes sent via MSG_ZEROCOPY
 - **Regular Operations**: Count and bytes sent via standard async_write  
 - **Coordination Fallbacks**: When zerocopy is skipped due to pending async operations
+- **Outstanding Operations**: Number of zerocopy operations pending kernel completion
 - **Success Rate**: Percentage of operations using zerocopy vs regular sends
 
-### Session-Level Statistics
+### ZeroCopyStats Structure
 
-Each coordinated session tracks:
+Each coordinated session tracks detailed statistics with automatic reset after each report:
+
 ```cpp
 struct ZeroCopyStats {
     uint64_t zerocopy_attempts{0};      // Total zerocopy send attempts
@@ -177,13 +179,27 @@ struct ZeroCopyStats {
     uint64_t regular_sends{0};          // Messages sent via async_write
     uint64_t regular_bytes{0};          // Total bytes sent via async_write
     uint64_t coordination_fallbacks{0}; // Fallbacks due to pending async ops
+    uint64_t outstanding_operations{0}; // Currently outstanding zerocopy operations in kernel
     double zerocopy_percentage() const; // Success rate calculation
 };
 ```
 
+### Statistics Management
+
+**Automatic Reset**: Statistics are reset after each periodic report to show current performance trends rather than lifetime accumulated values. This provides:
+- **Current Performance**: Each 30-second report shows recent activity, not lifetime totals
+- **Trend Analysis**: Easier to identify performance changes over time  
+- **Memory Management Tracking**: Outstanding operations counter shows kernel buffer usage
+- **Fresh Diagnostics**: Each report period starts with clean counters
+
+**Buffer Lifecycle Tracking**: The `outstanding_operations` counter tracks zerocopy buffers:
+- **Incremented**: When `sendmsg()` succeeds with MSG_ZEROCOPY
+- **Decremented**: When kernel completion notifications are received via error queue
+- **Purpose**: Monitor memory pressure and kernel buffer usage
+
 ### Periodic Reporting
 
-Every 30 seconds, when clients are connected, the server logs zerocopy diagnostics:
+Every 30 seconds, when clients are connected, the server logs zerocopy diagnostics then resets all counters:
 
 ```
 === Periodic ZeroCopy Status (every 30s) ===
@@ -194,8 +210,11 @@ Zerocopy Stats for session 192.168.1.100
 	Regular Sends: 45, 
 	Regular Bytes: 2048, 
 	Coordination Fallbacks: 5, 
+	Outstanding Operations: 12,
 	ZC Success Rate: 96.00%
 ```
+
+**Note**: After this report, all counters except `outstanding_operations` are reset to zero. The next 30-second report will show fresh statistics from that point forward.
 
 ## Testing and Verification
 
