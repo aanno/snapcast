@@ -24,6 +24,7 @@
 #include "config.hpp"
 #include "stream_session_tcp.hpp"
 #include "stream_session_tcp_coordinated.hpp"
+#include "common/buffer_pool.hpp"
 
 // standard headers
 #include <iomanip>
@@ -367,6 +368,16 @@ void StreamServer::startDiagnosticsTimer()
                         {
                             LOG(INFO, LOG_TAG) << "=== Periodic ZeroCopy Status (every 30s) ===\n";
                             printZeroCopyDiagnostics(coordinated_session.get());
+                            
+                            // Print buffer pool statistics
+                            auto buffer_stats = DynamicBufferPool::instance().getStats();
+                            LOG(INFO, "BufferPool") << "=== Buffer Pool Stats ===" 
+                                                   << "\n\tTotal Buffers: " << buffer_stats.total_buffers
+                                                   << "\n\tAvailable Buffers: " << buffer_stats.available_buffers
+                                                   << "\n\tBytes Allocated: " << buffer_stats.bytes_allocated
+                                                   << "\n\tBuffers Created: " << buffer_stats.buffers_created  
+                                                   << "\n\tBuffers Reused: " << buffer_stats.buffers_reused
+                                                   << "\n\tCleanup Operations: " << buffer_stats.cleanup_operations << "\n";
                         }
                     }
                 }

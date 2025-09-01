@@ -22,6 +22,7 @@
 // local headers
 #include "authinfo.hpp"
 #include "common/message/message.hpp"
+#include "common/buffer_pool.hpp"
 #include "streamreader/stream_manager.hpp"
 
 // 3rd party headers
@@ -61,10 +62,13 @@ class shared_const_buffer
     /// the message
     struct Message
     {
-        std::vector<char> data;           ///< data
+        DynamicBufferPool::BufferGuard buffer_guard; ///< pooled buffer
         bool is_pcm_chunk;                ///< is it a PCM chunk
         message_type type;                ///< message type
         chronos::time_point_clk rec_time; ///< recording time
+        
+        explicit Message(DynamicBufferPool::BufferGuard&& guard)
+            : buffer_guard(std::move(guard)) {}
     };
 
 public:
@@ -74,17 +78,25 @@ public:
         tv t;
         message.sent = t;
         const msg::PcmChunk* pcm_chunk = dynamic_cast<const msg::PcmChunk*>(&message);
-        message_ = std::make_shared<Message>();
+        
+        // Serialize message to determine size
+        std::ostringstream oss;
+        message.serialize(oss);
+        std::string s = oss.str();
+        
+        // Get buffer from pool
+        auto buffer_guard = DynamicBufferPool::instance().acquire(s.size());
+        buffer_guard.resize(s.size());
+        std::copy(s.begin(), s.end(), buffer_guard.get().begin());
+        
+        // Create message with pooled buffer
+        message_ = std::make_shared<Message>(std::move(buffer_guard));
         message_->type = message.type;
         message_->is_pcm_chunk = (pcm_chunk != nullptr);
         if (message_->is_pcm_chunk)
             message_->rec_time = pcm_chunk->start();
 
-        std::ostringstream oss;
-        message.serialize(oss);
-        std::string s = oss.str();
-        message_->data = std::vector<char>(s.begin(), s.end());
-        buffer_ = boost::asio::buffer(message_->data);
+        buffer_ = boost::asio::buffer(message_->buffer_guard.get());
     }
 
     /// const buffer.
