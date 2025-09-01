@@ -226,7 +226,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
             global_buffer_ref->ref_count++;
             zerocopy_buffer = global_buffer_ref->buffer;
             buffer_reuse_count_++;
-            LOG(DEBUG, LOG_TAG) << "Reusing shared zerocopy buffer ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load();
+            LOG(TRACE, LOG_TAG) << "Reusing shared zerocopy buffer ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load();
         } else {
             // Create new shared buffer
             zerocopy_buffer = std::make_shared<std::vector<char>>(buffer_size);
@@ -238,7 +238,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
             global_buffer_ref->create_time = std::chrono::steady_clock::now();
             
             global_buffer_registry_[buffer_id] = global_buffer_ref;
-            LOG(DEBUG, LOG_TAG) << "Created new shared zerocopy buffer ID " << buffer_id << ", size: " << buffer_size;
+            LOG(TRACE, LOG_TAG) << "Created new shared zerocopy buffer ID " << buffer_id << ", size: " << buffer_size;
         }
     }
     
