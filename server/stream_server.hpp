@@ -92,6 +92,16 @@ private:
     void onMessageReceived(const std::shared_ptr<StreamSession>& streamSession, const msg::BaseMessage& baseMessage, char* buffer) override;
     void onDisconnect(StreamSession* streamSession) override;
 
+    /// Global chunk counter for consistent buffer IDs across sessions
+    static std::atomic<uint32_t> global_chunk_counter_;
+    
+public:
+    /// Get next global chunk ID (called once per audio chunk)
+    static uint32_t getNextChunkId();
+    
+    /// Get current chunk buffer ID (for sessions to use the same ID)
+    static uint32_t getCurrentChunkBufferId();
+
     mutable std::recursive_mutex sessionsMutex_;
     std::vector<std::weak_ptr<StreamSession>> sessions_;
     boost::asio::io_context& io_context_;

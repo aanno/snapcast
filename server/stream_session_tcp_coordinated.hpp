@@ -135,6 +135,7 @@ private:
     // Static global buffer registry
     static std::map<uint32_t, std::shared_ptr<GlobalBufferRef>> global_buffer_registry_;
     static std::mutex global_buffer_mutex_;
+    static std::atomic<uint32_t> global_buffer_id_counter_;
     
     // Buffer cleanup
     static void cleanupStaleBuffers();

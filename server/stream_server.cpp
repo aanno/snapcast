@@ -41,6 +41,12 @@ using json = nlohmann::json;
 
 static constexpr auto LOG_TAG = "StreamServer";
 
+// Global chunk counter for consistent buffer IDs across sessions
+std::atomic<uint32_t> StreamServer::global_chunk_counter_{0};
+
+// Thread-local storage for current chunk buffer ID
+thread_local uint32_t current_chunk_buffer_id = 0;
+
 StreamServer::StreamServer(boost::asio::io_context& io_context, ServerSettings serverSettings, StreamMessageReceiver* messageReceiver)
     : io_context_(io_context), config_timer_(io_context), diagnostics_timer_(io_context), settings_(std::move(serverSettings)), messageReceiver_(messageReceiver)
 {
@@ -48,6 +54,16 @@ StreamServer::StreamServer(boost::asio::io_context& io_context, ServerSettings s
 
 
 StreamServer::~StreamServer() = default;
+
+uint32_t StreamServer::getNextChunkId()
+{
+    return global_chunk_counter_.fetch_add(1, std::memory_order_relaxed);
+}
+
+uint32_t StreamServer::getCurrentChunkBufferId()
+{
+    return current_chunk_buffer_id;
+}
 
 
 void StreamServer::cleanup()
@@ -78,6 +94,10 @@ void StreamServer::onChunkEncoded(const PcmStream* pcmStream, bool isDefaultStre
 {
     // LOG(TRACE, LOG_TAG) << "onChunkRead (" << pcmStream->getName() << "): " << duration << "ms\n";
     shared_const_buffer buffer(*chunk);
+    
+    // Generate single buffer ID for this chunk (shared across all sessions)
+    uint32_t chunk_buffer_id = getNextChunkId();
+    current_chunk_buffer_id = chunk_buffer_id;
 
     // make a copy of the sessions to avoid that a session get's deleted
     std::vector<std::shared_ptr<StreamSession>> sessions;
