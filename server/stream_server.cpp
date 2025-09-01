@@ -283,8 +283,14 @@ void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* coordin
                        << "\n\tRegular Bytes: " << stats.regular_bytes << ", "
                        << "\n\tCoordination Fallbacks: " << stats.coordination_fallbacks << ", "
                        << "\n\tPending Async Operations: " << stats.pending_async_operations << ", "
+                       << "\n\tOutstanding ZC Buffers: " << stats.outstanding_zerocopy_buffers << ", "
+                       << "\n\tGlobal Shared Buffers: " << stats.global_shared_buffers << ", "
+                       << "\n\tBuffer Reuse Count: " << stats.buffer_reuse_count << ", "
+                       << "\n\tCompletion Notifications: " << stats.completion_notifications_received << ", "
+                       << "\n\tMissing Notifications: " << stats.completion_notifications_missing << ", "
                        << std::fixed << std::setprecision(2)
-                       << "\n\tZC Success Rate: " << stats.zerocopy_percentage() << "%\n";
+                       << "\n\tZC Success Rate: " << stats.zerocopy_percentage() << "%"
+                       << "\n\tCompletion Reliability: " << stats.completion_reliability() << "%\n";
     
     // Reset stats after reporting to show periodic performance
     coordinated_session->resetZeroCopyStats();

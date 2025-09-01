@@ -29,6 +29,10 @@
 
 static constexpr auto LOG_TAG = "StreamSessionTcpCoordinated";
 
+// Global buffer registry for multi-client reference counting
+std::map<uint32_t, std::shared_ptr<StreamSessionTcpCoordinated::GlobalBufferRef>> StreamSessionTcpCoordinated::global_buffer_registry_;
+std::mutex StreamSessionTcpCoordinated::global_buffer_mutex_;
+
 StreamSessionTcpCoordinated::StreamSessionTcpCoordinated(StreamMessageReceiver* receiver, const ServerSettings& server_settings, tcp::socket&& socket)
     : StreamSessionTcp(receiver, server_settings, std::move(socket))
 {
@@ -195,11 +199,48 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     zerocopy_attempts_++;
     
     size_t buffer_size = boost::asio::buffer_size(buffer);
-    uint32_t buffer_id = next_buffer_id_++;
     
-    // Copy buffer data for zerocopy (kernel needs stable buffer)
-    auto zerocopy_buffer = std::make_shared<std::vector<char>>(buffer_size);
-    boost::asio::buffer_copy(boost::asio::buffer(*zerocopy_buffer), buffer);
+    // Generate buffer ID based on content and timestamp for multi-client coordination
+    // Use the buffer message timestamp and type to create consistent ID across sessions
+    uint32_t buffer_id;
+    if (buffer.message().is_pcm_chunk) {
+        // Use PCM chunk timestamp as ID for multi-session coordination
+        auto time_point = buffer.message().rec_time;
+        auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(time_point.time_since_epoch()).count();
+        buffer_id = static_cast<uint32_t>(time_ns & 0xFFFFFFFF);
+    } else {
+        // Fallback to per-session ID for non-PCM messages
+        buffer_id = next_buffer_id_++;
+    }
+    
+    // Get or create shared buffer for multi-client zerocopy
+    std::shared_ptr<GlobalBufferRef> global_buffer_ref;
+    std::shared_ptr<std::vector<char>> zerocopy_buffer;
+    
+    {
+        std::lock_guard<std::mutex> lock(global_buffer_mutex_);
+        auto it = global_buffer_registry_.find(buffer_id);
+        if (it != global_buffer_registry_.end()) {
+            // Buffer already exists, increment reference count
+            global_buffer_ref = it->second;
+            global_buffer_ref->ref_count++;
+            zerocopy_buffer = global_buffer_ref->buffer;
+            buffer_reuse_count_++;
+            LOG(DEBUG, LOG_TAG) << "Reusing shared zerocopy buffer ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load();
+        } else {
+            // Create new shared buffer
+            zerocopy_buffer = std::make_shared<std::vector<char>>(buffer_size);
+            boost::asio::buffer_copy(boost::asio::buffer(*zerocopy_buffer), buffer);
+            
+            global_buffer_ref = std::make_shared<GlobalBufferRef>();
+            global_buffer_ref->buffer = zerocopy_buffer;
+            global_buffer_ref->ref_count = 1;
+            global_buffer_ref->create_time = std::chrono::steady_clock::now();
+            
+            global_buffer_registry_[buffer_id] = global_buffer_ref;
+            LOG(DEBUG, LOG_TAG) << "Created new shared zerocopy buffer ID " << buffer_id << ", size: " << buffer_size;
+        }
+    }
     
     // Prepare message header for sendmsg
     struct msghdr msg = {};
@@ -241,8 +282,19 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     // Success - zerocopy send completed immediately (synchronously from our perspective)
     zerocopy_successful_++;
     zerocopy_bytes_ += buffer_size;
+    outstanding_zerocopy_buffers_++;
     
-    LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << "\n";
+    // Track the buffer for completion notification
+    {
+        std::lock_guard<std::mutex> lock(zerocopy_buffers_mutex_);
+        pending_zerocopy_buffers_[buffer_id] = {
+            zerocopy_buffer,
+            buffer_id,
+            std::chrono::steady_clock::now()
+        };
+    }
+    
+    LOG(TRACE, LOG_TAG) << "ZeroCopy send successful: " << buffer_size << " bytes, ID: " << buffer_id << ", tracking for completion\n";
     
     // Release zerocopy reservation
     releaseZeroCopy();
@@ -353,14 +405,43 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     uint32_t hi = ee->ee_data;
                     
                     LOG(DEBUG, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "]";
+                    completion_notifications_received_++;
                     
-                    // Decrement outstanding operations for completed range
-                    // Each zerocopy send gets a unique buffer ID, so we decrement once per notification
-                    if (outstanding_operations_.load() > 0) {
-                        outstanding_operations_--;
-                        LOG(DEBUG, LOG_TAG) << "Decremented outstanding_operations to: " << outstanding_operations_.load() << " (range [" << lo << "-" << hi << "])";
-                    } else {
-                        LOG(WARNING, LOG_TAG) << "Received completion notification but outstanding_operations is already 0!";
+                    // Release buffers in the completed range with reference counting
+                    {
+                        std::lock_guard<std::mutex> session_lock(zerocopy_buffers_mutex_);
+                        for (uint32_t buffer_id = lo; buffer_id <= hi; ++buffer_id) {
+                            auto session_it = pending_zerocopy_buffers_.find(buffer_id);
+                            if (session_it != pending_zerocopy_buffers_.end()) {
+                                auto duration = std::chrono::steady_clock::now() - session_it->second.send_time;
+                                auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+                                
+                                // Decrement global reference count
+                                {
+                                    std::lock_guard<std::mutex> global_lock(global_buffer_mutex_);
+                                    auto global_it = global_buffer_registry_.find(buffer_id);
+                                    if (global_it != global_buffer_registry_.end()) {
+                                        auto ref_count = --global_it->second->ref_count;
+                                        LOG(DEBUG, LOG_TAG) << "Completed zerocopy buffer ID " << buffer_id << " after " << duration_ms << "ms, remaining refs: " << ref_count;
+                                        
+                                        if (ref_count <= 0) {
+                                            // Last reference - can release global buffer
+                                            auto total_duration = std::chrono::steady_clock::now() - global_it->second->create_time;
+                                            auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration).count();
+                                            LOG(DEBUG, LOG_TAG) << "Releasing global zerocopy buffer ID " << buffer_id << " after " << total_ms << "ms total lifetime";
+                                            global_buffer_registry_.erase(global_it);
+                                        }
+                                    } else {
+                                        LOG(WARNING, LOG_TAG) << "Completion notification for buffer ID " << buffer_id << " not found in global registry";
+                                    }
+                                }
+                                
+                                pending_zerocopy_buffers_.erase(session_it);
+                                outstanding_zerocopy_buffers_--;
+                            } else {
+                                LOG(WARNING, LOG_TAG) << "Completion notification for unknown session buffer ID " << buffer_id;
+                            }
+                        }
                     }
                 }
             }
@@ -378,6 +459,16 @@ StreamSessionTcpCoordinated::ZeroCopyStats StreamSessionTcpCoordinated::getZeroC
     stats.regular_bytes = regular_bytes_.load();
     stats.coordination_fallbacks = coordination_fallbacks_.load();
     stats.pending_async_operations = pending_async_operations_.load();
+    stats.outstanding_zerocopy_buffers = outstanding_zerocopy_buffers_.load();
+    stats.completion_notifications_received = completion_notifications_received_.load();
+    stats.completion_notifications_missing = completion_notifications_missing_.load();
+    stats.buffer_reuse_count = buffer_reuse_count_.load();
+    
+    // Get global shared buffer count
+    {
+        std::lock_guard<std::mutex> lock(global_buffer_mutex_);
+        stats.global_shared_buffers = global_buffer_registry_.size();
+    }
     
     return stats;
 }
@@ -390,5 +481,8 @@ void StreamSessionTcpCoordinated::resetZeroCopyStats()
     regular_sends_.store(0);
     regular_bytes_.store(0);
     coordination_fallbacks_.store(0);
-    // Note: outstanding_operations_ is not reset as it represents current state, not cumulative stats
+    completion_notifications_received_.store(0);
+    completion_notifications_missing_.store(0);
+    buffer_reuse_count_.store(0);
+    // Note: outstanding_zerocopy_buffers, global_shared_buffers and pending_async_operations are not reset as they represent current state
 }

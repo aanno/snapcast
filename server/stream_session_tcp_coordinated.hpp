@@ -29,6 +29,8 @@
 #include <memory>
 #include <queue>
 #include <mutex>
+#include <map>
+#include <chrono>
 #include <sys/socket.h>
 #include <linux/errqueue.h>
 
@@ -61,10 +63,20 @@ public:
         uint64_t regular_bytes{0};          // Total bytes sent via regular async_write
         uint64_t coordination_fallbacks{0}; // Fallbacks due to pending async ops
         uint64_t pending_async_operations{0}; // Currently pending async_write operations
+        uint64_t outstanding_zerocopy_buffers{0}; // Buffers awaiting completion notifications
+        uint64_t completion_notifications_received{0}; // Completion notifications received
+        uint64_t completion_notifications_missing{0}; // Expected but missing notifications
+        uint64_t global_shared_buffers{0}; // Currently shared buffers in global registry
+        uint64_t buffer_reuse_count{0}; // How many times buffers were reused
         double zerocopy_percentage() const 
         { 
             return (zerocopy_attempts + regular_sends) > 0 ? 
                    (double(zerocopy_successful) / double(zerocopy_attempts + regular_sends)) * 100.0 : 0.0; 
+        }
+        double completion_reliability() const 
+        {
+            return zerocopy_successful > 0 ? 
+                   (double(completion_notifications_received) / double(zerocopy_successful)) * 100.0 : 0.0;
         }
     };
     
@@ -101,6 +113,26 @@ private:
     void stopErrorQueueMonitoring();
     void processErrorQueue();
     
+    /// Buffer tracking for zerocopy completion
+    struct PendingZeroCopyBuffer
+    {
+        std::shared_ptr<std::vector<char>> buffer;
+        uint32_t buffer_id;
+        std::chrono::steady_clock::time_point send_time;
+    };
+    
+    /// Global buffer reference counting for multi-client scenarios
+    struct GlobalBufferRef
+    {
+        std::shared_ptr<std::vector<char>> buffer;
+        std::atomic<int> ref_count{1};
+        std::chrono::steady_clock::time_point create_time;
+    };
+    
+    // Static global buffer registry
+    static std::map<uint32_t, std::shared_ptr<GlobalBufferRef>> global_buffer_registry_;
+    static std::mutex global_buffer_mutex_;
+    
     /// Pending send operation
     struct PendingSend
     {
@@ -131,9 +163,16 @@ private:
     mutable std::atomic<uint64_t> regular_sends_{0};
     mutable std::atomic<uint64_t> regular_bytes_{0};
     mutable std::atomic<uint64_t> coordination_fallbacks_{0};
-    mutable std::atomic<uint64_t> outstanding_operations_{0};
+    mutable std::atomic<uint64_t> outstanding_zerocopy_buffers_{0};
+    mutable std::atomic<uint64_t> completion_notifications_received_{0};
+    mutable std::atomic<uint64_t> completion_notifications_missing_{0};
+    mutable std::atomic<uint64_t> buffer_reuse_count_{0};
     
     // Error queue monitoring
     std::unique_ptr<boost::asio::steady_timer> error_queue_timer_;
     bool monitoring_active_{false};
+    
+    // Buffer tracking
+    std::map<uint32_t, PendingZeroCopyBuffer> pending_zerocopy_buffers_;
+    std::mutex zerocopy_buffers_mutex_;
 };
