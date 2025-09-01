@@ -26,6 +26,7 @@
 #include <linux/errqueue.h>
 #include <linux/net_tstamp.h>
 #include <cstring>
+#include <pthread.h>
 
 // MSG_ZEROCOPY definition for compatibility with older headers
 #ifndef MSG_ZEROCOPY
@@ -33,6 +34,8 @@
 #endif
 
 static constexpr auto LOG_TAG = "StreamSessionTcpCoordinated";
+static constexpr auto LOG_TAG_COMPLETION = "ZeroCopyCompletion";
+static constexpr auto LOG_TAG_STATS = "ZeroCopyStats";
 
 // Global buffer registry for multi-client reference counting
 std::map<uint32_t, std::shared_ptr<StreamSessionTcpCoordinated::GlobalBufferRef>> StreamSessionTcpCoordinated::global_buffer_registry_;
@@ -339,7 +342,7 @@ void StreamSessionTcpCoordinated::startErrorQueueMonitoring()
     monitoring_active_.store(true);
     shutdown_requested_.store(false);
     
-    LOG(DEBUG, LOG_TAG) << "Starting error queue monitoring thread for session " << getIP() << "\n";
+    LOG(DEBUG, LOG_TAG_COMPLETION) << "Starting error queue monitoring thread for session " << getIP() << "\n";
     
     // Launch dedicated thread for error queue monitoring
     error_queue_thread_ = std::make_unique<std::thread>(&StreamSessionTcpCoordinated::errorQueueMonitoringLoop, this);
@@ -350,7 +353,7 @@ void StreamSessionTcpCoordinated::stopErrorQueueMonitoring()
     if (!monitoring_active_.load())
         return;
         
-    LOG(DEBUG, LOG_TAG) << "Stopping error queue monitoring thread for session " << getIP() << "\n";
+    LOG(DEBUG, LOG_TAG_COMPLETION) << "Stopping error queue monitoring thread for session " << getIP() << "\n";
     
     shutdown_requested_.store(true);
     monitoring_active_.store(false);
@@ -365,7 +368,12 @@ void StreamSessionTcpCoordinated::stopErrorQueueMonitoring()
 
 void StreamSessionTcpCoordinated::errorQueueMonitoringLoop()
 {
-    LOG(DEBUG, LOG_TAG) << "Error queue monitoring thread started for session " << getIP() << "\n";
+    // Set thread name for debugging (Linux-specific)
+    #ifdef __linux__
+    pthread_setname_np(pthread_self(), "zcopy-compl");
+    #endif
+    
+    LOG(DEBUG, LOG_TAG_COMPLETION) << "Error queue monitoring thread started for session " << getIP() << "\n";
     
     while (monitoring_active_.load() && !shutdown_requested_.load())
     {
@@ -375,7 +383,7 @@ void StreamSessionTcpCoordinated::errorQueueMonitoringLoop()
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     
-    LOG(DEBUG, LOG_TAG) << "Error queue monitoring thread stopped for session " << getIP() << "\n";
+    LOG(DEBUG, LOG_TAG_COMPLETION) << "Error queue monitoring thread stopped for session " << getIP() << "\n";
 }
 
 void StreamSessionTcpCoordinated::processErrorQueue()
@@ -386,7 +394,7 @@ void StreamSessionTcpCoordinated::processErrorQueue()
         LOG(TRACE, LOG_TAG) << "Processing error queue (call #" << call_count << ")\n";
     }
     if (++debug_call_count % 1000 == 1) { // Log every 1000th call for proof it's running
-        LOG(DEBUG, LOG_TAG) << "processErrorQueue() is active (call #" << debug_call_count << "), pending buffers: " << pending_zerocopy_buffers_.size() << "\n";
+        LOG(DEBUG, LOG_TAG_COMPLETION) << "processErrorQueue() is active (call #" << debug_call_count << "), pending buffers: " << pending_zerocopy_buffers_.size() << "\n";
     }
     char control_buf[512];
     struct msghdr msg = {};
@@ -420,8 +428,10 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     uint32_t lo = ee->ee_info;
                     uint32_t hi = ee->ee_data;
                     
-                    LOG(TRACE, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "], tracking " << pending_zerocopy_buffers_.size() << " buffers\n";
+                    uint32_t buffers_in_range = hi - lo + 1;
+                    LOG(TRACE, LOG_TAG_COMPLETION) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "] (" << buffers_in_range << " buffers), tracking " << pending_zerocopy_buffers_.size() << " buffers\n";
                     completion_notifications_received_++;
+                    buffers_completed_via_notifications_ += buffers_in_range;
                     
                     // Release buffers in the completed range with reference counting
                     {
@@ -478,6 +488,7 @@ StreamSessionTcpCoordinated::ZeroCopyStats StreamSessionTcpCoordinated::getZeroC
     stats.outstanding_zerocopy_buffers = outstanding_zerocopy_buffers_.load();
     stats.completion_notifications_received = completion_notifications_received_.load();
     stats.completion_notifications_missing = completion_notifications_missing_.load();
+    stats.buffers_completed_via_notifications = buffers_completed_via_notifications_.load();
     stats.buffer_reuse_count = buffer_reuse_count_.load();
     
     // Cleanup stale buffers and get global shared buffer count
@@ -500,6 +511,7 @@ void StreamSessionTcpCoordinated::resetZeroCopyStats()
     coordination_fallbacks_.store(0);
     completion_notifications_received_.store(0);
     completion_notifications_missing_.store(0);
+    buffers_completed_via_notifications_.store(0);
     buffer_reuse_count_.store(0);
     // Note: outstanding_zerocopy_buffers, global_shared_buffers and pending_async_operations are not reset as they represent current state
 }

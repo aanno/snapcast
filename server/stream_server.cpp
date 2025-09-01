@@ -310,7 +310,7 @@ void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* /* coor
     if (!already_printed && zerocopy_session_count > 0) {
         already_printed = true;
         
-        LOG(INFO, LOG_TAG) << "=== Aggregated ZeroCopy Stats (All " << zerocopy_session_count << " Sessions) ==="
+        LOG(INFO, "ZeroCopyStats") << "=== Aggregated ZeroCopy Stats (All " << zerocopy_session_count << " Sessions) ==="
                            << "\n\tZC Attempts: " << aggregated_stats.zerocopy_attempts << ", "
                            << "\n\tZC Successful: " << aggregated_stats.zerocopy_successful << ", "
                            << "\n\tZC Bytes: " << aggregated_stats.zerocopy_bytes << ", "
