@@ -190,11 +190,14 @@ void StreamSessionTcpCoordinated::sendRegularCoordinated(const shared_const_buff
     regular_sends_++;
     regular_bytes_ += boost::asio::buffer_size(buffer);
     
+    LOG(DEBUG, LOG_TAG_STATS) << "Regular send started, pending_async_operations now: " << pending_async_operations_.load() << "\n";
+    
     // Use the parent class implementation with coordination tracking
     StreamSessionTcp::sendAsync(buffer, [this, handler = std::move(handler)](boost::system::error_code ec, std::size_t bytes_transferred) mutable
     {
         // Decrement pending operations counter
         pending_async_operations_--;
+        LOG(DEBUG, LOG_TAG_STATS) << "Regular send completed, pending_async_operations now: " << pending_async_operations_.load() << "\n";
         
         // Call the original handler
         if (handler)
@@ -228,6 +231,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
             global_buffer_ref->ref_count++;
             zerocopy_buffer = global_buffer_ref->buffer;
             buffer_reuse_count_++;
+            LOG(DEBUG, LOG_TAG_STATS) << "Buffer reuse detected! ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load() << ", total reuse_count: " << buffer_reuse_count_.load() << "\n";
             LOG(TRACE, LOG_TAG) << "Reusing shared zerocopy buffer ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load() << "\n";
         } else {
             // Create new shared buffer
@@ -432,6 +436,7 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     LOG(TRACE, LOG_TAG_COMPLETION) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "] (" << buffers_in_range << " buffers), tracking " << pending_zerocopy_buffers_.size() << " buffers\n";
                     completion_notifications_received_++;
                     buffers_completed_via_notifications_ += buffers_in_range;
+                    LOG(DEBUG, LOG_TAG_STATS) << "Added " << buffers_in_range << " completed buffers, total now: " << buffers_completed_via_notifications_.load() << "\n";
                     
                     // Release buffers in the completed range with reference counting
                     {
@@ -490,6 +495,11 @@ StreamSessionTcpCoordinated::ZeroCopyStats StreamSessionTcpCoordinated::getZeroC
     stats.completion_notifications_missing = completion_notifications_missing_.load();
     stats.buffers_completed_via_notifications = buffers_completed_via_notifications_.load();
     stats.buffer_reuse_count = buffer_reuse_count_.load();
+    
+    // Debug logging for problematic counters
+    LOG(DEBUG, LOG_TAG_STATS) << "Stats debug - buffers_completed=" << stats.buffers_completed_via_notifications
+                              << ", pending_async=" << stats.pending_async_operations  
+                              << ", buffer_reuse=" << stats.buffer_reuse_count << "\n";
     
     // Cleanup stale buffers and get global shared buffer count
     StreamSessionTcpCoordinated::cleanupStaleBuffers();
