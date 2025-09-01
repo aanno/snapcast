@@ -249,9 +249,9 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     msg.msg_iovlen = 1;
     
     // Send with MSG_ZEROCOPY
-    LOG(DEBUG, LOG_TAG) << "Attempting sendmsg with MSG_ZEROCOPY|MSG_DONTWAIT, buffer_size: " << buffer_size << "\n";
+    // LOG(DEBUG, LOG_TAG) << "Attempting sendmsg with MSG_ZEROCOPY|MSG_DONTWAIT, buffer_size: " << buffer_size << "\n";
     ssize_t result = sendmsg(native_socket_, &msg, MSG_ZEROCOPY | MSG_DONTWAIT);
-    LOG(DEBUG, LOG_TAG) << "sendmsg result: " << result << ", errno: " << (result < 0 ? strerror(errno) : "success") << "\n";
+    LOG(TRACE, LOG_TAG) << "sendmsg result: " << result << ", errno: " << (result < 0 ? strerror(errno) : "success") << "\n";
     
     if (result < 0)
     {
@@ -356,6 +356,11 @@ void StreamSessionTcpCoordinated::startErrorQueueMonitoring()
                 if (!ec2 && monitoring_active_)
                 {
                     startErrorQueueMonitoring(); // Continue monitoring
+                }
+                else
+                {
+                    LOG(DEBUG, LOG_TAG) << "Error queue monitoring timer cancelled or error: " << ec2.message() << "\n";
+                    // startErrorQueueMonitoring(); // Continue monitoring even on error
                 }
             });
         }
