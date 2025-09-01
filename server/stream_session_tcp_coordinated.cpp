@@ -48,7 +48,6 @@ StreamSessionTcpCoordinated::StreamSessionTcpCoordinated(StreamMessageReceiver* 
     if (zerocopy_available_)
     {
         LOG(INFO, LOG_TAG) << "Coordinated ZeroCopy enabled for session " << getIP() << "\n";
-        error_queue_timer_ = std::make_unique<boost::asio::steady_timer>(socket_.get_executor());
     }
     else
     {
@@ -334,50 +333,49 @@ void StreamSessionTcpCoordinated::processPendingSends()
 
 void StreamSessionTcpCoordinated::startErrorQueueMonitoring()
 {
-    if (!error_queue_timer_ || monitoring_active_)
+    if (monitoring_active_.load())
         return;
     
-    monitoring_active_ = true;
-    LOG(DEBUG, LOG_TAG) << "Starting error queue monitoring for session " << getIP() << "\n";
+    monitoring_active_.store(true);
+    shutdown_requested_.store(false);
     
-    // Start with 10ms polling for error queue
-    auto self = shared_from_this();
-    error_queue_timer_->expires_after(std::chrono::milliseconds(10));
-    error_queue_timer_->async_wait([this, self](boost::system::error_code ec)
-    {
-        if (!ec && monitoring_active_)
-        {
-            processErrorQueue();
-            
-            // Continue monitoring with 10ms interval
-            error_queue_timer_->expires_after(std::chrono::milliseconds(10));
-            error_queue_timer_->async_wait([this, self](boost::system::error_code ec2)
-            {
-                if (!ec2 && monitoring_active_)
-                {
-                    startErrorQueueMonitoring(); // Continue monitoring
-                }
-                else
-                {
-                    LOG(DEBUG, LOG_TAG) << "Error queue monitoring timer cancelled or error (2): " << ec2.message() << "\n";
-                    // startErrorQueueMonitoring(); // Continue monitoring even on error
-                }
-            });
-        } else {
-            LOG(DEBUG, LOG_TAG) << "Error queue monitoring timer cancelled or error (1): " << ec.message() << "\n";
-            // startErrorQueueMonitoring(); // Continue monitoring even on error
-        }
-    });
+    LOG(DEBUG, LOG_TAG) << "Starting error queue monitoring thread for session " << getIP() << "\n";
+    
+    // Launch dedicated thread for error queue monitoring
+    error_queue_thread_ = std::make_unique<std::thread>(&StreamSessionTcpCoordinated::errorQueueMonitoringLoop, this);
 }
 
 void StreamSessionTcpCoordinated::stopErrorQueueMonitoring()
 {
-    monitoring_active_ = false;
-    if (error_queue_timer_)
+    if (!monitoring_active_.load())
+        return;
+        
+    LOG(DEBUG, LOG_TAG) << "Stopping error queue monitoring thread for session " << getIP() << "\n";
+    
+    shutdown_requested_.store(true);
+    monitoring_active_.store(false);
+    
+    // Wait for thread to complete
+    if (error_queue_thread_ && error_queue_thread_->joinable())
     {
-        boost::system::error_code ec;
-        error_queue_timer_->cancel(ec);
+        error_queue_thread_->join();
+        error_queue_thread_.reset();
     }
+}
+
+void StreamSessionTcpCoordinated::errorQueueMonitoringLoop()
+{
+    LOG(DEBUG, LOG_TAG) << "Error queue monitoring thread started for session " << getIP() << "\n";
+    
+    while (monitoring_active_.load() && !shutdown_requested_.load())
+    {
+        processErrorQueue();
+        
+        // Sleep for 10ms between checks
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    
+    LOG(DEBUG, LOG_TAG) << "Error queue monitoring thread stopped for session " << getIP() << "\n";
 }
 
 void StreamSessionTcpCoordinated::processErrorQueue()
@@ -422,7 +420,7 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                     uint32_t lo = ee->ee_info;
                     uint32_t hi = ee->ee_data;
                     
-                    LOG(DEBUG, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "], tracking " << pending_zerocopy_buffers_.size() << " buffers\n";
+                    LOG(TRACE, LOG_TAG) << "ZeroCopy completion notification: range [" << lo << "-" << hi << "], tracking " << pending_zerocopy_buffers_.size() << " buffers\n";
                     completion_notifications_received_++;
                     
                     // Release buffers in the completed range with reference counting
@@ -440,13 +438,13 @@ void StreamSessionTcpCoordinated::processErrorQueue()
                                     auto global_it = global_buffer_registry_.find(buffer_id);
                                     if (global_it != global_buffer_registry_.end()) {
                                         auto ref_count = --global_it->second->ref_count;
-                                        LOG(DEBUG, LOG_TAG) << "Completed zerocopy buffer ID " << buffer_id << " after " << duration_ms << "ms, remaining refs: " << ref_count << "\n";
+                                        LOG(TRACE, LOG_TAG) << "Completed zerocopy buffer ID " << buffer_id << " after " << duration_ms << "ms, remaining refs: " << ref_count << "\n";
                                         
                                         if (ref_count <= 0) {
                                             // Last reference - can release global buffer
                                             auto total_duration = std::chrono::steady_clock::now() - global_it->second->create_time;
                                             auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(total_duration).count();
-                                            LOG(DEBUG, LOG_TAG) << "Releasing global zerocopy buffer ID " << buffer_id << " after " << total_ms << "ms total lifetime\n";
+                                            LOG(TRACE, LOG_TAG) << "Releasing global zerocopy buffer ID " << buffer_id << " after " << total_ms << "ms total lifetime\n";
                                             global_buffer_registry_.erase(global_it);
                                         }
                                     } else {

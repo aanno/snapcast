@@ -31,6 +31,7 @@
 #include <mutex>
 #include <map>
 #include <chrono>
+#include <thread>
 #include <sys/socket.h>
 #include <linux/errqueue.h>
 
@@ -108,9 +109,10 @@ private:
     /// Release zerocopy reservation
     void releaseZeroCopy();
     
-    /// Error queue monitoring for zerocopy completions
+    /// Error queue monitoring for zerocopy completions - thread-based
     void startErrorQueueMonitoring();
     void stopErrorQueueMonitoring();
+    void errorQueueMonitoringLoop();
     void processErrorQueue();
     
     /// Buffer tracking for zerocopy completion
@@ -172,9 +174,10 @@ private:
     mutable std::atomic<uint64_t> completion_notifications_missing_{0};
     mutable std::atomic<uint64_t> buffer_reuse_count_{0};
     
-    // Error queue monitoring
-    std::unique_ptr<boost::asio::steady_timer> error_queue_timer_;
-    bool monitoring_active_{false};
+    // Error queue monitoring - dedicated thread approach
+    std::unique_ptr<std::thread> error_queue_thread_;
+    std::atomic<bool> monitoring_active_{false};
+    std::atomic<bool> shutdown_requested_{false};
     
     // Buffer tracking
     std::map<uint32_t, PendingZeroCopyBuffer> pending_zerocopy_buffers_;
