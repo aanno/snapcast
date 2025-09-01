@@ -133,6 +133,10 @@ private:
     static std::map<uint32_t, std::shared_ptr<GlobalBufferRef>> global_buffer_registry_;
     static std::mutex global_buffer_mutex_;
     
+    // Buffer cleanup
+    static void cleanupStaleBuffers();
+    static constexpr std::chrono::seconds BUFFER_TIMEOUT{60}; // 60 second timeout - completion notifications unreliable
+    
     /// Pending send operation
     struct PendingSend
     {

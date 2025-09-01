@@ -37,6 +37,7 @@ StreamSessionTcpCoordinated::StreamSessionTcpCoordinated(StreamMessageReceiver* 
     : StreamSessionTcp(receiver, server_settings, std::move(socket))
 {
     native_socket_ = socket_.native_handle();
+    LOG(DEBUG, LOG_TAG) << "Native socket handle: " << native_socket_;
     zerocopy_available_ = initializeZeroCopy();
     
     if (zerocopy_available_)
@@ -98,9 +99,10 @@ void StreamSessionTcpCoordinated::stop()
 
 bool StreamSessionTcpCoordinated::initializeZeroCopy()
 {
+    LOG(DEBUG, LOG_TAG) << "initializeZeroCopy called with native_socket_: " << native_socket_;
     if (native_socket_ < 0)
     {
-        LOG(DEBUG, LOG_TAG) << "Invalid native socket handle";
+        LOG(DEBUG, LOG_TAG) << "Invalid native socket handle: " << native_socket_;
         return false;
     }
     
@@ -336,6 +338,7 @@ void StreamSessionTcpCoordinated::startErrorQueueMonitoring()
         return;
     
     monitoring_active_ = true;
+    LOG(DEBUG, LOG_TAG) << "Starting error queue monitoring for session " << getIP();
     
     // Start with 10ms polling for error queue
     auto self = shared_from_this();
@@ -392,9 +395,12 @@ void StreamSessionTcpCoordinated::processErrorQueue()
             break; // No more messages or error
         }
         
+        LOG(TRACE, LOG_TAG) << "Received error queue message, size: " << ret;
+        
         // Process control messages
         for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg))
         {
+            LOG(TRACE, LOG_TAG) << "Control message: level=" << cmsg->cmsg_level << ", type=" << cmsg->cmsg_type;
             if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
             {
                 struct sock_extended_err* ee = reinterpret_cast<struct sock_extended_err*>(CMSG_DATA(cmsg));
@@ -464,7 +470,8 @@ StreamSessionTcpCoordinated::ZeroCopyStats StreamSessionTcpCoordinated::getZeroC
     stats.completion_notifications_missing = completion_notifications_missing_.load();
     stats.buffer_reuse_count = buffer_reuse_count_.load();
     
-    // Get global shared buffer count
+    // Cleanup stale buffers and get global shared buffer count
+    StreamSessionTcpCoordinated::cleanupStaleBuffers();
     {
         std::lock_guard<std::mutex> lock(global_buffer_mutex_);
         stats.global_shared_buffers = global_buffer_registry_.size();
@@ -485,4 +492,27 @@ void StreamSessionTcpCoordinated::resetZeroCopyStats()
     completion_notifications_missing_.store(0);
     buffer_reuse_count_.store(0);
     // Note: outstanding_zerocopy_buffers, global_shared_buffers and pending_async_operations are not reset as they represent current state
+}
+
+void StreamSessionTcpCoordinated::cleanupStaleBuffers()
+{
+    std::lock_guard<std::mutex> lock(global_buffer_mutex_);
+    auto now = std::chrono::steady_clock::now();
+    
+    auto it = global_buffer_registry_.begin();
+    size_t cleaned_count = 0;
+    while (it != global_buffer_registry_.end()) {
+        if (now - it->second->create_time > BUFFER_TIMEOUT) {
+            LOG(TRACE, LOG_TAG) << "Timeout cleanup of stale buffer ID " << it->first << " after " 
+                                  << std::chrono::duration_cast<std::chrono::seconds>(now - it->second->create_time).count() << "s";
+            cleaned_count++;
+            it = global_buffer_registry_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    if (cleaned_count > 0) {
+        LOG(DEBUG, LOG_TAG) << "Cleaned up " << cleaned_count << " stale zerocopy buffers due to missing completion notifications";
+    }
 }

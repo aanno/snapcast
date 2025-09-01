@@ -27,6 +27,7 @@
 
 // standard headers
 #include <iomanip>
+#include <thread>
 
 // 3rd party headers
 
@@ -272,28 +273,75 @@ void StreamServer::stop()
     }
 }
 
-void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* coordinated_session) const
+void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* /* coordinated_session */) const
 {
-    StreamSessionTcpCoordinated::ZeroCopyStats stats = coordinated_session->getZeroCopyStats();
-    LOG(INFO, LOG_TAG) << "Zerocopy Stats for session " << coordinated_session->getIP()
-                       << "\n\tZC Attempts: " << stats.zerocopy_attempts << ", "
-                       << "\n\tZC Successful: " << stats.zerocopy_successful << ", "
-                       << "\n\tZC Bytes: " << stats.zerocopy_bytes << ", "
-                       << "\n\tRegular Sends: " << stats.regular_sends << ", "
-                       << "\n\tRegular Bytes: " << stats.regular_bytes << ", "
-                       << "\n\tCoordination Fallbacks: " << stats.coordination_fallbacks << ", "
-                       << "\n\tPending Async Operations: " << stats.pending_async_operations << ", "
-                       << "\n\tOutstanding ZC Buffers: " << stats.outstanding_zerocopy_buffers << ", "
-                       << "\n\tGlobal Shared Buffers: " << stats.global_shared_buffers << ", "
-                       << "\n\tBuffer Reuse Count: " << stats.buffer_reuse_count << ", "
-                       << "\n\tCompletion Notifications: " << stats.completion_notifications_received << ", "
-                       << "\n\tMissing Notifications: " << stats.completion_notifications_missing << ", "
-                       << std::fixed << std::setprecision(2)
-                       << "\n\tZC Success Rate: " << stats.zerocopy_percentage() << "%"
-                       << "\n\tCompletion Reliability: " << stats.completion_reliability() << "%\n";
+    // Aggregate stats from all zerocopy sessions
+    StreamSessionTcpCoordinated::ZeroCopyStats aggregated_stats = {};
+    int zerocopy_session_count = 0;
     
-    // Reset stats after reporting to show periodic performance
-    coordinated_session->resetZeroCopyStats();
+    std::lock_guard<std::recursive_mutex> mlock(sessionsMutex_);
+    for (const auto& s : sessions_) {
+        if (auto session = s.lock()) {
+            if (auto zc_session = dynamic_cast<StreamSessionTcpCoordinated*>(session.get())) {
+                auto stats = zc_session->getZeroCopyStats();
+                aggregated_stats.zerocopy_attempts += stats.zerocopy_attempts;
+                aggregated_stats.zerocopy_successful += stats.zerocopy_successful;
+                aggregated_stats.zerocopy_bytes += stats.zerocopy_bytes;
+                aggregated_stats.regular_sends += stats.regular_sends;
+                aggregated_stats.regular_bytes += stats.regular_bytes;
+                aggregated_stats.coordination_fallbacks += stats.coordination_fallbacks;
+                aggregated_stats.pending_async_operations += stats.pending_async_operations;
+                aggregated_stats.outstanding_zerocopy_buffers += stats.outstanding_zerocopy_buffers;
+                aggregated_stats.buffer_reuse_count += stats.buffer_reuse_count;
+                aggregated_stats.completion_notifications_received += stats.completion_notifications_received;
+                aggregated_stats.completion_notifications_missing += stats.completion_notifications_missing;
+                
+                // Global shared buffers is same for all sessions, so just use first value
+                if (zerocopy_session_count == 0) {
+                    aggregated_stats.global_shared_buffers = stats.global_shared_buffers;
+                }
+                zerocopy_session_count++;
+            }
+        }
+    }
+    
+    // Only print once for all sessions
+    static bool already_printed = false;
+    if (!already_printed && zerocopy_session_count > 0) {
+        already_printed = true;
+        
+        LOG(INFO, LOG_TAG) << "=== Aggregated ZeroCopy Stats (All " << zerocopy_session_count << " Sessions) ==="
+                           << "\n\tZC Attempts: " << aggregated_stats.zerocopy_attempts << ", "
+                           << "\n\tZC Successful: " << aggregated_stats.zerocopy_successful << ", "
+                           << "\n\tZC Bytes: " << aggregated_stats.zerocopy_bytes << ", "
+                           << "\n\tRegular Sends: " << aggregated_stats.regular_sends << ", "
+                           << "\n\tRegular Bytes: " << aggregated_stats.regular_bytes << ", "
+                           << "\n\tCoordination Fallbacks: " << aggregated_stats.coordination_fallbacks << ", "
+                           << "\n\tPending Async Operations: " << aggregated_stats.pending_async_operations << ", "
+                           << "\n\tOutstanding ZC Buffers: " << aggregated_stats.outstanding_zerocopy_buffers << ", "
+                           << "\n\tGlobal Shared Buffers: " << aggregated_stats.global_shared_buffers << ", "
+                           << "\n\tBuffer Reuse Count: " << aggregated_stats.buffer_reuse_count << ", "
+                           << "\n\tCompletion Notifications: " << aggregated_stats.completion_notifications_received << ", "
+                           << "\n\tMissing Notifications: " << aggregated_stats.completion_notifications_missing << ", "
+                           << std::fixed << std::setprecision(2)
+                           << "\n\tZC Success Rate: " << aggregated_stats.zerocopy_percentage() << "%"
+                           << "\n\tCompletion Reliability: " << aggregated_stats.completion_reliability() << "%\n";
+        
+        // Reset stats after reporting for all sessions
+        for (const auto& s : sessions_) {
+            if (auto session = s.lock()) {
+                if (auto zc_session = dynamic_cast<StreamSessionTcpCoordinated*>(session.get())) {
+                    zc_session->resetZeroCopyStats();
+                }
+            }
+        }
+        
+        // Reset the flag for next reporting cycle
+        std::thread([]{
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            already_printed = false;
+        }).detach();
+    }
 }
 
 void StreamServer::startDiagnosticsTimer()
