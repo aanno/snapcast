@@ -48,12 +48,18 @@ This is the build procedure:
 
 ## MCP tool usage
 
+### Tool pg-mcp-server
+
+For 'connect' use postgresql://pgmcp:pgmcp@pg-mcp-db:5432/pgmcp as connect string.
+
+### Tool vscode-mcp-server
+
 Don't use tool 'vscode-mcp-server - execute_shell_command_code (MCP)' because of
 issues. Instead, use bash directly.
 
-Don't use tool 'vscode-mcp-server - replace_lines_code (MCP)' because of issues. Instead, use direct file editing.
+Don't use tool 'vscode-mcp-server - replace_lines_code (MCP)' because of issues. Instead, use direct file editing (see below).
 
-For editing file, use tool 'Opened changes in Visual Studio Code'. This is 
+For editing files, use tool 'Opened changes in Visual Studio Code'. This is 
 much better than tool 'update'. But if you use tool 'update', don't forget to 
 use tool 'filesystem - read_text_file (MCP)' before that. Otherwise you get the
 following error: File has not been read yet. Read it first before writing to it.
@@ -68,3 +74,4 @@ The project is written in C++17 with cmake as build system and consists of sever
 - **snapserver**: The server component that streams audio to clients, source folder `server`.
 - **snapclient**: The client component that receives and plays audio, source folder `client`.
 - **common**: Shared code used by both server and client, source folder `common`.
+
