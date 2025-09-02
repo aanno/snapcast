@@ -407,7 +407,7 @@ struct Tag
     {
     }
 
-    Tag(const char* text) : text(text), is_null_(false)
+    Tag(const char* text) : text(text ? text : ""), is_null_(text == nullptr)
     {
     }
 
