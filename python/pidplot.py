@@ -17,30 +17,36 @@ def read_json(filename):
         list = entry['sysstat']['hosts'][0]['statistics']
         return list
         
-        timestamp = [item['timestamp'] for item in list]
+def normalize(list):
+    low = min(list)
+    up = max(list)
+    if (low >= 0 and up > 0):
+        return ([item/up for item in list], up)
+    else:
+        return (list, 1)
         
 record = read_json(filename)
 
 # Extract data lists from nested JSON structure
 timestamps = [rec['timestamp'] for rec in record]
 
-cpu_usr = extract(record, 'task-cpu-load', 'usr')
-cpu_system = extract(record, 'task-cpu-load', 'system')
-stack_size = extract(record, 'stack', 'StkSize')
-mem_usage = extract(record, 'task-memory', 'MEM')
-disk_rd = extract(record, 'io', 'kB_rd/s')
-disk_wr = extract(record, 'io', 'kB_wr/s')
+cpu_usr, cpu_usr_up = normalize(extract(record, 'task-cpu-load', 'usr'))
+cpu_system, cpu_system_up = normalize(extract(record, 'task-cpu-load', 'system'))
+stack_size, stack_size_up = normalize(extract(record, 'stack', 'StkSize'))
+mem_usage, mem_usage_up = normalize(extract(record, 'task-memory', 'MEM'))
+disk_rd, disk_rd_up = normalize(extract(record, 'io', 'kB_rd/s'))
+disk_wr, disk_wr_up = normalize(extract(record, 'io', 'kB_wr/s'))
 
 # For plotting, we'll use indices as x-axis (interval count)
 time = list(range(len(timestamps)))
 
 metrics = {
-    'CPU usr %': cpu_usr,
-    'CPU system %': cpu_system,
-    'Stack Size': stack_size,
-    'Memory Usage %': mem_usage,
-    'Disk Read (kB/s)': disk_rd,
-    'Disk Write (kB/s)': disk_wr
+    f'CPU usr % {cpu_usr_up}': cpu_usr,
+    f'CPU system % {cpu_system_up}': cpu_system,
+    f'Stack Size {stack_size_up}': stack_size,
+    f'Memory Usage % {mem_usage_up}': mem_usage,
+    f'Disk Read (kB/s) {disk_rd_up}': disk_rd,
+    f'Disk Write (kB/s) {disk_wr_up}': disk_wr
 }
 
 # Prepare the plot
