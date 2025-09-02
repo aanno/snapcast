@@ -17,6 +17,15 @@
                 "http://host.docker.internal:3012/sse"
             ]
         },
+        "pg-mcp-server": {
+            "command": "pnpm",
+            "args": [
+                "dlx",
+                "supergateway",
+                "--sse",
+                "http://localhost:8000/sse"
+            ]
+        },
         "fetch": {
             "command": "uvx",
             "args": [

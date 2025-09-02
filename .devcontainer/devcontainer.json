@@ -34,7 +34,7 @@
 		"nvidia.com/gpu=all"
 	],
 	"mounts": [
-		"source=/run/user/${localEnv:CONTAINER_USERID},target=/run/user/${localEnv:CONTAINER_USERID},type=bind,z,consistency=cached",
+		"source=/run/user/${localEnv:CONTAINER_USERID},target=/run/user/${localEnv:CONTAINER_USERID},type=bind,consistency=cached",
 		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/lib/apt,target=/var/lib/apt,type=bind,z,consistency=cached",
 		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/cache/apt,target=/var/cache/apt,type=bind,z,consistency=cached",
 		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/lib/dnf,target=/var/lib/dnf,type=bind,z,consistency=cached",
