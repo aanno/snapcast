@@ -7,74 +7,75 @@ from mpl_interactions import zoom_factory, panhandler
 # filename = "pidstat_output.json"  # update as needed
 filename = "cpu.log"
 
-# Data holders
-time = []
+    
+def extract(records, key, subkey):
+    return [item[key][0][subkey] for item in records]
+
+def read_json(filename):
+    with open(filename, "r") as f:
+        entry = json.load(f)
+        list = entry['sysstat']['hosts'][0]['statistics']
+        return list
+        
+        timestamp = [item['timestamp'] for item in list]
+        
+record = read_json(filename)
+
+# Extract data lists from nested JSON structure
+timestamps = [rec['timestamp'] for rec in record]
+
+cpu_usr = extract(record, 'task-cpu-load', 'usr')
+cpu_system = extract(record, 'task-cpu-load', 'system')
+stack_size = extract(record, 'stack', 'StkSize')
+mem_usage = extract(record, 'task-memory', 'MEM')
+disk_rd = extract(record, 'io', 'kB_rd/s')
+disk_wr = extract(record, 'io', 'kB_wr/s')
+
+# For plotting, we'll use indices as x-axis (interval count)
+time = list(range(len(timestamps)))
+
 metrics = {
-    'CPU %usr': [],
-    'CPU %system': [],
-    'Memory %mem': [],
-    'Disk kB_rd/s': [],
-    'Disk kB_wr/s': []
+    'CPU usr %': cpu_usr,
+    'CPU system %': cpu_system,
+    'Stack Size': stack_size,
+    'Memory Usage %': mem_usage,
+    'Disk Read (kB/s)': disk_rd,
+    'Disk Write (kB/s)': disk_wr
 }
 
-# Extract metrics based on pidstat JSON structure; adjust keys if needed
-def extract_metrics(entry):
-    cpu = entry.get("cpu", {})
-    mem = entry.get("mem", {})
-    disk = entry.get("disk", {})
-    
-    metrics['CPU %usr'].append(float(cpu.get("%usr", 0)))
-    metrics['CPU %system'].append(float(cpu.get("%system", 0)))
-    metrics['Memory %mem'].append(float(mem.get("%mem", 0)))
-    metrics['Disk kB_rd/s'].append(float(disk.get("kB_rd/s", 0)))
-    metrics['Disk kB_wr/s'].append(float(disk.get("kB_wr/s", 0)))
-
-with open(filename, "r") as f:
-    # for idx, line in enumerate(f):
-    #     if not line.strip():
-    #         continue
-    entry = json.load(f)
-    time.append(idx)  # Simple incremental timing; modify if precise timestamps available
-    extract_metrics(entry)
-
-# Start plotting
-fig, ax = plt.subplots(figsize=(10, 6))
+# Prepare the plot
+fig, ax = plt.subplots(figsize=(12, 7))
 ax.set_title("pidstat Metrics Over Time")
-ax.set_xlabel("Time (intervals)")
-ax.set_ylabel("Value")
+ax.set_xlabel("Sample Intervals")
+ax.set_ylabel("Metric Values")
 
 lines = {}
-colors = {
-    'CPU %usr': 'blue',
-    'CPU %system': 'green',
-    'Memory %mem': 'red',
-    'Disk kB_rd/s': 'purple',
-    'Disk kB_wr/s': 'orange'
-}
+colors = ['blue', 'green', 'red', 'purple', 'orange', 'brown']
 
-# Plot each metric initially visible
-for key in metrics:
-    lines[key], = ax.plot(time, metrics[key], label=key, color=colors[key])
+for i, (label, values) in enumerate(metrics.items()):
+    # Replace None with 0 or suitable default for plotting
+    safe_values = [v if v is not None else 0 for v in values]
+    line, = ax.plot(time, safe_values, label=label, color=colors[i % len(colors)])
+    lines[label] = line
 
 ax.legend(loc='upper left')
 
-# Add interactive zoom and pan from mpl_interactions
+# Add mpl_interactions zoom and pan
 zoom = zoom_factory(ax)
 pan = panhandler(fig)
 
-# Setup CheckButtons for toggling line visibility
-rax = plt.axes([0.01, 0.4, 0.12, 0.2])  # Position for checkboxes (left side)
-
+# Setup checkboxes for toggling visibility using matplotlib.widgets.CheckButtons
+rax = plt.axes([0.01, 0.4, 0.15, 0.25])  # Position for checkboxes
 labels = list(metrics.keys())
-visibility = [lines[label].get_visible() for label in labels]
-
+visibility = [line.get_visible() for line in lines.values()]
 check = CheckButtons(rax, labels, visibility)
 
-def toggle_visibility(label):
-    lines[label].set_visible(not lines[label].get_visible())
+def toggle(label):
+    line = lines[label]
+    line.set_visible(not line.get_visible())
     fig.canvas.draw_idle()
 
-check.on_clicked(toggle_visibility)
+check.on_clicked(toggle)
 
 plt.tight_layout()
 plt.show()
