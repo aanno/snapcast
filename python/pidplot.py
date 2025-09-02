@@ -1,3 +1,4 @@
+import sys
 import json
 import matplotlib.pyplot as plt
 from matplotlib.widgets import CheckButtons
@@ -5,8 +6,8 @@ from mpl_interactions import zoom_factory, panhandler
 
 # Configuration: path to pidstat JSON output file
 # filename = "pidstat_output.json"  # update as needed
-filename = "cpu.log"
-
+# filename = "cpu.json"
+filename = sys.argv[1]  # Gets the first argument after the script name
     
 def extract(records, key, subkey):
     return [item[key][0][subkey] for item in records]
