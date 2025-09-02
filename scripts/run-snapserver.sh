@@ -1,7 +1,7 @@
 #!/bin/bash -x
 
 rm snapserver.log
-./bin/snapserver -z -c snapserver2.conf > snapserver.log 2>&1 &
+./bin/snapserver -c snapserver2.conf > snapserver.log 2>&1 &
 #| tee snapserver.log
 pid=$(pidof snapserver)
 
