@@ -23,7 +23,7 @@
                 "dlx",
                 "supergateway",
                 "--sse",
-                "http://localhost:8000/sse"
+                "http://host.docker.internal:8000/sse"
             ]
         },
         "fetch": {
