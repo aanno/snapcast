@@ -96,8 +96,34 @@
 /// External logger macros
 // usage: LOG(SEVERITY) or LOG(SEVERITY, TAG)
 // e.g.: LOG(NOTICE) or LOG(NOTICE, "my tag")
+// Helper for filtered-out log messages - inherit from ostream to ensure compatibility
+namespace AixLog {
+    class NullBuffer : public std::streambuf {
+    public:
+        int overflow(int c) override { return c; }
+    };
+    
+    class NullStream : public std::ostream {
+    public:
+        NullStream() : std::ostream(&buffer) {}
+    private:
+        NullBuffer buffer;
+    };
+    // Function to get null stream instance
+    inline NullStream& get_null_stream() {
+        static NullStream instance;
+        return instance;
+    }
+}
+
+// LOG macro - optimization can be enabled by uncommenting the should_log check
 #ifndef WIN32
-#define LOG(...) AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << FUNC
+// #define LOG(...) AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << FUNC
+/* Optimized version */
+#define LOG(LEVEL, ...) \
+    (AixLog::Log::should_log(LEVEL, ##__VA_ARGS__) ? \
+        (AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(LEVEL, ##__VA_ARGS__)(LEVEL, ##__VA_ARGS__) << TIMESTAMP << FUNC) : \
+        AixLog::get_null_stream())
 #endif
 
 // usage: COLOR(TEXT_COLOR, BACKGROUND_COLOR) or COLOR(TEXT_COLOR)
@@ -562,6 +588,61 @@ public:
     {
         static Log instance_;
         return instance_;
+    }
+
+    /// Quick check if any sink would accept this log level/tag (optimization to avoid string construction)
+    static bool should_log(SEVERITY severity, const char* tag = nullptr)
+    {
+        Log& log = instance();
+        std::lock_guard<std::recursive_mutex> lock(log.mutex_);
+        
+        if (log.log_sinks_.empty()) return true; // If no sinks configured, default to logging
+        
+        // Convert old SEVERITY enum to new Severity enum
+        Severity new_severity = static_cast<Severity>(severity);
+        
+        Metadata temp_metadata;
+        temp_metadata.severity = new_severity;
+        temp_metadata.tag = tag;
+        
+        for (const auto& sink : log.log_sinks_)
+        {
+            if (sink->filter.match(temp_metadata))
+                return true;
+        }
+        return false;
+    }
+
+    /// Overload for new Severity enum class
+    static bool should_log(Severity severity, const char* tag = nullptr)
+    {
+        Log& log = instance();
+        std::lock_guard<std::recursive_mutex> lock(log.mutex_);
+        
+        if (log.log_sinks_.empty()) return true; // If no sinks configured, default to logging
+        
+        Metadata temp_metadata;
+        temp_metadata.severity = severity;
+        temp_metadata.tag = tag;
+        
+        for (const auto& sink : log.log_sinks_)
+        {
+            if (sink->filter.match(temp_metadata))
+                return true;
+        }
+        return false;
+    }
+
+    /// Overload for old SEVERITY enum with std::string tag
+    static bool should_log(SEVERITY severity, const std::string& tag)
+    {
+        return should_log(severity, tag.c_str());
+    }
+
+    /// Overload for new Severity enum class with std::string tag
+    static bool should_log(Severity severity, const std::string& tag)
+    {
+        return should_log(severity, tag.c_str());
     }
 
     /// Without "init" every LOG(X) will simply go to clog
@@ -1239,6 +1320,7 @@ static std::ostream& operator<<(std::ostream& os, const Color& color)
     os << TextColor(color);
     return os;
 }
+
 
 } // namespace AixLog
 
