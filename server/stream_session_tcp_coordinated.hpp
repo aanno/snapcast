@@ -68,7 +68,6 @@ public:
         uint64_t completion_notifications_received{0}; // Completion notifications received
         uint64_t completion_notifications_missing{0}; // Expected but missing notifications
         uint64_t buffers_completed_via_notifications{0}; // Total buffers completed via notifications
-        uint64_t global_shared_buffers{0}; // Currently shared buffers in global registry
         uint64_t buffer_reuse_count{0}; // How many times buffers were reused
         double zerocopy_percentage() const 
         { 
@@ -174,7 +173,6 @@ private:
     mutable std::atomic<uint64_t> completion_notifications_received_{0};
     mutable std::atomic<uint64_t> completion_notifications_missing_{0};
     mutable std::atomic<uint64_t> buffers_completed_via_notifications_{0};
-    mutable std::atomic<uint64_t> buffer_reuse_count_{0};
     
     // Error queue monitoring - dedicated thread approach
     std::unique_ptr<std::thread> error_queue_thread_;

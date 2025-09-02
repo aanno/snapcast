@@ -41,6 +41,7 @@ using namespace streamreader;
 using json = nlohmann::json;
 
 static constexpr auto LOG_TAG = "StreamServer";
+static constexpr auto LOG_STATS_TAG = "StreamServerStats";
 
 StreamServer::StreamServer(boost::asio::io_context& io_context, ServerSettings serverSettings, StreamMessageReceiver* messageReceiver)
     : io_context_(io_context), config_timer_(io_context), diagnostics_timer_(io_context), settings_(std::move(serverSettings)), messageReceiver_(messageReceiver)
@@ -293,15 +294,9 @@ void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* /* coor
                 aggregated_stats.coordination_fallbacks += stats.coordination_fallbacks;
                 aggregated_stats.pending_async_operations += stats.pending_async_operations;
                 aggregated_stats.outstanding_zerocopy_buffers += stats.outstanding_zerocopy_buffers;
-                aggregated_stats.buffer_reuse_count += stats.buffer_reuse_count;
                 aggregated_stats.completion_notifications_received += stats.completion_notifications_received;
                 aggregated_stats.completion_notifications_missing += stats.completion_notifications_missing;
                 aggregated_stats.buffers_completed_via_notifications += stats.buffers_completed_via_notifications;
-                
-                // Global shared buffers is same for all sessions, so just use first value
-                if (zerocopy_session_count == 0) {
-                    aggregated_stats.global_shared_buffers = stats.global_shared_buffers;
-                }
                 zerocopy_session_count++;
             }
         }
@@ -312,7 +307,7 @@ void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* /* coor
     if (!already_printed && zerocopy_session_count > 0) {
         already_printed = true;
         
-        LOG(INFO, "ZeroCopyStats") << "=== Aggregated ZeroCopy Stats (All " << zerocopy_session_count << " Sessions) ==="
+        LOG(INFO, LOG_STATS_TAG) << "=== Aggregated ZeroCopy Stats (All " << zerocopy_session_count << " Sessions) ==="
                            << "\n\tZC Attempts: " << aggregated_stats.zerocopy_attempts << ", "
                            << "\n\tZC Successful: " << aggregated_stats.zerocopy_successful << ", "
                            << "\n\tZC Bytes: " << aggregated_stats.zerocopy_bytes << ", "
@@ -321,8 +316,6 @@ void StreamServer::printZeroCopyDiagnostics(StreamSessionTcpCoordinated* /* coor
                            << "\n\tCoordination Fallbacks: " << aggregated_stats.coordination_fallbacks << ", "
                            << "\n\tPending Async Operations: " << aggregated_stats.pending_async_operations << ", "
                            << "\n\tOutstanding ZC Buffers: " << aggregated_stats.outstanding_zerocopy_buffers << ", "
-                           << "\n\tGlobal Shared Buffers: " << aggregated_stats.global_shared_buffers << ", "
-                           << "\n\tBuffer Reuse Count: " << aggregated_stats.buffer_reuse_count << ", "
                            << "\n\tCompletion Notifications: " << aggregated_stats.completion_notifications_received << ", "
                            << "\n\tMissing Notifications: " << aggregated_stats.completion_notifications_missing << ", "
                            << std::fixed << std::setprecision(2)

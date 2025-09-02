@@ -230,8 +230,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
             global_buffer_ref = it->second;
             global_buffer_ref->ref_count++;
             zerocopy_buffer = global_buffer_ref->buffer;
-            buffer_reuse_count_++;
-            LOG(DEBUG, LOG_TAG_STATS) << "Buffer reuse detected! ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load() << ", total reuse_count: " << buffer_reuse_count_.load() << "\n";
+            LOG(DEBUG, LOG_TAG_STATS) << "Buffer reuse detected! ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load() << "\n";
             LOG(TRACE, LOG_TAG) << "Reusing shared zerocopy buffer ID " << buffer_id << ", ref_count: " << global_buffer_ref->ref_count.load() << "\n";
         } else {
             // Create new shared buffer
@@ -494,19 +493,13 @@ StreamSessionTcpCoordinated::ZeroCopyStats StreamSessionTcpCoordinated::getZeroC
     stats.completion_notifications_received = completion_notifications_received_.load();
     stats.completion_notifications_missing = completion_notifications_missing_.load();
     stats.buffers_completed_via_notifications = buffers_completed_via_notifications_.load();
-    stats.buffer_reuse_count = buffer_reuse_count_.load();
     
     // Debug logging for problematic counters
     LOG(DEBUG, LOG_TAG_STATS) << "Stats debug - buffers_completed=" << stats.buffers_completed_via_notifications
-                              << ", pending_async=" << stats.pending_async_operations  
-                              << ", buffer_reuse=" << stats.buffer_reuse_count << "\n";
+                              << ", pending_async=" << stats.pending_async_operations  << "\n";
     
     // Cleanup stale buffers and get global shared buffer count
     StreamSessionTcpCoordinated::cleanupStaleBuffers();
-    {
-        std::lock_guard<std::mutex> lock(global_buffer_mutex_);
-        stats.global_shared_buffers = global_buffer_registry_.size();
-    }
     
     return stats;
 }
@@ -522,8 +515,7 @@ void StreamSessionTcpCoordinated::resetZeroCopyStats()
     completion_notifications_received_.store(0);
     completion_notifications_missing_.store(0);
     buffers_completed_via_notifications_.store(0);
-    buffer_reuse_count_.store(0);
-    // Note: outstanding_zerocopy_buffers, global_shared_buffers and pending_async_operations are not reset as they represent current state
+    // Note: outstanding_zerocopy_buffers, and pending_async_operations are not reset as they represent current state
 }
 
 void StreamSessionTcpCoordinated::cleanupStaleBuffers()
