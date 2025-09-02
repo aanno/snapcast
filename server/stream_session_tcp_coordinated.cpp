@@ -239,7 +239,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
             
             global_buffer_ref = std::make_shared<GlobalBufferRef>();
             global_buffer_ref->buffer = zerocopy_buffer;
-            global_buffer_ref->ref_count = 1;
+            global_buffer_ref->ref_count = 0;
             global_buffer_ref->create_time = std::chrono::steady_clock::now();
             
             global_buffer_registry_[buffer_id] = global_buffer_ref;
@@ -279,10 +279,38 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
     
     if (static_cast<size_t>(result) != buffer_size)
     {
-        LOG(ERROR, LOG_TAG) << "ZeroCopy partial send: " << result << "/" << buffer_size << " bytes\n";
-        releaseZeroCopy(); // Release reservation on partial send error
-        if (handler)
-            handler(boost::asio::error::message_size, result);
+        LOG(WARNING, LOG_TAG) << "ZeroCopy partial send: " << result << "/" << buffer_size << " bytes\n";
+        
+        // Track the partial zerocopy send - this IS a successful zerocopy operation
+        zerocopy_successful_++;
+        zerocopy_bytes_ += result;
+        outstanding_zerocopy_buffers_++;
+        
+        // Track the buffer for completion notification
+        {
+            std::lock_guard<std::mutex> lock(zerocopy_buffers_mutex_);
+            pending_zerocopy_buffers_[buffer_id] = {
+                zerocopy_buffer,
+                buffer_id,
+                std::chrono::steady_clock::now()
+            };
+        }
+        
+        // Send the unsent portion via regular send
+        size_t remaining_bytes = buffer_size - result;
+        auto remaining_buffer = std::make_shared<std::vector<char>>(remaining_bytes);
+        std::memcpy(remaining_buffer->data(), zerocopy_buffer->data() + result, remaining_bytes);
+        
+        LOG(DEBUG, LOG_TAG) << "Sending remaining " << remaining_bytes << " bytes via regular send\n";
+        releaseZeroCopy();
+        
+        // Send remaining data with shared_ptr to ensure buffer lifetime
+        boost::asio::async_write(socket_, boost::asio::buffer(*remaining_buffer),
+            [this, handler = std::move(handler), buffer_size, remaining_buffer](boost::system::error_code ec, std::size_t) mutable {
+            if (handler) {
+                handler(ec, ec ? 0 : buffer_size); // Report full size on success
+            }
+        });
         return;
     }
     
