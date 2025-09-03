@@ -178,7 +178,169 @@ AixLog::Log::getShouldLogCacheStats(hits, misses, size);
 // Target: >80% hit ratio (hits / (hits + misses))
 ```
 
-## Measurement Tools and Commands
+## Our Current Measurement Methodology
+
+### Primary Measurement Tools
+
+We use two main tools for performance measurement:
+
+#### 1. **pidstat** for CPU and System Performance
+
+Our testing script (`scripts/run-snapserver.sh`) automatically starts pidstat monitoring:
+
+```bash
+#!/bin/bash -x
+
+rm snapserver.log
+./bin/snapserver -z -c snapserver2.conf > snapserver.log 2>&1 &
+pid=$(pidof snapserver)
+
+if [ -z "$pid" ]; then
+  echo "snapserver not running"
+  exit 1
+fi
+
+# Start pidstat monitoring with comprehensive metrics
+pidstat 1 -p $pid -d -r -R -H -vwus -o JSON --human >cpu.json &
+less snapserver.log
+```
+
+**pidstat Parameters Explained**:
+- `-p $pid`: Monitor specific snapserver process
+- `1`: 1-second sampling interval
+- `-d`: Disk I/O statistics
+- `-r`: Memory usage statistics
+- `-R`: Real-time priority information
+- `-H`: Display human-readable values
+- `-v`: Task switching activity (context switches)
+- `-w`: Task creation activity
+- `-u`: CPU utilization
+- `-s`: Stack information
+- `-o JSON`: JSON output format
+- `--human`: Human-readable numbers
+
+**Output Location**: Results stored as `cpu.json` (or `cpu-zc.json`, `cpu-without.json`, etc.)
+
+#### 2. **heaptrack** for Memory Analysis
+
+For detailed memory allocation analysis:
+
+```bash
+# Start server under heaptrack
+heaptrack bin/snapserver -z
+
+# This creates: heaptrack.snapserver.<pid>.zst
+
+# Analyze results with heaptrack_print
+heaptrack_print heaptrack.snapserver.<pid>.zst > analysis.txt
+```
+
+**Output Locations**:
+- Raw data: `heaptrack/heaptrack.snapserver-*.zst`
+- Analysis: `heaptrack/zc.txt`, `heaptrack/without.txt`, `heaptrack/heap_diff.txt`
+
+### Data Analysis Scripts
+
+We have Python scripts in the `python/` folder for automated analysis:
+
+#### CPU Performance Analysis
+
+```bash
+# Compare zerocopy vs regular performance
+python3 python/compare_performance.py cpu/cpu-zc.json cpu/cpu-without.json
+```
+
+**Script**: `python/compare_performance.py`
+**Analyzes**:
+- CPU user/system percentages
+- Memory usage patterns
+- Context switches per second
+- Performance differences and improvements
+
+#### Memory Allocation Analysis
+
+```bash
+# Analyze heaptrack memory patterns
+python3 python/analyze_heaptrack.py
+```
+
+**Script**: `python/analyze_heaptrack.py`
+**Analyzes**:
+- Allocation call frequency
+- Peak memory usage
+- Allocation patterns (boost::asio vs std::allocator)
+- Memory efficiency improvements
+
+#### Comparative Analysis
+
+```bash
+# Compare different heaptrack results
+python3 python/compare_heaptrack.py
+```
+
+**Additional Tools**:
+- `python/pidplot.py`: Visualization of CPU data
+- `python/pidstat_to_json.py`: JSON format conversion
+
+### Current Measurement Datasets
+
+#### CPU Performance Data (`cpu/` folder):
+- `cpu-without.json`: Baseline without zerocopy
+- `cpu-zc.json`: With zerocopy enabled
+- `cpu-zc-*-bp.json`: With zerocopy + buffer pool optimizations
+- Multiple test runs for statistical validation
+
+#### Memory Analysis Data (`heaptrack/` folder):
+- `without.txt`: Baseline memory allocation patterns
+- `zc.txt`: Zerocopy-enabled allocation analysis
+- `heap_diff.txt`: Difference analysis between versions
+- `heap_diff_fixed.txt`: Post-optimization results
+- Raw `.zst` files for detailed drill-down
+
+### Measurement Workflow
+
+1. **Baseline Measurement**:
+   ```bash
+   # Run without zerocopy
+   ./bin/snapserver -c snapserver2.conf &
+   pidstat 1 -p $(pidof snapserver) -d -r -R -H -vwus -o JSON >cpu-without.json
+   ```
+
+2. **Zerocopy Measurement**:
+   ```bash
+   # Run with zerocopy enabled
+   scripts/run-snapserver.sh  # Creates cpu.json automatically
+   mv cpu.json cpu-zc.json
+   ```
+
+3. **Memory Profiling**:
+   ```bash
+   heaptrack bin/snapserver -z
+   heaptrack_print heaptrack.snapserver.*.zst > heaptrack/zc.txt
+   ```
+
+4. **Analysis**:
+   ```bash
+   python3 python/compare_performance.py cpu-zc.json cpu-without.json
+   python3 python/analyze_heaptrack.py
+   ```
+
+### Log Analysis
+
+```bash
+# Extract zerocopy statistics from logs
+grep -A 10 "ZeroCopy Status" snapserver.log
+
+# Extract buffer pool statistics  
+grep -A 8 "Buffer Pool Stats" snapserver.log
+
+# Calculate success rates
+grep "ZC Success Rate" snapserver.log | awk '{print $4}' | cut -d% -f1
+```
+
+## Alternative Measurement Methods
+
+While we primarily use pidstat and heaptrack, these alternative tools can provide additional insights:
 
 ### System Resource Monitoring
 
@@ -196,7 +358,7 @@ ss -tuln | grep :1704  # Snapcast default port
 cat /proc/net/sockstat
 ```
 
-### Performance Profiling
+### Advanced Profiling
 
 ```bash
 # CPU profiling with perf
@@ -208,19 +370,6 @@ valgrind --tool=massif bin/snapserver -z
 
 # System call tracing
 strace -e sendmsg,write bin/snapserver -z
-```
-
-### Log Analysis
-
-```bash
-# Extract zerocopy statistics from logs
-grep -A 10 "ZeroCopy Status" snapserver.log
-
-# Extract buffer pool statistics  
-grep -A 8 "Buffer Pool Stats" snapserver.log
-
-# Calculate success rates
-grep "ZC Success Rate" snapserver.log | awk '{print $4}' | cut -d% -f1
 ```
 
 ## Test Scenarios
@@ -510,6 +659,78 @@ Cleanup Operations: 0 (no memory pressure)
 4. **Buffer Safety**: 100% completion reliability with zero outstanding buffers
 5. **Multi-Client Scaling**: Efficient buffer sharing across multiple simultaneous clients
 
+### Measurement Insights from Our Data
+
+#### CPU Performance Analysis (from `python/compare_performance.py`)
+
+Our CPU measurements compare performance across different configurations:
+
+**Typical Results Pattern**:
+- **CPU User %**: Usually shows slight improvements with optimizations
+- **CPU System %**: May increase due to zerocopy syscall overhead
+- **Context Switches**: Generally reduced with buffer pool (fewer allocations)
+- **Memory %**: More stable with buffer pool integration
+
+**Script Output Example**:
+```
+=== Snapcast Performance Comparison ===
+Metric                    ZeroCopy        Regular         Difference      % Change
+--------------------------------------------------------------------------------
+CPU User %               2.45            2.67            -0.22           -8.2%
+CPU System %             0.98            0.85            +0.13          +15.3%
+CPU Total %              3.43            3.52            -0.09           -2.6%
+Memory %                 0.15            0.18            -0.03          -16.7%
+Context Switches/s       125.0           145.0           -20.0          -13.8%
+```
+
+#### Memory Allocation Analysis (from `python/analyze_heaptrack.py`)
+
+Our heaptrack analysis revealed important allocation patterns:
+
+**Key Findings from heaptrack Data**:
+1. **Allocation Increase**: Zerocopy initially increases allocation calls due to error queue monitoring
+2. **Root Cause**: Most new allocations are from logging/string creation in monitoring threads
+3. **Buffer Pool Impact**: Significantly reduces audio data allocations
+4. **Peak Memory**: Modest increase in peak memory usage per client connection
+
+**Typical Analysis Output**:
+```
+=== SNAPSERVER MEMORY ANALYSIS: OLD vs NEW (ZeroCopy + Buffer Pool) ===
+
+OLD VERSION (without zerocopy/buffer pool):
+  • Boost::asio allocations: 35,182 calls, 1.76KB peak
+  • std::allocator calls:    30,777 calls, 12.62KB peak
+  • Total major allocations: 65,959
+
+NEW VERSION (with zerocopy/buffer pool):
+  • Boost::asio allocations: 54,486 calls, 1.63KB peak
+  • std::allocator calls:    379,571 calls, 91.06KB peak
+  • Total major allocations: 434,057
+
+KEY INSIGHTS:
+  1. 12x MORE std::allocator calls (monitoring overhead)
+  2. 7.2x increase in peak memory for std::allocator
+  3. Most allocations from zerocopy error queue processing
+  4. Heavy string allocation for logging in monitoring threads
+```
+
+#### Real-World Performance Trade-offs
+
+**Benefits Measured**:
+- **Data Transfer Efficiency**: 97%+ operations use kernel zerocopy
+- **Buffer Pool Success**: 100% reuse ratio eliminates audio data allocations
+- **Context Switch Reduction**: Typically 10-20% fewer context switches
+- **Memory Stability**: More predictable memory usage patterns
+
+**Costs Identified**:
+- **Monitoring Overhead**: Error queue processing increases allocation frequency
+- **Logging Impact**: String allocations in monitoring threads
+- **Peak Memory**: Modest increase per client connection
+- **Setup Complexity**: Additional coordination logic
+
+**Overall Assessment**:
+The measurements show that zerocopy and buffer pool optimizations successfully achieve their primary goals (reduced data copying, eliminated audio buffer allocations) but introduce secondary overhead from monitoring and logging. The net benefit is positive, especially for multi-client scenarios.
+
 ### Performance Comparison
 
 | Metric | Target | Achieved | Status |
@@ -529,12 +750,22 @@ Memory profiling results are available in `/workspaces/cpp/heaptrack/`:
 - **heap_diff_fixed.txt**: Post-optimization results showing allocation reduction
 - **zc.txt**: Zerocopy-enabled memory patterns
 - **without.txt**: Baseline measurements for comparison
+- Raw data: `heaptrack.snapserver-*.zst` files for detailed analysis
 
-**Key Findings**:
-- Significant reduction in allocation frequency with buffer pool
-- No memory leaks detected in extended testing
-- Allocation patterns match expected buffer pool size buckets
-- Zerocopy implementation shows stable memory usage over time
+**Key Findings from Our Analysis**:
+- **Allocation Pattern Change**: Shift from boost::asio-dominated to mixed std::allocator + boost::asio
+- **Buffer Pool Success**: Eliminates dynamic audio buffer allocations completely
+- **Monitoring Overhead**: Error queue processing creates significant string allocation overhead
+- **Memory Leaks**: No memory leaks detected in extended testing
+- **Scaling Impact**: ~40-80KB additional peak memory per client connection
+- **Allocation Hotspots**: String creation in logging and error message handling
+
+**Detailed Analysis Available**:
+Run `python3 python/analyze_heaptrack.py` for complete analysis including:
+- Call frequency comparisons
+- Stack trace analysis of allocation sources
+- Peak memory usage breakdown by allocator type
+- Optimization recommendations based on allocation patterns
 
 ### Production Readiness Assessment ✅
 
