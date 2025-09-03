@@ -1,0 +1,3 @@
+[submodule "librist"]
+	path = librist
+	url = https://github.com/nanake/librist.git
