@@ -23,6 +23,10 @@
 // prototype/interface header file
 #include "controller.hpp"
 
+#ifdef HAS_LIBRIST
+#include "client_connection_rist.hpp"
+#endif
+
 // local headers
 #include "decoder/null_decoder.hpp"
 #include "decoder/pcm_decoder.hpp"
@@ -429,6 +433,10 @@ void Controller::start()
 #ifdef HAS_OPENSSL
         else if (settings_.server.protocol == "wss")
             clientConnection_ = make_unique<ClientConnectionWss>(io_context_, ssl_context_, settings_.server);
+#endif
+#ifdef HAS_LIBRIST
+        else if (settings_.server.protocol == "rist")
+            clientConnection_ = make_unique<ClientConnectionRist>(io_context_, settings_.server);
 #endif
         else
             clientConnection_ = make_unique<ClientConnectionTcp>(io_context_, settings_.server);

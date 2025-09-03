@@ -149,12 +149,19 @@ int main(int argc, char** argv)
         OptionParser op("Usage: snapclient [options...] [url]\n\n"
                         " With 'url' = "
 #ifdef HAS_OPENSSL
-                        "<tcp|ws|wss>"
+                        "<tcp|ws|wss"
 #else
-                        "<tcp|ws>"
+                        "<tcp|ws"
 #endif
-                        "://<snapserver host or IP>[:port]\n"
-                        " For example: \"tcp:\\\\192.168.1.1:1704\", or \"ws:\\\\homeserver.local\"\n"
+#ifdef HAS_LIBRIST
+                        "|rist"
+#endif
+                        ">://<snapserver host or IP>[:port]\n"
+                        " For example: \"tcp:\\\\192.168.1.1:1704\", or \"ws:\\\\homeserver.local\""
+#ifdef HAS_LIBRIST
+                        ", or \"rist:\\\\192.168.1.1:1706\""
+#endif
+                        "\n"
                         " If 'url' is not configured, snapclient tries to resolve the snapserver IP via mDNS\n");
         auto helpSwitch = op.add<Switch>("", "help", "Produce help message");
         auto groffSwitch = op.add<Switch, Attribute::hidden>("", "groff", "Produce groff message");
@@ -356,16 +363,32 @@ int main(int argc, char** argv)
             catch (...)
             {
 #ifdef HAS_OPENSSL
-                throw SnapException("Invalid URI - expected format: \"<scheme>://<host or IP>[:port]\", with 'scheme' on of 'tcp', 'ws' or 'wss'");
+                throw SnapException("Invalid URI - expected format: \"<scheme>://<host or IP>[:port]\", with 'scheme' one of 'tcp', 'ws', 'wss'"
+#ifdef HAS_LIBRIST
+                                    " or 'rist'"
+#endif
+                                    );
 #else
-                throw SnapException("Invalid URI - expected format: \"<scheme>://<host or IP>[:port]\", with 'scheme' on of 'tcp' or 'ws'");
+                throw SnapException("Invalid URI - expected format: \"<scheme>://<host or IP>[:port]\", with 'scheme' one of 'tcp', 'ws'"
+#ifdef HAS_LIBRIST
+                                    " or 'rist'"
+#endif
+                                    );
 #endif
             }
-            if ((uri.scheme != "tcp") && (uri.scheme != "ws") && (uri.scheme != "wss"))
+            if ((uri.scheme != "tcp") && (uri.scheme != "ws") && (uri.scheme != "wss") && (uri.scheme != "rist"))
 #ifdef HAS_OPENSSL
-                throw SnapException("Protocol must be one of 'tcp', 'ws' or 'wss'");
+                throw SnapException("Protocol must be one of 'tcp', 'ws', 'wss'"
+#ifdef HAS_LIBRIST
+                                    " or 'rist'"
+#endif
+                                    );
 #else
-                throw SnapException("Protocol must be one of 'tcp' or 'ws'");
+                throw SnapException("Protocol must be one of 'tcp', 'ws'"
+#ifdef HAS_LIBRIST
+                                    " or 'rist'"
+#endif
+                                    );
 #endif
             settings.server.host = uri.host;
             settings.server.protocol = uri.scheme;
@@ -382,6 +405,10 @@ int main(int argc, char** argv)
                 throw SnapException("Snapclient is built without wss support");
 #endif
             }
+#ifdef HAS_LIBRIST
+            else if (settings.server.protocol == "rist")
+                settings.server.port = 1706;
+#endif
 
             if (!uri.user.empty() || !uri.password.empty())
             {
