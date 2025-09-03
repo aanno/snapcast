@@ -9,6 +9,15 @@ For reference, you find sources at ./librist .
 
 We need server and client RIST support. We start with server.
 
+I already added the following to  `snapserver2.conf`:
+
+```ini
+[rist]
+# could later be a broadcast or multicast address
+bind_to_address = 192.168.10.139
+port = 1706
+```
+
 ## Coding Guidelines
 
 * Please ensure that all usage of `LOG(...)` includes a newline character (`\n`) at the end of the log message. This ensures proper formatting in the log output.

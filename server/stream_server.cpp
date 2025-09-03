@@ -23,6 +23,9 @@
 #include "common/aixlog.hpp"
 #include "config.hpp"
 #include "stream_session_tcp.hpp"
+#ifdef HAS_LIBRIST
+#include "stream_session_rist.hpp"
+#endif
 
 // 3rd party headers
 
@@ -237,6 +240,26 @@ void StreamServer::start()
     }
 
     startAccept();
+
+#ifdef HAS_LIBRIST
+    // Initialize RIST sessions if enabled
+    if (settings_.rist.enabled)
+    {
+        for (const auto& address : settings_.rist.bind_to_address)
+        {
+            try
+            {
+                LOG(INFO, LOG_TAG) << "Creating RIST session for address: " << address << ", port: " << settings_.rist.port << "\n";
+                auto rist_session = make_shared<StreamSessionRist>(this, settings_, address, settings_.rist.port, io_context_);
+                addSession(rist_session);
+            }
+            catch (const std::exception& e)
+            {
+                LOG(ERROR, LOG_TAG) << "error creating RIST session: " << e.what() << "\n";
+            }
+        }
+    }
+#endif
 }
 
 

@@ -109,6 +109,7 @@ option(BUILD_WITH_EXPAT "Build with EXPAT support" ON)
 option(BUILD_WITH_PULSE "Build with PulseAudio support" OFF)
 option(BUILD_WITH_JACK "Build with JACK support" OFF)
 option(BUILD_WITH_PIPEWIRE "Build with PipeWire support" OFF)
+option(BUILD_WITH_LIBRIST "Build with librist support" OFF)
 
 if(NOT BUILD_SHARED_LIBS AND NOT BUILD_STATIC_LIBS)
   message(
@@ -231,6 +232,27 @@ if(NOT WIN32 AND NOT ANDROID)
       pkg_search_module(PIPEWIRE REQUIRED libpipewire-0.3)
       add_compile_definitions(HAS_PIPEWIRE)
     endif(BUILD_WITH_PIPEWIRE)
+
+    if(BUILD_WITH_LIBRIST)
+      # Try to find librist using pkg-config
+      pkg_search_module(LIBRIST librist)
+      if(NOT LIBRIST_FOUND)
+        # Fallback: look for system-installed librist
+        find_path(LIBRIST_INCLUDE_DIRS librist/librist.h
+                  PATHS /usr/include /usr/local/include)
+        find_library(LIBRIST_LIBRARIES rist
+                     PATHS /usr/lib64 /usr/lib /usr/local/lib)
+        if(LIBRIST_INCLUDE_DIRS AND LIBRIST_LIBRARIES)
+          set(LIBRIST_FOUND TRUE)
+          message(STATUS "Found librist: ${LIBRIST_LIBRARIES}")
+        endif()
+      endif()
+      if(LIBRIST_FOUND)
+        add_compile_definitions(HAS_LIBRIST)
+      else()
+        message(FATAL_ERROR "librist not found. Install librist or disable with -DBUILD_WITH_LIBRIST=OFF")
+      endif()
+    endif(BUILD_WITH_LIBRIST)
 
     if(BUILD_WITH_AVAHI)
       pkg_search_module(AVAHI REQUIRED avahi-client)

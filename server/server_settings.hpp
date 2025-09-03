@@ -188,6 +188,17 @@ struct ServerSettings
         std::vector<std::string> bind_to_address{{"::"}};
     };
 
+    /// RIST streaming settings
+    struct Rist
+    {
+        /// enable RIST audio streaming
+        bool enabled{true};
+        /// RIST port
+        size_t port{1706};
+        /// RIST listen addresses
+        std::vector<std::string> bind_to_address{{"::"}};
+    };
+
     /// Stream settings
     struct Stream
     {
@@ -232,6 +243,7 @@ struct ServerSettings
     Authorization auth;              ///< Auth settings
     Http http;                       ///< HTTP settings
     Tcp tcp;                         ///< TCP settings
+    Rist rist;                       ///< RIST settings
     Stream stream;                   ///< Stream settings
     StreamingClient streamingclient; ///< Client settings
     Logging logging;                 ///< Logging settings
