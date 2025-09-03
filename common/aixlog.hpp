@@ -119,9 +119,9 @@ namespace AixLog {
 // LOG macro - optimization can be enabled by uncommenting the should_log check
 #ifndef WIN32
 // #define LOG(...) AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << FUNC
-/* Optimized version */
+/* Optimized version with caching */
 #define LOG(LEVEL, ...) \
-    (AixLog::Log::should_log(LEVEL, ##__VA_ARGS__) ? \
+    (AixLog::Log::should_log_cached(LEVEL, ##__VA_ARGS__) ? \
         (AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(LEVEL, ##__VA_ARGS__)(LEVEL, ##__VA_ARGS__) << TIMESTAMP << FUNC) : \
         AixLog::get_null_stream())
 #endif
@@ -633,6 +633,21 @@ public:
         return false;
     }
 
+    /// Cached version of should_log for better performance (implemented in aixlog.cpp)
+    static bool should_log_cached(SEVERITY severity, const char* tag = nullptr);
+    
+    /// Cached version of should_log for new Severity enum class
+    static bool should_log_cached(Severity severity, const char* tag = nullptr);
+    
+    /// Cached version of should_log for new Severity enum class with std::string tag
+    static bool should_log_cached(Severity severity, const std::string& tag);
+    
+    /// Clear the should_log cache (call when log configuration changes)
+    static void clearShouldLogCache();
+    
+    /// Get cache statistics for debugging
+    static void getShouldLogCacheStats(size_t& hits, size_t& misses, size_t& size);
+
     /// Overload for old SEVERITY enum with std::string tag
     static bool should_log(SEVERITY severity, const std::string& tag)
     {
@@ -649,6 +664,7 @@ public:
     static void init(const std::vector<log_sink_ptr>& log_sinks = {})
     {
         Log::instance().log_sinks_.clear();
+        clearShouldLogCache(); // Clear cache when configuration changes
 
         for (const auto& sink : log_sinks)
             Log::instance().add_logsink(sink);
@@ -676,12 +692,14 @@ public:
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         log_sinks_.push_back(sink);
+        clearShouldLogCache(); // Clear cache when sinks change
     }
 
     void remove_logsink(const log_sink_ptr& sink)
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
+        clearShouldLogCache(); // Clear cache when sinks change
     }
 
 protected:

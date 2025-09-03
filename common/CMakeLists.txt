@@ -1,4 +1,4 @@
-set(SOURCES resampler.cpp sample_format.cpp base64.cpp stream_uri.cpp buffer_pool.cpp
+set(SOURCES resampler.cpp sample_format.cpp base64.cpp stream_uri.cpp buffer_pool.cpp aixlog.cpp
             utils/string_utils.cpp)
 
 if(NOT WIN32 AND NOT ANDROID)

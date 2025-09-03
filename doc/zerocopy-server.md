@@ -46,6 +46,90 @@ echo "zerocopy = true" >> /etc/snapserver.conf
 
 ## Implementation Details
 
+### Critical Architecture Change: Buffer Lifetime Management
+
+A fundamental change was required for zerocopy: **changing the `sendAsync()` signature from**:
+
+```cpp
+// BEFORE: Reference to buffer (dangerous for zerocopy)
+virtual void sendAsync(const shared_const_buffer& buffer, WriteHandler&& handler) = 0;
+
+// AFTER: Shared pointer to buffer (safe for zerocopy)  
+virtual void sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler) = 0;
+```
+
+#### Why This Change Was Essential
+
+**The Zerocopy Buffer Lifetime Problem**:
+1. **Zerocopy operations are asynchronous** - the kernel may send data long after `sendmsg()` returns
+2. **Kernel needs stable buffers** - the buffer must remain valid until the kernel completes transmission
+3. **Reference semantics are dangerous** - passing `const shared_const_buffer&` means the buffer could be destroyed while kernel is still using it
+4. **Stack unwinding risk** - if the calling function returns, stack-allocated buffers become invalid
+
+**The Solution - Shared Pointer Semantics**:
+1. **Guaranteed Lifetime** - `std::shared_ptr<shared_const_buffer>` ensures buffer lives until last reference is released
+2. **Reference Counting** - Buffer automatically freed only when both application and kernel are done with it
+3. **Zerocopy Safety** - Kernel completion notifications can safely decrement reference count
+4. **RAII Cleanup** - No manual memory management required
+
+#### Implementation in sendNext()
+
+The key change is in `StreamSession::sendNext()` at server/stream_session.cpp:55:
+
+```cpp
+void StreamSession::sendNext()
+{
+    auto& buffer = messages_.front();  // Reference to buffer in deque
+    buffer.on_air = true;
+    boost::asio::post(strand_, [this, self = shared_from_this(), buffer]()
+    {
+        // CRITICAL: Convert to shared_ptr for safe zerocopy buffer lifetime
+        auto buffer_ptr = std::make_shared<shared_const_buffer>(buffer);
+        
+        // Pass shared_ptr to sendAsync - buffer now guaranteed to live 
+        // until kernel completion notification
+        sendAsync(buffer_ptr, [this, buffer_ptr](boost::system::error_code ec, std::size_t length)
+        {
+            // buffer_ptr keeps buffer alive during this callback
+            auto write_handler = buffer_ptr->getWriteHandler();
+            if (write_handler)
+                write_handler(ec, length);
+            // buffer_ptr goes out of scope here - may trigger cleanup
+        });
+        // buffer_ptr may still be held by zerocopy system
+    });
+}
+```
+
+#### Multi-Client Buffer Sharing
+
+This change also enables **efficient buffer sharing across multiple clients**:
+
+1. **Same Audio Chunk, Multiple Clients** - When the same PCM chunk needs to go to multiple clients
+2. **Single Buffer Creation** - `shared_const_buffer` created once with pooled memory
+3. **Reference Counting** - Each client session gets its own `std::shared_ptr` to the same buffer
+4. **Automatic Cleanup** - Buffer freed only when all clients have completed transmission
+5. **Memory Efficiency** - One buffer copy instead of N copies for N clients
+
+#### Buffer Pool Integration
+
+The `shared_const_buffer` class has been enhanced with buffer pool integration:
+
+```cpp
+struct Message
+{
+    DynamicBufferPool::BufferGuard buffer_guard; ///< pooled buffer for data
+    size_t data_size;                             ///< actual size of data in buffer  
+    // ... other fields
+};
+```
+
+**Benefits**:
+- **Reduced Allocations** - Reuses pooled memory instead of malloc/free per message
+- **Size Bucketing** - Efficient memory management for different message sizes
+- **RAII Cleanup** - BufferGuard automatically returns buffer to pool
+- **Thread Safety** - Pool operations are thread-safe for multi-client scenarios
+
 ### Architecture: Coordinated Approach
 
 Our implementation uses a **coordinated approach** that safely combines Boost.Asio async operations with direct MSG_ZEROCOPY syscalls. This design choice was made to:
@@ -311,10 +395,61 @@ When working correctly, the coordinated zerocopy approach provides:
 
 The diagnostics system allows real-time monitoring of these benefits and helps identify any coordination or performance issues.
 
+## Additional Optimizations
+
+### Buffer Pool Memory Management
+
+The implementation includes a `DynamicBufferPool` (`common/buffer_pool.hpp/cpp`) that significantly reduces memory allocation overhead:
+
+**Features**:
+- **Size Buckets**: Powers of 2 sizing (1024, 2048, 4096, etc.) for efficient reuse
+- **RAII Management**: `BufferGuard` automatically returns buffers to pool
+- **Thread Safety**: Atomic statistics and mutex protection for multi-client scenarios
+- **Automatic Cleanup**: Idle buffers cleaned up after 5 minutes
+- **Statistics Tracking**: Pool efficiency metrics logged every 30 seconds
+
+**Integration**: 
+- `shared_const_buffer` uses pooled memory via `DynamicBufferPool::BufferGuard`
+- Audio message serialization reuses buffers instead of individual malloc/free
+- Significant allocation reduction in multi-client streaming scenarios
+
+**Statistics Logged**:
+```
+=== Buffer Pool Stats ===
+	Total Buffers: 16
+	Available Buffers: 16  
+	Bytes Allocated: 65536
+	Buffers Created: 0
+	Buffers Reused: 6088
+	Cleanup Operations: 0
+```
+
+### Optimized Logging System
+
+The logging system (`common/aixlog.hpp/cpp`) has been enhanced with caching for better performance:
+
+**Optimization**: 
+- `should_log()` results cached with hash map: `(severity, tag) -> bool`
+- `LOG()` macro uses `should_log_cached()` to avoid repeated filter evaluations
+- Cache automatically invalidated when sink configuration changes
+- LRU-style eviction prevents memory growth
+
+**Performance Impact**:
+- Eliminates repeated filter matching for frequent log calls
+- Reduces string construction overhead for filtered-out messages
+- Particularly beneficial for TRACE/DEBUG logging in production
+
+**Cache Statistics** (accessible via `getShouldLogCacheStats()`):
+- Cache hits/misses for performance monitoring
+- Cache size for memory usage tracking
+- Automatic cache clearing on configuration changes
+
 ## Integration Notes
 
 - **Backward Compatible**: Automatically falls back to regular async operations when zerocopy unavailable
 - **Thread Safe**: All statistics and coordination use atomic operations
 - **Boost.Asio Compatible**: Full integration with existing async patterns
 - **Configurable**: Enable via command line (`-z`) or config file (`zerocopy = true`)
+- **Memory Optimized**: Buffer pool and log caching reduce allocation overhead
+- **Comprehensive Diagnostics**: Real-time monitoring of zerocopy, buffer pool, and cache performance
 - **Zero Code Changes**: Existing client code unchanged, transparent enhancement
