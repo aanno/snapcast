@@ -29,7 +29,7 @@
 #include <memory>
 #include <queue>
 #include <mutex>
-#include <map>
+#include <unordered_map>
 #include <chrono>
 #include <thread>
 #include <sys/socket.h>
@@ -115,29 +115,9 @@ private:
     void errorQueueMonitoringLoop();
     void processErrorQueue();
     
-    /// Buffer tracking for zerocopy completion
-    struct PendingZeroCopyBuffer
-    {
-        std::shared_ptr<std::vector<char>> buffer;
-        uint32_t buffer_id;
-        std::chrono::steady_clock::time_point send_time;
-    };
-    
-    /// Global buffer reference counting for multi-client scenarios
-    struct GlobalBufferRef
-    {
-        std::shared_ptr<std::vector<char>> buffer;
-        std::atomic<int> ref_count{1};
-        std::chrono::steady_clock::time_point create_time;
-    };
-    
-    // Static global buffer registry
-    static std::map<uint32_t, std::shared_ptr<GlobalBufferRef>> global_buffer_registry_;
-    static std::mutex global_buffer_mutex_;
-    
-    // Buffer cleanup
-    static void cleanupStaleBuffers();
-    static constexpr std::chrono::seconds BUFFER_TIMEOUT{60}; // 60 second timeout - completion notifications unreliable
+    /// Simple buffer tracking for zerocopy completion
+    /// Maps buffer_id to the shared_ptr that keeps the buffer alive
+    /// When completion notification arrives, we remove the entry and let shared_ptr handle cleanup
     
     /// Pending send operation
     struct PendingSend
@@ -179,7 +159,7 @@ private:
     std::atomic<bool> monitoring_active_{false};
     std::atomic<bool> shutdown_requested_{false};
     
-    // Buffer tracking
-    std::map<uint32_t, PendingZeroCopyBuffer> pending_zerocopy_buffers_;
+    // Buffer tracking - maps buffer_id to shared_ptr for completion handling
+    std::unordered_map<uint32_t, std::shared_ptr<shared_const_buffer>> pending_zerocopy_buffers_;
     std::mutex zerocopy_buffers_mutex_;
 };
