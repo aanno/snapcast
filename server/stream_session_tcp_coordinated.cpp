@@ -377,8 +377,8 @@ void StreamSessionTcpCoordinated::errorQueueMonitoringLoop()
     {
         processErrorQueue();
         
-        // Sleep for 10ms between checks
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        // Sleep for 100ms between checks
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     
     LOG(DEBUG, LOG_TAG_COMPLETION) << "Error queue monitoring thread stopped for session " << getIP() << "\n";
