@@ -116,17 +116,17 @@ std::string StreamSessionWebsocket::getIP()
 }
 
 
-void StreamSessionWebsocket::sendAsync(const shared_const_buffer& buffer, WriteHandler&& handler)
+void StreamSessionWebsocket::sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler)
 {
-    LOG(TRACE, LOG_TAG) << "sendAsync: " << buffer.message().type << "\n";
+    LOG(TRACE, LOG_TAG) << "sendAsync: " << buffer->message().type << "\n";
     if (is_ssl_)
-        ssl_ws_->async_write(buffer, [self = shared_from_this(), buffer, handler = std::move(handler)](boost::system::error_code ec, std::size_t length)
+        ssl_ws_->async_write(*buffer, [self = shared_from_this(), buffer, handler = std::move(handler)](boost::system::error_code ec, std::size_t length)
         {
             if (handler)
                 handler(ec, length);
         });
     else
-        tcp_ws_->async_write(buffer, [self = shared_from_this(), buffer, handler = std::move(handler)](boost::system::error_code ec, std::size_t length)
+        tcp_ws_->async_write(*buffer, [self = shared_from_this(), buffer, handler = std::move(handler)](boost::system::error_code ec, std::size_t length)
         {
             if (handler)
                 handler(ec, length);

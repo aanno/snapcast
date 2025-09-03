@@ -85,7 +85,7 @@ public:
     void resetZeroCopyStats();
 
 protected:
-    void sendAsync(const shared_const_buffer& buffer, WriteHandler&& handler) override;
+    void sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler) override;
 
 private:
     /// Initialize zerocopy capability
@@ -95,10 +95,10 @@ private:
     bool canUseZeroCopy() const;
     
     /// Send using zerocopy (only when socket is idle)
-    void sendZeroCopy(const shared_const_buffer& buffer, WriteHandler&& handler);
+    void sendZeroCopy(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler);
     
     /// Send using regular async_write (coordinated with async operations)
-    void sendRegularCoordinated(const shared_const_buffer& buffer, WriteHandler&& handler);
+    void sendRegularCoordinated(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler);
     
     /// Process pending send queue
     void processPendingSends();
@@ -142,7 +142,7 @@ private:
     /// Pending send operation
     struct PendingSend
     {
-        shared_const_buffer buffer;
+        std::shared_ptr<shared_const_buffer> buffer;
         WriteHandler handler;
         size_t size;
         bool use_zerocopy;

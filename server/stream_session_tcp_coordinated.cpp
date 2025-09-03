@@ -158,9 +158,9 @@ void StreamSessionTcpCoordinated::releaseZeroCopy()
     pending_async_operations_--;
 }
 
-void StreamSessionTcpCoordinated::sendAsync(const shared_const_buffer& buffer, WriteHandler&& handler)
+void StreamSessionTcpCoordinated::sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler)
 {
-    size_t buffer_size = boost::asio::buffer_size(buffer);
+    size_t buffer_size = boost::asio::buffer_size(*buffer);
     
     // Decide whether to attempt zerocopy based on size and availability
     bool should_use_zerocopy = zerocopy_available_ && 
@@ -183,12 +183,12 @@ void StreamSessionTcpCoordinated::sendAsync(const shared_const_buffer& buffer, W
     }
 }
 
-void StreamSessionTcpCoordinated::sendRegularCoordinated(const shared_const_buffer& buffer, WriteHandler&& handler)
+void StreamSessionTcpCoordinated::sendRegularCoordinated(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler)
 {
     // Track the async operation
     pending_async_operations_++;
     regular_sends_++;
-    regular_bytes_ += boost::asio::buffer_size(buffer);
+    regular_bytes_ += boost::asio::buffer_size(*buffer);
     
     LOG(DEBUG, LOG_TAG_STATS) << "Regular send started, pending_async_operations now: " << pending_async_operations_.load() << "\n";
     
@@ -208,11 +208,11 @@ void StreamSessionTcpCoordinated::sendRegularCoordinated(const shared_const_buff
     });
 }
 
-void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer, WriteHandler&& handler)
+void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler)
 {
     zerocopy_attempts_++;
     
-    size_t buffer_size = boost::asio::buffer_size(buffer);
+    size_t buffer_size = boost::asio::buffer_size(*buffer);
     
     // Generate simple sequential buffer ID that matches kernel MSG_ZEROCOPY numbering
     // MSG_ZEROCOPY assigns IDs sequentially per socket, we must match this scheme
@@ -235,7 +235,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const shared_const_buffer& buffer
         } else {
             // Create new shared buffer
             zerocopy_buffer = std::make_shared<std::vector<char>>(buffer_size);
-            boost::asio::buffer_copy(boost::asio::buffer(*zerocopy_buffer), buffer);
+            boost::asio::buffer_copy(boost::asio::buffer(*zerocopy_buffer), *buffer);
             
             global_buffer_ref = std::make_shared<GlobalBufferRef>();
             global_buffer_ref->buffer = zerocopy_buffer;
