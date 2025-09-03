@@ -6,8 +6,25 @@ RUN dnf -y update \
     && dnf -y install @development-tools gcc-c++ libstdc++-static libatomic cmake ccache ninja-build \
     alsa-lib-devel avahi-devel boost-devel expat-devel flac-devel libvorbis-devel openssl-devel \
     opus-devel pipewire-jack-audio-connection-kit-devel pulseaudio-libs-devel soxr-devel \
+    pipewire-devel pipewire-pulseaudio openssl-devel gdb \
+    pipewire pipewire-alsa pipewire-pulse wireplumber dbus \
+    pipewire-jack-audio-connection-kit-devel \
+    dbus-daemon dbus-tools dbus-broker pulseaudio-utils pipewire-utils alsa-utils\
+    procps-ng tree nano \
     && dnf clean all
 
-RUN useradd -rm -d /home/vscode -s /bin/bash -g root -u 1001 vscode
+RUN useradd -rm -d /home/vscode -s /bin/bash -g root -G audio,wheel,users -u 1000 -p vscode123 vscode
+
+# Set up environment variables for PulseAudio/PipeWire compatibility
+ENV XDG_RUNTIME_DIR=/run/user/1000
+RUN mkdir -p $XDG_RUNTIME_DIR && chmod 700 $XDG_RUNTIME_DIR
+
+# Copy or create a simple script to launch PipeWire and WirePlumber
+COPY entrypoint.sh /home/vscode/entrypoint.sh
+RUN chmod +x /home/vscode/entrypoint.sh
+
+ENTRYPOINT ["/home/user/entrypoint.sh"]
+
+# Disabling this is (relatively) safe with podman rootless only
 USER vscode
 WORKDIR /home/vscode

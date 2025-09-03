@@ -4,6 +4,13 @@
 *.o
 *.obj
 
+# aanno
+*.log
+/.claude/
+/tmp/
+/heaptrack/
+/cpu/
+
 # Precompiled Headers
 *.gch
 *.pch
