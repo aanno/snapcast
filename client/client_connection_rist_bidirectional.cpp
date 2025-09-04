@@ -290,16 +290,8 @@ bool ClientConnectionRistBidirectional::initRist()
         return false;
     }
 
-    // Set data callback for event-driven reception (replaces polling)
-    LOG(INFO, LOG_TAG) << "Setting RIST receiver data callback with context pointer: " << this << "\n";
-    ret = rist_receiver_data_callback_set2(receiver_ctx_, ristDataCallback, this);
-    if (ret != 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to set receiver data callback: " << ret << "\n";
-        cleanupRist();
-        return false;
-    }
-    LOG(INFO, LOG_TAG) << "RIST receiver data callback set successfully (function: " << (void*)ristDataCallback << ", context: " << this << ")\n";
+    // Skip callback registration to prevent race conditions - use polling-only approach
+    LOG(INFO, LOG_TAG) << "Skipping RIST receiver data callback registration - using polling-only mode\n";
     
     // CRITICAL: Add polling fallback since callback isn't being called in libRIST v0.2.7
     LOG(WARNING, LOG_TAG) << "Adding polling fallback due to libRIST v0.2.7 callback issue\n";
@@ -475,9 +467,8 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
     LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread with unified polling\n";
 
     while (running_) {
-        // Direct polling approach - bypass callback queue issues
+        // Direct unified polling approach - no callbacks to avoid race conditions
         struct rist_data_block* data_block = nullptr;
-        LOG(DEBUG, LOG_TAG) << "Polling for data, running: " << running_ << "\n";
         int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 50); // 50ms timeout
         
         if (ret > 0 && data_block) {
@@ -496,7 +487,7 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
             LOG(DEBUG, LOG_TAG) << "Polled and queued data: " << msg.data.size() 
                                << " bytes on virtual port " << msg.virt_port << "\n";
                                
-            // Process polled message
+            // Process polled message immediately
             try {
                 processMessage(msg);
             }
@@ -506,26 +497,9 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
         } else if (ret < 0) {
             LOG(ERROR, LOG_TAG) << "Polling error: " << ret << "\n";
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
         } else {
-            // No data available, check callback queue as fallback
-            {
-                std::unique_lock<std::mutex> lock(queue_mutex_);
-                if (queue_cv_.wait_for(lock, std::chrono::milliseconds(10), 
-                                      [this] { return !message_queue_.empty() || !running_; })) {
-                    if (!running_) break;
-                    if (!message_queue_.empty()) {
-                        QueuedMessage msg = std::move(message_queue_.front());
-                        message_queue_.pop();
-                        
-                        // Process callback message immediately
-                        LOG(DEBUG, LOG_TAG) << "Processing callback message: " << msg.data.size() 
-                                           << " bytes on virtual port " << msg.virt_port << "\n";
-                        processMessage(msg);
-                    }
-                }
-            }
-            continue; // Try polling again
+            // No data available, wait and try again
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
 
@@ -611,7 +585,9 @@ void ClientConnectionRistBidirectional::pollingThread()
         struct rist_data_block* data_block = nullptr;
         int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 5); // 5ms timeout
         
-        LOG(DEBUG, LOG_TAG) << "Polling result: ret=" << ret << ", data_block=" << data_block << "\n";
+        if (ret != 0 || data_block != nullptr) {
+            LOG(DEBUG, LOG_TAG) << "Polling result: ret=" << ret << ", data_block=" << data_block << "\n";
+        }
         
         if (ret > 0 && data_block) {
             LOG(INFO, LOG_TAG) << "*** POLLING RECEIVED DATA *** " << data_block->payload_len 

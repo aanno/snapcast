@@ -334,7 +334,7 @@ void Controller::getNextMessage()
 void Controller::sendTimeSyncMessage(int quick_syncs)
 {
     auto timeReq = std::make_shared<msg::Time>();
-    clientConnection_->sendRequest<msg::Time>(timeReq, 2s,
+    clientConnection_->sendRequest<msg::Time>(timeReq, 10s,
                                               [this, quick_syncs](const boost::system::error_code& ec, const std::unique_ptr<msg::Time>& response) mutable
     {
         if (ec)
@@ -488,7 +488,7 @@ void Controller::worker()
             if (settings_.server.auth.has_value())
                 auth = msg::Hello::Auth{settings_.server.auth->scheme, settings_.server.auth->param};
             auto hello = std::make_shared<msg::Hello>(macAddress, settings_.host_id, settings_.instance, auth);
-            clientConnection_->sendRequest(hello, 2s, [this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response) mutable
+            clientConnection_->sendRequest(hello, 10s, [this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response) mutable
             {
                 if (ec)
                 {

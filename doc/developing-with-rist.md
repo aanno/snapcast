@@ -193,6 +193,68 @@ rist_receiver_data_callback_set2(receiver_ctx, callback, this);
 
 **Recommendation**: Use the older API pattern for maximum compatibility until libRIST versions are standardized across distributions.
 
+## Timeout Configuration Issues ⚠️
+
+**Critical Discovery**: libRIST v0.2.7 has a data output thread delay (~1 second) that affects callback/polling data delivery. This causes timeout issues with Snapcast's default 2-second request timeouts.
+
+### Problem
+```cpp
+// Default timeouts are too short for libRIST data delivery
+clientConnection_->sendRequest(hello, 2s, handler);          // ❌ Too short
+clientConnection_->sendRequest<msg::Time>(timeReq, 2s, ...); // ❌ Too short
+```
+
+### Solution
+```cpp
+// Increased timeouts to accommodate libRIST delay
+clientConnection_->sendRequest(hello, 10s, handler);          // ✅ Sufficient
+clientConnection_->sendRequest<msg::Time>(timeReq, 10s, ...); // ✅ Sufficient
+```
+
+**Files Modified**:
+- `client/controller.cpp:491` - Hello request timeout
+- `client/controller.cpp:337` - Time sync request timeout
+
+### Callback vs Polling Fallback
+
+Due to libRIST v0.2.7 callback reliability issues, a polling fallback is implemented:
+
+```cpp
+// Polling fallback for libRIST v0.2.7
+void pollingThread() {
+    while (running_) {
+        struct rist_data_block* data_block = nullptr;
+        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 5);
+        if (ret > 0 && data_block) {
+            // Process data_block
+            rist_receiver_data_block_free2(&data_block);
+        }
+    }
+}
+```
+
+**Note**: Only log polling results when `ret != 0` or `data_block != nullptr` to reduce log noise.
+
+## Port Conflict Resolution ✅
+
+**Issue**: RTCP port conflicts when using adjacent ports (e.g., 1706/1707).
+
+**Solution**: Use port + 2 separation to avoid RTCP overlap:
+
+```cpp
+// Server configuration
+std::string sender_url = "rist://@" + bind_to_address + ":" + std::to_string(port);           // 1706
+std::string receiver_url = "rist://@" + bind_to_address + ":" + std::to_string(port + 2);     // 1708
+
+// Client configuration  
+std::string receiver_url = "rist://" + server + ":" + std::to_string(port);                   // 1706
+std::string sender_url = "rist://" + server + ":" + std::to_string(port + 2);                 // 1708
+```
+
+**Files Modified**:
+- `server/stream_session_rist_bidirectional.cpp` - Changed client_port_ + 1 to client_port_ + 2
+- `client/client_connection_rist_bidirectional.cpp` - Changed server_.port + 1 to server_.port + 2
+
 ## References
 
 - [libRIST Documentation](https://code.videolan.org/rist/librist)
