@@ -269,7 +269,7 @@ bool ClientConnectionRistBidirectional::initRist()
     }
 
     // Set data callback for event-driven reception (replaces polling)
-    LOG(INFO, LOG_TAG) << "Setting RIST receiver data callback...\n";
+    LOG(INFO, LOG_TAG) << "Setting RIST receiver data callback with context pointer: " << this << "\n";
     ret = rist_receiver_data_callback_set2(receiver_ctx_, ristDataCallback, this);
     if (ret != 0)
     {
@@ -277,10 +277,10 @@ bool ClientConnectionRistBidirectional::initRist()
         cleanupRist();
         return false;
     }
-    LOG(INFO, LOG_TAG) << "RIST receiver data callback set successfully\n";
+    LOG(INFO, LOG_TAG) << "RIST receiver data callback set successfully (function: " << (void*)ristDataCallback << ", context: " << this << ")\n";
     
     // Set stats callback to monitor packet flow (debugging aid)
-    ret = rist_stats_callback_set(receiver_ctx_, 1000, ristStatsCallback, this);
+    ret = rist_stats_callback_set(receiver_ctx_, 1000, ClientConnectionRistBidirectional::ristStatsCallback, this);
     if (ret != 0) {
         LOG(WARNING, LOG_TAG) << "Failed to set RIST receiver stats callback: " << ret << "\n";
     } else {
@@ -376,6 +376,8 @@ void ClientConnectionRistBidirectional::cleanupRist()
 
 int ClientConnectionRistBidirectional::ristDataCallback(void* arg, struct rist_data_block* data_block)
 {
+    LOG(INFO, LOG_TAG) << "*** RIST DATA CALLBACK ENTRY *** arg=" << arg << " data_block=" << data_block << "\n";
+    
     auto* client = static_cast<ClientConnectionRistBidirectional*>(arg);
     if (!client || !data_block) {
         LOG(ERROR, LOG_TAG) << "Invalid callback args or data block\n";
@@ -383,9 +385,13 @@ int ClientConnectionRistBidirectional::ristDataCallback(void* arg, struct rist_d
     }
     
     LOG(INFO, LOG_TAG) << "CLIENT DATA CALLBACK TRIGGERED: " << data_block->payload_len 
-                      << " bytes on vport " << data_block->virt_dst_port << "\n";
+                      << " bytes on vport " << data_block->virt_dst_port << " (VPORT_AUDIO=" << VPORT_AUDIO << ", VPORT_CONTROL=" << VPORT_CONTROL << ")\n";
 
     try {
+        // Log ALL packets first for debugging
+        LOG(DEBUG, LOG_TAG) << "Received packet: " << data_block->payload_len 
+                           << " bytes on vport " << data_block->virt_dst_port << "\n";
+        
         // Queue audio and control messages (received from server)
         if (data_block->virt_dst_port == VPORT_AUDIO || data_block->virt_dst_port == VPORT_CONTROL) {
             // Minimal processing in callback - just queue the data
@@ -402,6 +408,9 @@ int ClientConnectionRistBidirectional::ristDataCallback(void* arg, struct rist_d
             
             LOG(DEBUG, LOG_TAG) << "Queued data: " << data_block->payload_len 
                                << " bytes on virtual port " << data_block->virt_dst_port << "\n";
+        } else {
+            LOG(WARNING, LOG_TAG) << "Ignoring packet on unexpected virtual port: " << data_block->virt_dst_port 
+                                 << " (expected " << VPORT_AUDIO << " or " << VPORT_CONTROL << ")\n";
         }
     }
     catch (const std::exception& e) {

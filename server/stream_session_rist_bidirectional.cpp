@@ -130,7 +130,7 @@ bool StreamSessionRistBidirectional::initRist()
     }
     
     // Set stats callback to monitor packet flow (debugging aid)
-    ret = rist_stats_callback_set(receiver_ctx_, 1000, ristStatsCallback, this);
+    ret = rist_stats_callback_set(receiver_ctx_, 1000, StreamSessionRistBidirectional::ristStatsCallback, this);
     if (ret != 0) {
         LOG(WARNING, LOG_TAG) << "Failed to set RIST receiver stats callback: " << ret << "\n";
     } else {
@@ -276,19 +276,36 @@ void StreamSessionRistBidirectional::readNext()
 uint16_t StreamSessionRistBidirectional::getVirtualPortForMessage(const shared_const_buffer& buffer)
 {
     // Check message type to determine virtual port
-    if (buffer.begin() != buffer.end() && boost::asio::buffer_size(*buffer.begin()) >= sizeof(uint16_t)) {
+    if (buffer.begin() != buffer.end() && boost::asio::buffer_size(*buffer.begin()) >= sizeof(msg::BaseMessage)) {
+        auto* data = boost::asio::buffer_cast<const char*>(*buffer.begin());
+        msg::BaseMessage base_msg;
+        base_msg.deserialize(const_cast<char*>(data));
         
-        // Simple heuristic: if it looks like audio data (larger packets), use audio port
-        // Otherwise use control port
+        LOG(DEBUG, LOG_TAG) << "Message type: " << base_msg.type << ", size: " << base_msg.size << "\n";
+        
+        // Explicit message type to virtual port mapping
+        if (base_msg.type == message_type::kServerSettings) {
+            LOG(DEBUG, LOG_TAG) << "ServerSettings -> VPORT_CONTROL (" << VPORT_CONTROL << ")\n";
+            return VPORT_CONTROL; // ServerSettings on 2000
+        } else if (base_msg.type == message_type::kCodecHeader) {
+            LOG(DEBUG, LOG_TAG) << "CodecHeader -> VPORT_AUDIO (" << VPORT_AUDIO << ")\n";
+            return VPORT_AUDIO; // CodecHeader on 1000
+        } else if (base_msg.type == message_type::kWireChunk) {
+            return VPORT_AUDIO; // Audio data on 1000
+        }
+        
+        // Fallback to size-based heuristic for other message types
         size_t data_size = boost::asio::buffer_size(*buffer.begin());
-        
         if (data_size > 1024) {
+            LOG(DEBUG, LOG_TAG) << "Large packet (" << data_size << " bytes) -> VPORT_AUDIO (" << VPORT_AUDIO << ")\n";
             return VPORT_AUDIO;  // Large packets are likely audio
         } else {
+            LOG(DEBUG, LOG_TAG) << "Small packet (" << data_size << " bytes) -> VPORT_CONTROL (" << VPORT_CONTROL << ")\n";
             return VPORT_CONTROL; // Small packets are likely control messages
         }
     }
     
+    LOG(DEBUG, LOG_TAG) << "Default -> VPORT_CONTROL (" << VPORT_CONTROL << ")\n";
     return VPORT_CONTROL; // Default to control port
 }
 
@@ -335,7 +352,7 @@ void StreamSessionRistBidirectional::sendAsync(const shared_const_buffer& buffer
         return;
     }
 
-    LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST on virtual port " << virt_port << "\n";
+    LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST on virtual port " << virt_port << " (ret=" << ret << ")\n";
     
     if (handler) {
         handler(boost::system::error_code(), data_size);
