@@ -278,6 +278,14 @@ bool ClientConnectionRistBidirectional::initRist()
         return false;
     }
     LOG(INFO, LOG_TAG) << "RIST receiver data callback set successfully\n";
+    
+    // Set stats callback to monitor packet flow (debugging aid)
+    ret = rist_stats_callback_set(receiver_ctx_, 1000, ristStatsCallback, this);
+    if (ret != 0) {
+        LOG(WARNING, LOG_TAG) << "Failed to set RIST receiver stats callback: " << ret << "\n";
+    } else {
+        LOG(DEBUG, LOG_TAG) << "RIST receiver stats callback set successfully\n";
+    }
 
     // Configure receiver to connect to server's sender (main port)
     std::string receiver_url = "rist://" + server_.host + ":" + std::to_string(server_.port);
@@ -401,6 +409,22 @@ int ClientConnectionRistBidirectional::ristDataCallback(void* arg, struct rist_d
     }
 
     return 0; // Success
+}
+
+int ClientConnectionRistBidirectional::ristStatsCallback(void* arg, const struct rist_stats* stats)
+{
+    auto* client = static_cast<ClientConnectionRistBidirectional*>(arg);
+    if (!client || !stats) {
+        return 0;
+    }
+    
+    if (stats->stats_json) {
+        LOG(DEBUG, LOG_TAG) << "RIST receiver stats: " << stats->stats_json << "\n";
+    } else {
+        LOG(DEBUG, LOG_TAG) << "RIST receiver stats callback triggered (no JSON data)\n";
+    }
+    
+    return 0;
 }
 
 void ClientConnectionRistBidirectional::messageProcessorThread()

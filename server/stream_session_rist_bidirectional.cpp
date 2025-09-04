@@ -128,6 +128,14 @@ bool StreamSessionRistBidirectional::initRist()
         cleanupRist();
         return false;
     }
+    
+    // Set stats callback to monitor packet flow (debugging aid)
+    ret = rist_stats_callback_set(receiver_ctx_, 1000, ristStatsCallback, this);
+    if (ret != 0) {
+        LOG(WARNING, LOG_TAG) << "Failed to set RIST receiver stats callback: " << ret << "\n";
+    } else {
+        LOG(DEBUG, LOG_TAG) << "RIST receiver stats callback set successfully\n";
+    }
 
     // Configure sender context to bind and accept client connections for sending audio/control
     std::string sender_url = "rist://@0.0.0.0:" + std::to_string(client_port_);
@@ -369,6 +377,22 @@ int StreamSessionRistBidirectional::ristDataCallback(void* arg, struct rist_data
     }
 
     return 0; // Success
+}
+
+int StreamSessionRistBidirectional::ristStatsCallback(void* arg, const struct rist_stats* stats)
+{
+    auto* session = static_cast<StreamSessionRistBidirectional*>(arg);
+    if (!session || !stats) {
+        return 0;
+    }
+    
+    if (stats->stats_json) {
+        LOG(DEBUG, LOG_TAG) << "RIST receiver stats: " << stats->stats_json << "\n";
+    } else {
+        LOG(DEBUG, LOG_TAG) << "RIST receiver stats callback triggered (no JSON data)\n";
+    }
+    
+    return 0;
 }
 
 void StreamSessionRistBidirectional::messageProcessorThread()

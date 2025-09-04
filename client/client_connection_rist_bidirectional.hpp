@@ -69,6 +69,8 @@ private:
     void cleanupRist();
     /// RIST data callback for audio/control messages (just queues data)
     static int ristDataCallback(void* arg, struct rist_data_block* data_block);
+    /// RIST stats callback for monitoring packet flow
+    static int ristStatsCallback(void* arg, const struct rist_stats* stats);
     /// Worker thread that processes queued messages
     void messageProcessorThread();
     /// RIST connection status callbacks
