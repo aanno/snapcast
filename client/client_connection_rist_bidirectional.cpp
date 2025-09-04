@@ -325,6 +325,10 @@ bool ClientConnectionRistBidirectional::initRist()
         cleanupRist();
         return false;
     }
+    
+    // Configure timeout settings to prevent packet drops (libRIST v0.2.7 compatible)
+    receiver_config->max_retries = 100;    // More retries
+    LOG(INFO, LOG_TAG) << "Set receiver max_retries=" << receiver_config->max_retries << "\n";
 
     ret = rist_peer_create(receiver_ctx_, &receiver_peer_, receiver_config);
     if (ret != 0)
@@ -349,6 +353,10 @@ bool ClientConnectionRistBidirectional::initRist()
         cleanupRist();
         return false;
     }
+    
+    // Configure timeout settings to prevent packet drops (libRIST v0.2.7 compatible)
+    sender_config->max_retries = 100;    // More retries
+    LOG(INFO, LOG_TAG) << "Set sender max_retries=" << sender_config->max_retries << "\n";
 
     ret = rist_peer_create(sender_ctx_, &sender_peer_, sender_config);
     if (ret != 0)
@@ -464,27 +472,71 @@ int ClientConnectionRistBidirectional::ristStatsCallback(void* arg, const struct
 
 void ClientConnectionRistBidirectional::messageProcessorThread()
 {
-    LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread\n";
+    LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread with unified polling\n";
 
     while (running_) {
-        QueuedMessage msg;
+        // Direct polling approach - bypass callback queue issues
+        struct rist_data_block* data_block = nullptr;
+        LOG(DEBUG, LOG_TAG) << "Polling for data, running: " << running_ << "\n";
+        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 50); // 50ms timeout
         
-        // Wait for messages from callback
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex_);
-            queue_cv_.wait(lock, [this] { return !message_queue_.empty() || !running_; });
+        if (ret > 0 && data_block) {
+            LOG(INFO, LOG_TAG) << "*** POLLING RECEIVED DATA *** " << data_block->payload_len 
+                               << " bytes on vport " << data_block->virt_dst_port << "\n";
             
-            if (!running_) break;
+            // Create message directly from polled data
+            QueuedMessage msg;
+            msg.data.resize(data_block->payload_len);
+            memcpy(msg.data.data(), data_block->payload, data_block->payload_len);
+            msg.virt_port = data_block->virt_dst_port;
             
-            if (message_queue_.empty()) continue;
+            // Free the data block immediately
+            rist_receiver_data_block_free2(&data_block);
             
-            msg = std::move(message_queue_.front());
-            message_queue_.pop();
+            LOG(DEBUG, LOG_TAG) << "Polled and queued data: " << msg.data.size() 
+                               << " bytes on virtual port " << msg.virt_port << "\n";
+                               
+            // Process polled message
+            try {
+                processMessage(msg);
+            }
+            catch (const std::exception& e) {
+                LOG(ERROR, LOG_TAG) << "Error processing polled message: " << e.what() << "\n";
+            }
+        } else if (ret < 0) {
+            LOG(ERROR, LOG_TAG) << "Polling error: " << ret << "\n";
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        } else {
+            // No data available, check callback queue as fallback
+            {
+                std::unique_lock<std::mutex> lock(queue_mutex_);
+                if (queue_cv_.wait_for(lock, std::chrono::milliseconds(10), 
+                                      [this] { return !message_queue_.empty() || !running_; })) {
+                    if (!running_) break;
+                    if (!message_queue_.empty()) {
+                        QueuedMessage msg = std::move(message_queue_.front());
+                        message_queue_.pop();
+                        
+                        // Process callback message immediately
+                        LOG(DEBUG, LOG_TAG) << "Processing callback message: " << msg.data.size() 
+                                           << " bytes on virtual port " << msg.virt_port << "\n";
+                        processMessage(msg);
+                    }
+                }
+            }
+            continue; // Try polling again
         }
-        
-        try {
-            // Process the message (heavy processing moved out of callback)
-            if (msg.virt_port == VPORT_AUDIO || msg.virt_port == VPORT_CONTROL) {
+    }
+
+    LOG(INFO, LOG_TAG) << "Bidirectional RIST receiver thread stopped\n";
+}
+
+void ClientConnectionRistBidirectional::processMessage(const QueuedMessage& msg)
+{
+    try {
+        // Process the message (heavy processing moved out of callback)
+        if (msg.virt_port == VPORT_AUDIO || msg.virt_port == VPORT_CONTROL) {
                 // Ensure we have enough buffer space
                 std::lock_guard<std::mutex> lock(buffer_mutex_);
                 if (buffer_.size() < msg.data.size()) {
@@ -540,15 +592,14 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
                 } else {
                     LOG(DEBUG, LOG_TAG) << "Received data too small for message header: " << msg.data.size() << " < " << base_msg_size_ << "\n";
                 }
-                buffer_.clear(); // Mimic WebSocket buffer_.consume
-            }
-        }
-        catch (const std::exception& e) {
-            LOG(ERROR, LOG_TAG) << "Exception in message processor thread: " << e.what() << "\n";
+        } else {
+            LOG(WARNING, LOG_TAG) << "Ignoring packet on unexpected virtual port: " << msg.virt_port 
+                                 << " (expected " << VPORT_AUDIO << " or " << VPORT_CONTROL << ")\n";
         }
     }
-
-    LOG(INFO, LOG_TAG) << "Bidirectional RIST receiver thread stopped\n";
+    catch (const std::exception& e) {
+        LOG(ERROR, LOG_TAG) << "Exception in processMessage: " << e.what() << "\n";
+    }
 }
 
 void ClientConnectionRistBidirectional::pollingThread()

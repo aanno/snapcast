@@ -84,6 +84,15 @@ private:
     static constexpr uint16_t VPORT_AUDIO = 1000;        ///< Audio data port
     static constexpr uint16_t VPORT_CONTROL = 2000;      ///< Control messages (server->client)
     static constexpr uint16_t VPORT_BACKCHANNEL = 3000;  ///< Backchannel (client->server)
+    
+    // Message queue for async processing
+    struct QueuedMessage {
+        std::vector<uint8_t> data;
+        uint16_t virt_port;
+    };
+    
+    /// Process a single message (internal helper)
+    void processMessage(const QueuedMessage& msg);
 
     /// Dual RIST contexts for bidirectional communication
     struct rist_ctx* receiver_ctx_{nullptr};     ///< RIST receiver context (audio/control from server)
@@ -98,11 +107,6 @@ private:
     
     std::shared_ptr<ClientConnectionRistBidirectional> self_; ///< self reference for lifetime management
     
-    // Message queue for async processing
-    struct QueuedMessage {
-        std::vector<uint8_t> data;
-        uint16_t virt_port;
-    };
     std::queue<QueuedMessage> message_queue_;     ///< queue for messages from callback
     std::mutex queue_mutex_;                      ///< protect message queue  
     std::condition_variable queue_cv_;            ///< notify worker thread
