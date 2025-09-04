@@ -24,7 +24,6 @@
 #include "controller.hpp"
 
 #ifdef HAS_LIBRIST
-#include "client_connection_rist.hpp"
 #include "client_connection_rist_bidirectional.hpp"
 #endif
 

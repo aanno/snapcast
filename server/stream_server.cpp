@@ -24,7 +24,6 @@
 #include "config.hpp"
 #include "stream_session_tcp.hpp"
 #ifdef HAS_LIBRIST
-#include "stream_session_rist.hpp"
 #include "stream_session_rist_bidirectional.hpp"
 #endif
 
