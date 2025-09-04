@@ -162,6 +162,37 @@ LOG(DEBUG, LOG_TAG) << "Received data: " << data_block->payload_len
 3. Confirm bidirectional data flow with virtual port separation
 4. Test connection recovery after network interruptions
 
+## LibRIST API Version Compatibility ⚠️
+
+**Important**: libRIST has different API versions. The examples below show **newer API** patterns that may not be available in older libRIST installations.
+
+### Newer API Pattern (libRIST v0.3+)
+```cpp
+// This pattern works with newer libRIST versions
+rist_ctx *sender_ctx, *receiver_ctx;
+rist_peer_config sender_cfg = {}, receiver_cfg = {};
+sender_cfg.url = "rist://@0.0.0.0:1706";
+rist_sender_create(&sender_ctx, &sender_cfg);
+rist_receiver_set_callback(receiver_ctx, callback);
+```
+
+### Older API Pattern (libRIST v0.2.x) ✅ **Currently Used**
+```cpp
+// This is what Snapcast currently uses (works with older libRIST)
+rist_sender_create(&sender_ctx, RIST_PROFILE_MAIN, 0, nullptr);
+rist_receiver_create(&receiver_ctx, RIST_PROFILE_MAIN, nullptr);
+
+// URL configuration via parsing
+struct rist_peer_config* config = nullptr;
+rist_parse_address2("rist://@0.0.0.0:1706", &config);
+rist_peer_create(sender_ctx, &peer, config);
+
+// Callbacks via callback_set2
+rist_receiver_data_callback_set2(receiver_ctx, callback, this);
+```
+
+**Recommendation**: Use the older API pattern for maximum compatibility until libRIST versions are standardized across distributions.
+
 ## References
 
 - [libRIST Documentation](https://code.videolan.org/rist/librist)
