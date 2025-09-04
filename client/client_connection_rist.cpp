@@ -34,6 +34,29 @@
 using namespace std;
 
 static constexpr auto LOG_TAG = "ConnectionRIST";
+static constexpr auto LOG_LIBRIST_TAG = "libRIST";
+
+static int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
+    (void)arg;
+    switch (level) {
+        case RIST_LOG_ERROR:
+            LOG(ERROR, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_WARN:
+            LOG(WARNING, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_INFO:
+            LOG(INFO, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_DEBUG:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        default:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+    }
+    return 0;
+}
 
 ClientConnectionRist::ClientConnectionRist(boost::asio::io_context& io_context, ClientSettings::Server server)
     : ClientConnection(io_context, std::move(server))
@@ -120,6 +143,8 @@ bool ClientConnectionRist::initRist()
     rist_logging_settings log_settings = {};
     log_settings.log_level = RIST_LOG_DEBUG; // Set debug level
     log_settings.log_stream = stdout; // Output to stdout
+    log_settings.log_cb = rist_log_callback; // Set callback
+    log_settings.log_cb_arg = nullptr; // Optional user data (set if needed)
     rist_logging_set_global(&log_settings);
 
     LOG(INFO, LOG_TAG) << "Initializing RIST receiver\n";
