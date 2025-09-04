@@ -113,11 +113,8 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
     // Start worker thread for processing messages from callback
     worker_thread_ = std::thread(&ClientConnectionRistBidirectional::messageProcessorThread, this);
     
-    // Start polling thread if using fallback
-    if (use_polling_fallback_) {
-        LOG(INFO, LOG_TAG) << "Starting RIST polling thread (fallback mode)\n";
-        polling_thread_ = std::thread(&ClientConnectionRistBidirectional::pollingThread, this);
-    }
+    // Remove duplicate polling thread - messageProcessorThread handles all polling
+    LOG(INFO, LOG_TAG) << "Using unified polling in messageProcessorThread only\n";
 
     // Wait for both RIST connections to be established (max 5 seconds)
     LOG(INFO, LOG_TAG) << "Waiting for RIST connections to establish...\n";
@@ -155,11 +152,7 @@ void ClientConnectionRistBidirectional::disconnect()
         worker_thread_.join();
     }
     
-    // Stop polling thread if running
-    if (polling_thread_.joinable())
-    {
-        polling_thread_.join();
-    }
+    // Polling thread removed - only messageProcessorThread handles data
 
     cleanupRist();
     LOG(DEBUG, LOG_TAG) << "Bidirectional RIST client disconnected\n";
@@ -251,14 +244,15 @@ bool ClientConnectionRistBidirectional::initRist()
         return false;
     }
     
-    // CRITICAL: Configure libRIST to force data output thread to work
-    LOG(INFO, LOG_TAG) << "Configuring libRIST receiver for forced data output\n";
-    // Set buffer settings to ensure data flows properly
-    ret = rist_receiver_set_output_fifo_size(receiver_ctx_, 100); // Small FIFO to force immediate output
+    // CRITICAL: Minimize libRIST buffering to reduce data output thread delay
+    LOG(INFO, LOG_TAG) << "Configuring libRIST receiver for minimal buffering/delay\n";
+    
+    // Set minimal FIFO size to force immediate output (reduce delay)
+    ret = rist_receiver_set_output_fifo_size(receiver_ctx_, 1); // Minimal 1ms FIFO
     if (ret != 0) {
-        LOG(WARNING, LOG_TAG) << "Failed to set receiver output FIFO size: " << ret << "\n";
+        LOG(WARNING, LOG_TAG) << "Failed to set receiver output FIFO size to 1ms: " << ret << "\n";
     } else {
-        LOG(INFO, LOG_TAG) << "Set receiver output FIFO size to 100ms\n";
+        LOG(INFO, LOG_TAG) << "Set receiver output FIFO size to 1ms (minimal delay)\n";
     }
 
     // Create RIST sender context for sending backchannel to server
@@ -318,9 +312,12 @@ bool ClientConnectionRistBidirectional::initRist()
         return false;
     }
     
-    // Configure timeout settings to prevent packet drops (libRIST v0.2.7 compatible)
-    receiver_config->max_retries = 100;    // More retries
-    LOG(INFO, LOG_TAG) << "Set receiver max_retries=" << receiver_config->max_retries << "\n";
+    // Configure for minimal latency - reduce retries and buffering
+    receiver_config->max_retries = 1;    // Minimal retries for low latency
+    // Set minimal buffer values if available in v0.2.7
+    // receiver_config->bufmin = 1;  // Would set minimal buffer if supported
+    // receiver_config->bufmax = 10; // Would set minimal max buffer if supported
+    LOG(INFO, LOG_TAG) << "Set receiver max_retries=" << receiver_config->max_retries << " (minimal for low latency)\n";
 
     ret = rist_peer_create(receiver_ctx_, &receiver_peer_, receiver_config);
     if (ret != 0)
@@ -346,9 +343,12 @@ bool ClientConnectionRistBidirectional::initRist()
         return false;
     }
     
-    // Configure timeout settings to prevent packet drops (libRIST v0.2.7 compatible)
-    sender_config->max_retries = 100;    // More retries
-    LOG(INFO, LOG_TAG) << "Set sender max_retries=" << sender_config->max_retries << "\n";
+    // Configure for minimal latency - reduce retries and buffering
+    sender_config->max_retries = 1;    // Minimal retries for low latency
+    // Set minimal buffer values if available in v0.2.7
+    // sender_config->bufmin = 1;  // Would set minimal buffer if supported
+    // sender_config->bufmax = 10; // Would set minimal max buffer if supported
+    LOG(INFO, LOG_TAG) << "Set sender max_retries=" << sender_config->max_retries << " (minimal for low latency)\n";
 
     ret = rist_peer_create(sender_ctx_, &sender_peer_, sender_config);
     if (ret != 0)
@@ -469,7 +469,7 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
     while (running_) {
         // Direct unified polling approach - no callbacks to avoid race conditions
         struct rist_data_block* data_block = nullptr;
-        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 50); // 50ms timeout
+        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 1); // 1ms timeout for minimal latency
         
         if (ret > 0 && data_block) {
             LOG(INFO, LOG_TAG) << "*** POLLING RECEIVED DATA *** " << data_block->payload_len 
