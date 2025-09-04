@@ -84,6 +84,14 @@ bool StreamSessionRistBidirectional::initRist()
         return false;
     }
 
+    // Set data callback for event-driven reception (replaces polling)
+    ret = rist_receiver_data_callback_set2(receiver_ctx_, ristDataCallback, this);
+    if (ret != 0) {
+        LOG(ERROR, LOG_TAG) << "Failed to set receiver data callback: " << ret << "\n";
+        cleanupRist();
+        return false;
+    }
+
     // Configure sender context to bind and accept client connections for sending audio/control
     std::string sender_url = "rist://@0.0.0.0:" + std::to_string(client_port_);
     LOG(INFO, LOG_TAG) << "Using RIST sender URL (bind): " << sender_url << "\n";
@@ -177,8 +185,11 @@ void StreamSessionRistBidirectional::start()
 
     running_ = true;
     
-    // Start receiver thread for backchannel messages
-    receiver_thread_ = std::thread(&StreamSessionRistBidirectional::ristReceiverThread, this);
+    // Start worker thread for processing messages from callback
+    worker_thread_ = std::thread(&StreamSessionRistBidirectional::messageProcessorThread, this);
+    
+    // Data reception is handled by callback + worker thread
+    LOG(INFO, LOG_TAG) << "RIST data callback and worker thread active\n";
     
     readNext();
 }
@@ -192,8 +203,10 @@ void StreamSessionRistBidirectional::stop()
     sender_connected_ = false;
     receiver_connected_ = false;
     
-    if (receiver_thread_.joinable()) {
-        receiver_thread_.join();
+    // Wake up worker thread and wait for it to finish
+    queue_cv_.notify_all();
+    if (worker_thread_.joinable()) {
+        worker_thread_.join();
     }
     
     cleanupRist();
@@ -284,101 +297,123 @@ void StreamSessionRistBidirectional::sendAsync(const shared_const_buffer& buffer
     }
 }
 
-void StreamSessionRistBidirectional::ristReceiverThread()
+int StreamSessionRistBidirectional::ristDataCallback(void* arg, struct rist_data_block* data_block)
 {
-    LOG(INFO, LOG_TAG) << "Starting RIST receiver thread for backchannel\n";
-
-    while (running_) {
-        if (!receiver_ctx_) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
-
-        struct rist_data_block* data_block = nullptr;
-        int queue_length = rist_receiver_data_read2(receiver_ctx_, &data_block, 100); // 100ms timeout
-
-        if (queue_length > 0 && data_block) {
-            try {
-                LOG(DEBUG, LOG_TAG) << "Received backchannel data: " << data_block->payload_len 
-                                   << " bytes on virtual port " << data_block->virt_dst_port << "\n";
-
-                // Only process backchannel messages (client to server)
-                if (data_block->virt_dst_port == VPORT_BACKCHANNEL) {
-                    // Ensure we have enough buffer space
-                    std::lock_guard<std::mutex> lock(buffer_mutex_);
-                    if (buffer_.size() < data_block->payload_len) {
-                        buffer_.resize(data_block->payload_len);
-                    }
-
-                    // Copy data to our buffer
-                    memcpy(buffer_.data(), data_block->payload, data_block->payload_len);
-
-                    // Process the message - match TCP approach exactly 
-                    if (data_block->payload_len >= base_msg_size_) {
-                        try {
-                            // Stage 1: Parse message header from a copy (don't modify original buffer)
-                            std::vector<char> header_buffer(base_msg_size_);
-                            memcpy(header_buffer.data(), buffer_.data(), base_msg_size_);
-                            baseMessage_.deserialize(header_buffer.data());
-                            
-                            LOG(DEBUG, LOG_TAG) << "Parsed backchannel message header: type=" << baseMessage_.type 
-                                               << ", size=" << baseMessage_.size << ", id=" << baseMessage_.id << "\n";
-                            
-                            if (baseMessage_.type > message_type::kLast) {
-                                LOG(ERROR, LOG_TAG) << "Unknown backchannel message type received: " << baseMessage_.type << "\n";
-                            }
-                            else if (baseMessage_.size > msg::max_size) {
-                                LOG(ERROR, LOG_TAG) << "Backchannel message too large: " << baseMessage_.size << "\n";
-                            }
-                            else if (baseMessage_.size <= data_block->payload_len) {
-                                // Stage 2: Match TCP approach - create a buffer with the complete message
-                                // TCP overwrites buffer with complete message, so we do the same
-                                if (messageReceiver_ && self_) {
-                                    LOG(DEBUG, LOG_TAG) << "Processing complete backchannel message from client\n";
-                                    
-                                    // Ensure buffer is exactly the message size (like TCP does)
-                                    if (buffer_.size() != baseMessage_.size) {
-                                        buffer_.resize(baseMessage_.size);
-                                    }
-                                    
-                                    // Make sure we have exactly baseMessage_.size bytes
-                                    // (buffer should already have the right data from the original copy)
-                                    
-                                    tv now;
-                                    baseMessage_.received = now;
-                                    // Follow WebSocket pattern: pass payload only (buffer + header_size)
-                                    messageReceiver_->onMessageReceived(self_, baseMessage_, reinterpret_cast<char*>(buffer_.data()) + base_msg_size_);
-                                } else {
-                                    LOG(WARNING, LOG_TAG) << "Cannot process backchannel message - no message receiver or no self reference\n";
-                                }
-                            } else {
-                                LOG(DEBUG, LOG_TAG) << "Incomplete backchannel message - expected " << baseMessage_.size << " bytes, got " << data_block->payload_len << "\n";
-                            }
-                        }
-                        catch (const std::exception& e) {
-                            LOG(ERROR, LOG_TAG) << "Error parsing backchannel message: " << e.what() << "\n";
-                        }
-                    } else {
-                        LOG(DEBUG, LOG_TAG) << "Received data too small for Snapcast message header: " << data_block->payload_len << " < " << base_msg_size_ << "\n";
-                    }
-                }
-
-                // Free the data block
-                rist_receiver_data_block_free2(&data_block);
-            }
-            catch (const std::exception& e) {
-                LOG(ERROR, LOG_TAG) << "Exception in RIST receiver thread: " << e.what() << "\n";
-                if (data_block)
-                    rist_receiver_data_block_free2(&data_block);
-            }
-        }
-        else if (queue_length < 0) {
-            LOG(ERROR, LOG_TAG) << "RIST receiver error: " << queue_length << "\n";
-            break;
-        }
+    auto* session = static_cast<StreamSessionRistBidirectional*>(arg);
+    if (!session || !data_block) {
+        return 0;
     }
 
-    LOG(INFO, LOG_TAG) << "RIST receiver thread stopped\n";
+    try {
+        // Only queue backchannel messages (client to server)
+        if (data_block->virt_dst_port == VPORT_BACKCHANNEL) {
+            // Minimal processing in callback - just queue the data
+            QueuedMessage msg;
+            msg.data.resize(data_block->payload_len);
+            memcpy(msg.data.data(), data_block->payload, data_block->payload_len);
+            msg.virt_port = data_block->virt_dst_port;
+            
+            {
+                std::lock_guard<std::mutex> lock(session->queue_mutex_);
+                session->message_queue_.push(std::move(msg));
+            }
+            session->queue_cv_.notify_one();
+            
+            LOG(DEBUG, LOG_TAG) << "Queued backchannel data: " << data_block->payload_len 
+                               << " bytes on virtual port " << data_block->virt_dst_port << "\n";
+        }
+    }
+    catch (const std::exception& e) {
+        LOG(ERROR, LOG_TAG) << "Exception in RIST data callback: " << e.what() << "\n";
+    }
+
+    return 0; // Success
+}
+
+void StreamSessionRistBidirectional::messageProcessorThread()
+{
+    LOG(INFO, LOG_TAG) << "Starting RIST message processor thread\n";
+
+    while (running_) {
+        QueuedMessage msg;
+        
+        // Wait for messages
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            queue_cv_.wait(lock, [this] { return !message_queue_.empty() || !running_; });
+            
+            if (!running_) break;
+            
+            if (message_queue_.empty()) continue;
+            
+            msg = std::move(message_queue_.front());
+            message_queue_.pop();
+        }
+        
+        try {
+            // Process the message (heavy processing moved out of callback)
+            if (msg.virt_port == VPORT_BACKCHANNEL) {
+                // Ensure we have enough buffer space
+                std::lock_guard<std::mutex> lock(buffer_mutex_);
+                if (buffer_.size() < msg.data.size()) {
+                    buffer_.resize(msg.data.size());
+                }
+
+                // Copy data to our buffer
+                memcpy(buffer_.data(), msg.data.data(), msg.data.size());
+
+                // Process the message - match TCP approach exactly 
+                if (msg.data.size() >= base_msg_size_) {
+                    try {
+                        // Stage 1: Parse message header from a copy (don't modify original buffer)
+                        std::vector<char> header_buffer(base_msg_size_);
+                        memcpy(header_buffer.data(), buffer_.data(), base_msg_size_);
+                        baseMessage_.deserialize(header_buffer.data());
+                        
+                        LOG(DEBUG, LOG_TAG) << "Parsed backchannel message header: type=" << baseMessage_.type 
+                                           << ", size=" << baseMessage_.size << ", id=" << baseMessage_.id << "\n";
+                        
+                        if (baseMessage_.type > message_type::kLast) {
+                            LOG(ERROR, LOG_TAG) << "Unknown backchannel message type received: " << baseMessage_.type << "\n";
+                        }
+                        else if (baseMessage_.size > msg::max_size) {
+                            LOG(ERROR, LOG_TAG) << "Backchannel message too large: " << baseMessage_.size << "\n";
+                        }
+                        else if (baseMessage_.size <= msg.data.size()) {
+                            // Stage 2: Match TCP approach - create a buffer with the complete message
+                            if (messageReceiver_ && self_) {
+                                LOG(DEBUG, LOG_TAG) << "Processing complete backchannel message from client\n";
+                                
+                                // Ensure buffer is exactly the message size (like TCP does)
+                                if (buffer_.size() != baseMessage_.size) {
+                                    buffer_.resize(baseMessage_.size);
+                                }
+                                
+                                tv now;
+                                baseMessage_.received = now;
+                                // Follow WebSocket pattern: pass payload only (buffer + header_size)
+                                messageReceiver_->onMessageReceived(self_, baseMessage_, reinterpret_cast<char*>(buffer_.data()) + base_msg_size_);
+                            } else {
+                                LOG(WARNING, LOG_TAG) << "Cannot process backchannel message - no message receiver or no self reference\n";
+                            }
+                        } else {
+                            LOG(DEBUG, LOG_TAG) << "Incomplete backchannel message - expected " << baseMessage_.size << " bytes, got " << msg.data.size() << "\n";
+                        }
+                    }
+                    catch (const std::exception& e) {
+                        LOG(ERROR, LOG_TAG) << "Error parsing backchannel message: " << e.what() << "\n";
+                    }
+                } else {
+                    LOG(DEBUG, LOG_TAG) << "Received data too small for Snapcast message header: " << msg.data.size() << " < " << base_msg_size_ << "\n";
+                }
+            }
+        }
+        catch (const std::exception& e) {
+            LOG(ERROR, LOG_TAG) << "Exception in message processor thread: " << e.what() << "\n";
+        }
+    }
+    
+    LOG(INFO, LOG_TAG) << "RIST message processor thread stopped\n";
 }
 
 void StreamSessionRistBidirectional::senderConnectionStatusCallback(void* arg, struct rist_peer* /*peer*/, enum rist_connection_status status)

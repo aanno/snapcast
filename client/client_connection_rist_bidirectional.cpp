@@ -271,69 +271,90 @@ void ClientConnectionRistBidirectional::cleanupRist()
     }
 }
 
-void ClientConnectionRistBidirectional::ristReceiverThread()
+int ClientConnectionRistBidirectional::ristDataCallback(void* arg, struct rist_data_block* data_block)
+{
+    auto* client = static_cast<ClientConnectionRistBidirectional*>(arg);
+    if (!client || !data_block) {
+        return 0;
+    }
+
+    try {
+        // Queue audio and control messages (received from server)
+        if (data_block->virt_dst_port == VPORT_AUDIO || data_block->virt_dst_port == VPORT_CONTROL) {
+            // Minimal processing in callback - just queue the data
+            QueuedMessage msg;
+            msg.data.resize(data_block->payload_len);
+            memcpy(msg.data.data(), data_block->payload, data_block->payload_len);
+            msg.virt_port = data_block->virt_dst_port;
+            
+            {
+                std::lock_guard<std::mutex> lock(client->queue_mutex_);
+                client->message_queue_.push(std::move(msg));
+            }
+            client->queue_cv_.notify_one();
+            
+            LOG(DEBUG, LOG_TAG) << "Queued data: " << data_block->payload_len 
+                               << " bytes on virtual port " << data_block->virt_dst_port << "\n";
+        }
+    }
+    catch (const std::exception& e) {
+        LOG(ERROR, LOG_TAG) << "Exception in RIST data callback: " << e.what() << "\n";
+    }
+
+    return 0; // Success
+}
+
+void ClientConnectionRistBidirectional::messageProcessorThread()
 {
     LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread\n";
 
-    while (running_)
-    {
-        if (!receiver_ctx_)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
-
-        struct rist_data_block* data_block = nullptr;
-        int queue_length = rist_receiver_data_read2(receiver_ctx_, &data_block, 100); // 100ms timeout
+    while (running_) {
+        QueuedMessage msg;
         
-        if (queue_length == 0) {
-            // No data available, continue
-            continue;
-        } else if (queue_length < 0) {
-            LOG(DEBUG, LOG_TAG) << "RIST receiver error or timeout: " << queue_length << "\n";
-        }
-
-        if (queue_length > 0 && data_block)
+        // Wait for messages from callback
         {
-            try
-            {
-                LOG(DEBUG, LOG_TAG) << "Received data: " << data_block->payload_len 
-                                   << " bytes on virtual port " << data_block->virt_dst_port << "\n";
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            queue_cv_.wait(lock, [this] { return !message_queue_.empty() || !running_; });
+            
+            if (!running_) break;
+            
+            if (message_queue_.empty()) continue;
+            
+            msg = std::move(message_queue_.front());
+            message_queue_.pop();
+        }
+        
+        try {
+            // Process the message (heavy processing moved out of callback)
+            if (msg.virt_port == VPORT_AUDIO || msg.virt_port == VPORT_CONTROL) {
+                // Ensure we have enough buffer space
+                std::lock_guard<std::mutex> lock(buffer_mutex_);
+                if (buffer_.size() < msg.data.size()) {
+                    buffer_.resize(msg.data.size());
+                }
 
-                // Process audio and control messages (ignore backchannel messages)
-                if (data_block->virt_dst_port == VPORT_AUDIO || data_block->virt_dst_port == VPORT_CONTROL)
-                {
-                    // Ensure we have enough buffer space
-                    std::lock_guard<std::mutex> lock(buffer_mutex_);
-                    if (buffer_.size() < data_block->payload_len)
-                    {
-                        buffer_.resize(data_block->payload_len);
-                    }
+                // Copy data to our buffer
+                memcpy(buffer_.data(), msg.data.data(), msg.data.size());
 
-                    // Copy data to our buffer
-                    memcpy(buffer_.data(), data_block->payload, data_block->payload_len);
-
-                    // Process the message - follow TCP two-stage approach
-                    if (data_block->payload_len >= base_msg_size_)
-                    {
+                // Process the message - follow TCP two-stage approach
+                if (msg.data.size() >= base_msg_size_) {
+                    try {
                         // Stage 1: Parse message header (first base_msg_size_ bytes)
                         base_message_.deserialize(reinterpret_cast<char*>(buffer_.data()));
                         
                         LOG(DEBUG, LOG_TAG) << "Parsed message header: type=" << base_message_.type 
                                            << ", size=" << base_message_.size << ", id=" << base_message_.id << "\n";
                         
-                        if (base_message_.type > message_type::kLast)
-                        {
+                        if (base_message_.type > message_type::kLast) {
                             LOG(ERROR, LOG_TAG) << "Unknown message type received: " << base_message_.type << "\n";
                         }
-                        else if (base_message_.size > msg::max_size)
-                        {
+                        else if (base_message_.size > msg::max_size) {
                             LOG(ERROR, LOG_TAG) << "Message too large: " << base_message_.size << "\n";
                         }
-                        else if (base_message_.size <= data_block->payload_len)
-                        {
+                        else if (base_message_.size <= msg.data.size()) {
                             // Stage 2: We have a complete message, create and process it
-                            auto message = msg::factory::createMessage(base_message_, reinterpret_cast<char*>(buffer_.data()));
+                            // Follow WebSocket pattern: pass payload only (buffer + header_size)
+                            auto message = msg::factory::createMessage(base_message_, reinterpret_cast<char*>(buffer_.data()) + base_msg_size_);
                             
                             if (message) {
                                 LOG(DEBUG, LOG_TAG) << "Processing complete message from server\n";
@@ -341,8 +362,7 @@ void ClientConnectionRistBidirectional::ristReceiverThread()
                                 base_message_.received = now;
                                 
                                 std::lock_guard<std::mutex> handler_lock(handler_mutex_);
-                                if (pending_handler_)
-                                {
+                                if (pending_handler_) {
                                     messageReceived(std::move(message), pending_handler_);
                                     pending_handler_ = nullptr;
                                 }
@@ -350,27 +370,19 @@ void ClientConnectionRistBidirectional::ristReceiverThread()
                                 LOG(WARNING, LOG_TAG) << "Failed to create message from factory\n";
                             }
                         } else {
-                            LOG(DEBUG, LOG_TAG) << "Incomplete message - expected " << base_message_.size << " bytes, got " << data_block->payload_len << "\n";
+                            LOG(DEBUG, LOG_TAG) << "Incomplete message - expected " << base_message_.size << " bytes, got " << msg.data.size() << "\n";
                         }
-                    } else {
-                        LOG(DEBUG, LOG_TAG) << "Received data too small for message header: " << data_block->payload_len << " < " << base_msg_size_ << "\n";
                     }
+                    catch (const std::exception& e) {
+                        LOG(ERROR, LOG_TAG) << "Error parsing message: " << e.what() << "\n";
+                    }
+                } else {
+                    LOG(DEBUG, LOG_TAG) << "Received data too small for message header: " << msg.data.size() << " < " << base_msg_size_ << "\n";
                 }
-
-                // Free the data block
-                rist_receiver_data_block_free2(&data_block);
-            }
-            catch (const std::exception& e)
-            {
-                LOG(ERROR, LOG_TAG) << "Exception in RIST receiver thread: " << e.what() << "\n";
-                if (data_block)
-                    rist_receiver_data_block_free2(&data_block);
             }
         }
-        else if (queue_length < 0)
-        {
-            LOG(ERROR, LOG_TAG) << "RIST receiver error: " << queue_length << "\n";
-            break;
+        catch (const std::exception& e) {
+            LOG(ERROR, LOG_TAG) << "Exception in message processor thread: " << e.what() << "\n";
         }
     }
 

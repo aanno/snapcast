@@ -34,6 +34,8 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <queue>
+#include <condition_variable>
 
 /// Bidirectional RIST client connection
 /**
@@ -65,8 +67,10 @@ private:
     bool initRist();
     /// Cleanup RIST contexts
     void cleanupRist();
-    /// RIST receiver thread for audio/control messages
-    void ristReceiverThread();
+    /// RIST data callback for audio/control messages (just queues data)
+    static int ristDataCallback(void* arg, struct rist_data_block* data_block);
+    /// Worker thread that processes queued messages
+    void messageProcessorThread();
     /// RIST connection status callbacks
     static void receiverConnectionStatusCallback(void* arg, struct rist_peer* peer, enum rist_connection_status status);
     static void senderConnectionStatusCallback(void* arg, struct rist_peer* peer, enum rist_connection_status status);
@@ -86,8 +90,17 @@ private:
     std::atomic<bool> receiver_connected_{false}; ///< receiver connection status
     std::atomic<bool> sender_connected_{false};   ///< sender connection status
     std::atomic<bool> connected_{false};          ///< overall connection status
-    std::atomic<bool> running_{false};            ///< receiver thread running
-    std::thread receiver_thread_;                 ///< receiver thread
+    std::atomic<bool> running_{false};            ///< worker thread running
+    
+    // Message queue for async processing
+    struct QueuedMessage {
+        std::vector<uint8_t> data;
+        uint16_t virt_port;
+    };
+    std::queue<QueuedMessage> message_queue_;     ///< queue for messages from callback
+    std::mutex queue_mutex_;                      ///< protect message queue  
+    std::condition_variable queue_cv_;            ///< notify worker thread
+    std::thread worker_thread_;                   ///< worker thread for processing messages
     
     /// Pending message handlers for audio/control data
     MessageHandler<msg::BaseMessage> pending_handler_;

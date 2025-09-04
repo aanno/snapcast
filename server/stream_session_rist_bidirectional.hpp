@@ -30,6 +30,8 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <queue>
+#include <condition_variable>
 
 /// Bidirectional RIST streaming endpoint for a connected client.
 /**
@@ -67,8 +69,10 @@ private:
     void cleanupRist();
     /// Read messages from RIST receiver (backchannel from client)
     void readNext();
-    /// RIST receiver thread for backchannel messages
-    void ristReceiverThread();
+    /// RIST data callback for backchannel messages (just queues data)
+    static int ristDataCallback(void* arg, struct rist_data_block* data_block);
+    /// Worker thread that processes queued messages
+    void messageProcessorThread();
     /// RIST connection status callback for sender
     static void senderConnectionStatusCallback(void* arg, struct rist_peer* peer, enum rist_connection_status status);
     /// RIST connection status callback for receiver
@@ -94,7 +98,16 @@ private:
     uint16_t client_port_;                       ///< client port
     std::atomic<bool> connected_{false};         ///< connection status
     std::atomic<bool> running_{false};       ///< running status
-    std::thread receiver_thread_;            ///< thread for reading backchannel messages
+    
+    // Message queue for async processing
+    struct QueuedMessage {
+        std::vector<uint8_t> data;
+        uint16_t virt_port;
+    };
+    std::queue<QueuedMessage> message_queue_; ///< queue for messages from callback
+    std::mutex queue_mutex_;                  ///< protect message queue
+    std::condition_variable queue_cv_;        ///< notify worker thread
+    std::thread worker_thread_;               ///< worker thread for processing messages
     
     // Buffer for message processing
     std::vector<uint8_t> buffer_;            ///< buffer for received messages
