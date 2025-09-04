@@ -247,12 +247,12 @@ bool ClientConnectionRistBidirectional::initRist()
     // CRITICAL: Minimize libRIST buffering to reduce data output thread delay
     LOG(INFO, LOG_TAG) << "Configuring libRIST receiver for minimal buffering/delay\n";
     
-    // Set minimal FIFO size to force immediate output (reduce delay)
-    ret = rist_receiver_set_output_fifo_size(receiver_ctx_, 1); // Minimal 1ms FIFO
+    // Set balanced FIFO size - not too small (causes overflow) not too large (causes delay)
+    ret = rist_receiver_set_output_fifo_size(receiver_ctx_, 50); // 50ms FIFO - balanced approach
     if (ret != 0) {
-        LOG(WARNING, LOG_TAG) << "Failed to set receiver output FIFO size to 1ms: " << ret << "\n";
+        LOG(WARNING, LOG_TAG) << "Failed to set receiver output FIFO size to 50ms: " << ret << "\n";
     } else {
-        LOG(INFO, LOG_TAG) << "Set receiver output FIFO size to 1ms (minimal delay)\n";
+        LOG(INFO, LOG_TAG) << "Set receiver output FIFO size to 50ms (balanced for stability)\n";
     }
 
     // Create RIST sender context for sending backchannel to server
@@ -469,7 +469,7 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
     while (running_) {
         // Direct unified polling approach - no callbacks to avoid race conditions
         struct rist_data_block* data_block = nullptr;
-        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 1); // 1ms timeout for minimal latency
+        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 10); // 10ms timeout - matches FIFO stability
         
         if (ret > 0 && data_block) {
             LOG(INFO, LOG_TAG) << "*** POLLING RECEIVED DATA *** " << data_block->payload_len 
