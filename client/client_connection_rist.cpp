@@ -115,6 +115,13 @@ void ClientConnectionRist::write(boost::asio::streambuf& /* buffer */, WriteHand
 
 bool ClientConnectionRist::initRist()
 {
+    LOG(INFO, LOG_TAG) << "Initializing RIST logging\n";
+
+    rist_logging_settings log_settings = {};
+    log_settings.log_level = RIST_LOG_DEBUG; // Set debug level
+    log_settings.log_stream = stdout; // Output to stdout
+    rist_logging_set_global(&log_settings);
+
     LOG(INFO, LOG_TAG) << "Initializing RIST receiver\n";
 
     // Create RIST receiver with main profile
