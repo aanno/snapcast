@@ -83,7 +83,7 @@ static int ristLogCallback(void* /*arg*/, enum rist_log_level level, const char*
 }
 
 ClientConnectionRistBidirectional::ClientConnectionRistBidirectional(boost::asio::io_context& io_context, ClientSettings::Server server)
-    : ClientConnection(io_context, std::move(server))
+    : ClientConnection(io_context, std::move(server)), use_polling_fallback_(false)
 {
     // Note: ClientConnection doesn't inherit from enable_shared_from_this
     // self_ = std::static_pointer_cast<ClientConnectionRistBidirectional>(shared_from_this());
@@ -112,6 +112,12 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
 
     // Start worker thread for processing messages from callback
     worker_thread_ = std::thread(&ClientConnectionRistBidirectional::messageProcessorThread, this);
+    
+    // Start polling thread if using fallback
+    if (use_polling_fallback_) {
+        LOG(INFO, LOG_TAG) << "Starting RIST polling thread (fallback mode)\n";
+        polling_thread_ = std::thread(&ClientConnectionRistBidirectional::pollingThread, this);
+    }
 
     // Wait for both RIST connections to be established (max 5 seconds)
     LOG(INFO, LOG_TAG) << "Waiting for RIST connections to establish...\n";
@@ -147,6 +153,12 @@ void ClientConnectionRistBidirectional::disconnect()
     if (worker_thread_.joinable())
     {
         worker_thread_.join();
+    }
+    
+    // Stop polling thread if running
+    if (polling_thread_.joinable())
+    {
+        polling_thread_.join();
     }
 
     cleanupRist();
@@ -238,6 +250,16 @@ bool ClientConnectionRistBidirectional::initRist()
         LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver context: " << ret << "\n";
         return false;
     }
+    
+    // CRITICAL: Configure libRIST to force data output thread to work
+    LOG(INFO, LOG_TAG) << "Configuring libRIST receiver for forced data output\n";
+    // Set buffer settings to ensure data flows properly
+    ret = rist_receiver_set_output_fifo_size(receiver_ctx_, 100); // Small FIFO to force immediate output
+    if (ret != 0) {
+        LOG(WARNING, LOG_TAG) << "Failed to set receiver output FIFO size: " << ret << "\n";
+    } else {
+        LOG(INFO, LOG_TAG) << "Set receiver output FIFO size to 100ms\n";
+    }
 
     // Create RIST sender context for sending backchannel to server
     rist_logging_settings log_settings_sender = log_settings_;
@@ -278,6 +300,10 @@ bool ClientConnectionRistBidirectional::initRist()
         return false;
     }
     LOG(INFO, LOG_TAG) << "RIST receiver data callback set successfully (function: " << (void*)ristDataCallback << ", context: " << this << ")\n";
+    
+    // CRITICAL: Add polling fallback since callback isn't being called in libRIST v0.2.7
+    LOG(WARNING, LOG_TAG) << "Adding polling fallback due to libRIST v0.2.7 callback issue\n";
+    use_polling_fallback_ = true;
     
     // Set stats callback to monitor packet flow (debugging aid)
     ret = rist_stats_callback_set(receiver_ctx_, 1000, ClientConnectionRistBidirectional::ristStatsCallback, this);
@@ -523,6 +549,53 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
     }
 
     LOG(INFO, LOG_TAG) << "Bidirectional RIST receiver thread stopped\n";
+}
+
+void ClientConnectionRistBidirectional::pollingThread()
+{
+    LOG(INFO, LOG_TAG) << "Starting RIST polling thread (libRIST v0.2.7 callback workaround)\n";
+    
+    while (running_ && receiver_ctx_) {
+        // Use only rist_receiver_data_read2 API (rist_receiver_data_read is deprecated)
+        struct rist_data_block* data_block = nullptr;
+        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 5); // 5ms timeout
+        
+        LOG(DEBUG, LOG_TAG) << "Polling result: ret=" << ret << ", data_block=" << data_block << "\n";
+        
+        if (ret > 0 && data_block) {
+            LOG(INFO, LOG_TAG) << "*** POLLING RECEIVED DATA *** " << data_block->payload_len 
+                              << " bytes on vport " << data_block->virt_dst_port << "\n";
+            
+            // Process the same way as callback would
+            if (data_block->virt_dst_port == VPORT_AUDIO || data_block->virt_dst_port == VPORT_CONTROL) {
+                QueuedMessage msg;
+                msg.data.resize(data_block->payload_len);
+                memcpy(msg.data.data(), data_block->payload, data_block->payload_len);
+                msg.virt_port = data_block->virt_dst_port;
+                
+                {
+                    std::lock_guard<std::mutex> lock(queue_mutex_);
+                    message_queue_.push(std::move(msg));
+                }
+                queue_cv_.notify_one();
+                
+                LOG(DEBUG, LOG_TAG) << "Polled and queued data: " << data_block->payload_len 
+                                   << " bytes on virtual port " << data_block->virt_dst_port << "\n";
+            } else {
+                LOG(WARNING, LOG_TAG) << "Polling: Ignoring packet on unexpected virtual port: " << data_block->virt_dst_port 
+                                     << " (expected " << VPORT_AUDIO << " or " << VPORT_CONTROL << ")\n";
+            }
+            
+            // Free the data block
+            rist_receiver_data_block_free2(&data_block);
+        } else if (ret < 0) {
+            LOG(DEBUG, LOG_TAG) << "Polling error or timeout: " << ret << "\n";
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        // If ret == 0, no data available, continue polling
+    }
+    
+    LOG(INFO, LOG_TAG) << "RIST polling thread stopped\n";
 }
 
 void ClientConnectionRistBidirectional::receiverConnectionStatusCallback(void* arg, struct rist_peer* /*peer*/, enum rist_connection_status status)

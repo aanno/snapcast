@@ -73,6 +73,8 @@ private:
     static int ristStatsCallback(void* arg, const struct rist_stats* stats);
     /// Worker thread that processes queued messages
     void messageProcessorThread();
+    /// Polling thread for libRIST v0.2.7 callback fallback
+    void pollingThread();
     /// RIST connection status callbacks
     static void receiverConnectionStatusCallback(void* arg, struct rist_peer* peer, enum rist_connection_status status);
     static void senderConnectionStatusCallback(void* arg, struct rist_peer* peer, enum rist_connection_status status);
@@ -114,6 +116,10 @@ private:
     std::vector<uint8_t> buffer_;                 ///< buffer for received messages
     std::mutex buffer_mutex_;                     ///< protect buffer access
     rist_logging_settings log_settings_;
+    
+    /// Polling fallback for libRIST v0.2.7 callback issue
+    bool use_polling_fallback_;                   ///< use polling instead of callback
+    std::thread polling_thread_;                  ///< polling thread for data reception
 };
 
 #endif // HAS_LIBRIST
