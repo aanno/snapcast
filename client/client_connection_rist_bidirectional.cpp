@@ -24,7 +24,13 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "common/utils.hpp"
+
+
+
 #include "common/message/message.hpp"
+
+// libRIST headers
+#include <librist/logging.h>
 
 // standard headers
 #include <iostream>
@@ -35,6 +41,22 @@
 using namespace std;
 
 static constexpr auto LOG_TAG = "ConnectionRISTBi";
+
+// libRIST debug logging callback
+static int ristLogCallback(void* /*arg*/, enum rist_log_level level, const char* msg)
+{
+    const char* level_str = "UNKNOWN";
+    switch (level) {
+        case RIST_LOG_ERROR: level_str = "ERROR"; break;
+        case RIST_LOG_WARN: level_str = "WARN"; break;
+        case RIST_LOG_NOTICE: level_str = "NOTICE"; break;
+        case RIST_LOG_INFO: level_str = "INFO"; break;
+        case RIST_LOG_DEBUG: level_str = "DEBUG"; break;
+        default: break;
+    }
+    LOG(DEBUG, LOG_TAG) << "[libRIST-" << level_str << "] " << msg << "\n";
+    return 0;
+}
 
 ClientConnectionRistBidirectional::ClientConnectionRistBidirectional(boost::asio::io_context& io_context, ClientSettings::Server server)
     : ClientConnection(io_context, std::move(server))
@@ -59,11 +81,27 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
         return boost::system::errc::make_error_code(boost::system::errc::connection_refused);
     }
 
-    connected_ = true;
+    // Don't override connected_ - let connection callbacks set it
     running_ = true;
 
     // Start worker thread for processing messages from callback
     worker_thread_ = std::thread(&ClientConnectionRistBidirectional::messageProcessorThread, this);
+
+    // Wait for both RIST connections to be established (max 5 seconds)
+    LOG(INFO, LOG_TAG) << "Waiting for RIST connections to establish...\n";
+    auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    
+    while (!connected_ && std::chrono::steady_clock::now() < timeout)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    
+    if (!connected_)
+    {
+        LOG(ERROR, LOG_TAG) << "RIST connection establishment timed out\n";
+        disconnect();
+        return boost::system::errc::make_error_code(boost::system::errc::connection_refused);
+    }
 
     LOG(INFO, LOG_TAG) << "Bidirectional RIST client connection established\n";
     return boost::system::error_code();
