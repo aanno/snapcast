@@ -62,8 +62,8 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
     connected_ = true;
     running_ = true;
 
-    // Start receiver thread
-    receiver_thread_ = std::thread(&ClientConnectionRistBidirectional::ristReceiverThread, this);
+    // Start worker thread for processing messages from callback
+    worker_thread_ = std::thread(&ClientConnectionRistBidirectional::messageProcessorThread, this);
 
     LOG(INFO, LOG_TAG) << "Bidirectional RIST client connection established\n";
     return boost::system::error_code();
@@ -76,9 +76,11 @@ void ClientConnectionRistBidirectional::disconnect()
     running_ = false;
     connected_ = false;
 
-    if (receiver_thread_.joinable())
+    // Wake up worker thread and wait for it to finish
+    queue_cv_.notify_all();
+    if (worker_thread_.joinable())
     {
-        receiver_thread_.join();
+        worker_thread_.join();
     }
 
     cleanupRist();
@@ -180,6 +182,15 @@ bool ClientConnectionRistBidirectional::initRist()
     if (ret != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to set sender connection status callback: " << ret << "\n";
+        cleanupRist();
+        return false;
+    }
+
+    // Set data callback for event-driven reception (replaces polling)
+    ret = rist_receiver_data_callback_set2(receiver_ctx_, ristDataCallback, this);
+    if (ret != 0)
+    {
+        LOG(ERROR, LOG_TAG) << "Failed to set receiver data callback: " << ret << "\n";
         cleanupRist();
         return false;
     }
