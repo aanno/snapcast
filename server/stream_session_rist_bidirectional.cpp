@@ -313,11 +313,16 @@ void StreamSessionRistBidirectional::ristReceiverThread()
                     // Copy data to our buffer
                     memcpy(buffer_.data(), data_block->payload, data_block->payload_len);
 
-                    // Process the message if it's large enough to be a Snapcast message
+                    // Process the message - match TCP approach exactly 
                     if (data_block->payload_len >= base_msg_size_) {
                         try {
-                            // Parse Snapcast protocol message from backchannel data
-                            baseMessage_.deserialize(reinterpret_cast<char*>(buffer_.data()));
+                            // Stage 1: Parse message header from a copy (don't modify original buffer)
+                            std::vector<char> header_buffer(base_msg_size_);
+                            memcpy(header_buffer.data(), buffer_.data(), base_msg_size_);
+                            baseMessage_.deserialize(header_buffer.data());
+                            
+                            LOG(DEBUG, LOG_TAG) << "Parsed backchannel message header: type=" << baseMessage_.type 
+                                               << ", size=" << baseMessage_.size << ", id=" << baseMessage_.id << "\n";
                             
                             if (baseMessage_.type > message_type::kLast) {
                                 LOG(ERROR, LOG_TAG) << "Unknown backchannel message type received: " << baseMessage_.type << "\n";
@@ -326,22 +331,35 @@ void StreamSessionRistBidirectional::ristReceiverThread()
                                 LOG(ERROR, LOG_TAG) << "Backchannel message too large: " << baseMessage_.size << "\n";
                             }
                             else if (baseMessage_.size <= data_block->payload_len) {
-                                // We have a complete backchannel message - forward it to message receiver
-                                auto message = msg::factory::createMessage(baseMessage_, reinterpret_cast<char*>(buffer_.data()));
-                                
-                                if (messageReceiver_ && message && self_) {
-                                    LOG(DEBUG, LOG_TAG) << "Processing backchannel message from client: type=" << baseMessage_.type << ", size=" << baseMessage_.size << "\n";
-                                    messageReceiver_->onMessageReceived(self_, *message, reinterpret_cast<char*>(buffer_.data()));
+                                // Stage 2: Match TCP approach - create a buffer with the complete message
+                                // TCP overwrites buffer with complete message, so we do the same
+                                if (messageReceiver_ && self_) {
+                                    LOG(DEBUG, LOG_TAG) << "Processing complete backchannel message from client\n";
+                                    
+                                    // Ensure buffer is exactly the message size (like TCP does)
+                                    if (buffer_.size() != baseMessage_.size) {
+                                        buffer_.resize(baseMessage_.size);
+                                    }
+                                    
+                                    // Make sure we have exactly baseMessage_.size bytes
+                                    // (buffer should already have the right data from the original copy)
+                                    
+                                    tv now;
+                                    baseMessage_.received = now;
+                                    // Follow WebSocket pattern: pass payload only (buffer + header_size)
+                                    messageReceiver_->onMessageReceived(self_, baseMessage_, reinterpret_cast<char*>(buffer_.data()) + base_msg_size_);
                                 } else {
-                                    LOG(WARNING, LOG_TAG) << "Cannot process backchannel message - no message receiver, invalid message, or no self reference\n";
+                                    LOG(WARNING, LOG_TAG) << "Cannot process backchannel message - no message receiver or no self reference\n";
                                 }
                             } else {
-                                LOG(DEBUG, LOG_TAG) << "Incomplete backchannel message - need more data\n";
+                                LOG(DEBUG, LOG_TAG) << "Incomplete backchannel message - expected " << baseMessage_.size << " bytes, got " << data_block->payload_len << "\n";
                             }
                         }
                         catch (const std::exception& e) {
                             LOG(ERROR, LOG_TAG) << "Error parsing backchannel message: " << e.what() << "\n";
                         }
+                    } else {
+                        LOG(DEBUG, LOG_TAG) << "Received data too small for Snapcast message header: " << data_block->payload_len << " < " << base_msg_size_ << "\n";
                     }
                 }
 

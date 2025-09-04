@@ -313,10 +313,14 @@ void ClientConnectionRistBidirectional::ristReceiverThread()
                     // Copy data to our buffer
                     memcpy(buffer_.data(), data_block->payload, data_block->payload_len);
 
-                    // Process the message
+                    // Process the message - follow TCP two-stage approach
                     if (data_block->payload_len >= base_msg_size_)
                     {
+                        // Stage 1: Parse message header (first base_msg_size_ bytes)
                         base_message_.deserialize(reinterpret_cast<char*>(buffer_.data()));
+                        
+                        LOG(DEBUG, LOG_TAG) << "Parsed message header: type=" << base_message_.type 
+                                           << ", size=" << base_message_.size << ", id=" << base_message_.id << "\n";
                         
                         if (base_message_.type > message_type::kLast)
                         {
@@ -328,16 +332,28 @@ void ClientConnectionRistBidirectional::ristReceiverThread()
                         }
                         else if (base_message_.size <= data_block->payload_len)
                         {
-                            // We have a complete message
+                            // Stage 2: We have a complete message, create and process it
                             auto message = msg::factory::createMessage(base_message_, reinterpret_cast<char*>(buffer_.data()));
                             
-                            std::lock_guard<std::mutex> handler_lock(handler_mutex_);
-                            if (pending_handler_)
-                            {
-                                messageReceived(std::move(message), pending_handler_);
-                                pending_handler_ = nullptr;
+                            if (message) {
+                                LOG(DEBUG, LOG_TAG) << "Processing complete message from server\n";
+                                tv now;
+                                base_message_.received = now;
+                                
+                                std::lock_guard<std::mutex> handler_lock(handler_mutex_);
+                                if (pending_handler_)
+                                {
+                                    messageReceived(std::move(message), pending_handler_);
+                                    pending_handler_ = nullptr;
+                                }
+                            } else {
+                                LOG(WARNING, LOG_TAG) << "Failed to create message from factory\n";
                             }
+                        } else {
+                            LOG(DEBUG, LOG_TAG) << "Incomplete message - expected " << base_message_.size << " bytes, got " << data_block->payload_len << "\n";
                         }
+                    } else {
+                        LOG(DEBUG, LOG_TAG) << "Received data too small for message header: " << data_block->payload_len << " < " << base_msg_size_ << "\n";
                     }
                 }
 
