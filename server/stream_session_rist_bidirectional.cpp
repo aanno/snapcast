@@ -32,6 +32,30 @@ using namespace std;
 using namespace streamreader;
 
 static constexpr auto LOG_TAG = "StreamSessionRISTBi";
+static constexpr auto LOG_LIBRIST_TAG = "libRIST";
+
+static int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
+    (void)arg;
+    fprintf(stdout, "[RIST] [%d] %s", level, msg);
+    switch (level) {
+        case RIST_LOG_ERROR:
+            LOG(ERROR, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_WARN:
+            LOG(WARNING, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_INFO:
+            LOG(INFO, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_DEBUG:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        default:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+    }
+    return 0;
+}
 
 StreamSessionRistBidirectional::StreamSessionRistBidirectional(StreamMessageReceiver* receiver, const ServerSettings& server_settings,
                                      const std::string& client_address, uint16_t client_port,
@@ -51,17 +75,26 @@ StreamSessionRistBidirectional::~StreamSessionRistBidirectional()
 
 bool StreamSessionRistBidirectional::initRist()
 {
+    LOG(INFO, LOG_TAG) << "Initializing RIST logging\n";
+
+    log_settings_ = {};
+    log_settings_.log_level = RIST_LOG_DEBUG; // Set debug level
+    log_settings_.log_stream = nullptr; // stdout; // Output to stdout
+    log_settings_.log_cb = rist_log_callback; // Set callback
+    log_settings_.log_cb_arg = nullptr; // Optional user data (set if needed)
+    rist_logging_set_global(&log_settings_);
+
     LOG(INFO, LOG_TAG) << "Initializing bidirectional RIST server\n";
     
     // Create RIST sender context for sending audio/control to clients
-    int ret = rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, nullptr);
+    int ret = rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, &log_settings_);
     if (ret != 0) {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST sender context: " << ret << "\n";
         return false;
     }
 
     // Create RIST receiver context for receiving backchannel from clients
-    ret = rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, nullptr);
+    ret = rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, &log_settings_);
     if (ret != 0) {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver context: " << ret << "\n";
         rist_destroy(sender_ctx_);

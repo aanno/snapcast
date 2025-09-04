@@ -115,4 +115,5 @@ private:
     
     /// Self-reference to keep session alive (RIST sessions are not connection-driven like TCP)
     std::shared_ptr<StreamSessionRistBidirectional> self_;
+    rist_logging_settings log_settings_;
 };

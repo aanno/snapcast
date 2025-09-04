@@ -38,6 +38,7 @@ static constexpr auto LOG_LIBRIST_TAG = "libRIST";
 
 static int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
     (void)arg;
+    fprintf(stdout, "[RIST] [%d] %s", level, msg);
     switch (level) {
         case RIST_LOG_ERROR:
             LOG(ERROR, LOG_LIBRIST_TAG) << msg << "\n";
@@ -140,17 +141,17 @@ bool ClientConnectionRist::initRist()
 {
     LOG(INFO, LOG_TAG) << "Initializing RIST logging\n";
 
-    rist_logging_settings log_settings = {};
-    log_settings.log_level = RIST_LOG_DEBUG; // Set debug level
-    log_settings.log_stream = stdout; // Output to stdout
-    log_settings.log_cb = rist_log_callback; // Set callback
-    log_settings.log_cb_arg = nullptr; // Optional user data (set if needed)
-    rist_logging_set_global(&log_settings);
+    log_settings_ = {};
+    log_settings_.log_level = RIST_LOG_DEBUG; // Set debug level
+    log_settings_.log_stream = nullptr; // stdout; // Output to stdout
+    log_settings_.log_cb = rist_log_callback; // Set callback
+    log_settings_.log_cb_arg = nullptr; // Optional user data (set if needed)
+    rist_logging_set_global(&log_settings_);
 
     LOG(INFO, LOG_TAG) << "Initializing RIST receiver\n";
 
     // Create RIST receiver with main profile
-    int ret = rist_receiver_create(&rist_ctx_, RIST_PROFILE_MAIN, nullptr);
+    int ret = rist_receiver_create(&rist_ctx_, RIST_PROFILE_MAIN, &log_settings_);
     if (ret != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver context: " << ret << "\n";

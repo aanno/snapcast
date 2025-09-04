@@ -69,4 +69,5 @@ private:
     std::atomic<bool> connected_{false};     ///< connection status
     std::atomic<bool> running_{false};       ///< running status
     std::thread read_thread_;                ///< thread for reading (placeholder)
+    rist_logging_settings log_settings_;
 };

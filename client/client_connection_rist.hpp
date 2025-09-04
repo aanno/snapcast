@@ -82,6 +82,7 @@ private:
     /// Buffer for message processing and connection state
     std::vector<uint8_t> buffer_;            ///< buffer for received messages
     std::atomic<bool> connected_{false};     ///< connection status
+    rist_logging_settings log_settings_;
 };
 
 #endif // HAS_LIBRIST

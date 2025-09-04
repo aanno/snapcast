@@ -30,6 +30,30 @@ using namespace std;
 using namespace streamreader;
 
 static constexpr auto LOG_TAG = "StreamSessionRIST";
+static constexpr auto LOG_LIBRIST_TAG = "libRIST";
+
+static int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
+    (void)arg;
+    fprintf(stdout, "[RIST] [%d] %s", level, msg);
+    switch (level) {
+        case RIST_LOG_ERROR:
+            LOG(ERROR, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_WARN:
+            LOG(WARNING, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_INFO:
+            LOG(INFO, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        case RIST_LOG_DEBUG:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+        default:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << msg << "\n";
+            break;
+    }
+    return 0;
+}
 
 StreamSessionRist::StreamSessionRist(StreamMessageReceiver* receiver, const ServerSettings& server_settings,
                                      const std::string& client_address, uint16_t client_port,
@@ -50,15 +74,17 @@ bool StreamSessionRist::initRist()
 {
     LOG(INFO, LOG_TAG) << "Initializing RIST logging\n";
 
-    rist_logging_settings log_settings = {};
-    log_settings.log_level = RIST_LOG_DEBUG; // Set debug level
-    log_settings.log_stream = stdout; // Output to stdout
-    rist_logging_set_global(&log_settings);
+    log_settings_ = {};
+    log_settings_.log_level = RIST_LOG_DEBUG; // Set debug level
+    log_settings_.log_stream = nullptr; // stdout; // Output to stdout
+    log_settings_.log_cb = rist_log_callback; // Set callback
+    log_settings_.log_cb_arg = nullptr; // Optional user data (set if needed)
+    rist_logging_set_global(&log_settings_);
 
     LOG(INFO, LOG_TAG) << "Initializing RIST sender\n";
     
     // Create RIST logging settings - pass nullptr for default logging
-    int ret = rist_sender_create(&rist_ctx_, RIST_PROFILE_MAIN, 0, nullptr);
+    int ret = rist_sender_create(&rist_ctx_, RIST_PROFILE_MAIN, 0, &log_settings_);
     if (ret != 0) {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST sender context: " << ret << "\n";
         return false;

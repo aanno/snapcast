@@ -109,6 +109,7 @@ private:
     /// Buffer for message processing
     std::vector<uint8_t> buffer_;                 ///< buffer for received messages
     std::mutex buffer_mutex_;                     ///< protect buffer access
+    rist_logging_settings log_settings_;
 };
 
 #endif // HAS_LIBRIST
