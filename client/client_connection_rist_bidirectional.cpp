@@ -85,6 +85,8 @@ static int ristLogCallback(void* /*arg*/, enum rist_log_level level, const char*
 ClientConnectionRistBidirectional::ClientConnectionRistBidirectional(boost::asio::io_context& io_context, ClientSettings::Server server)
     : ClientConnection(io_context, std::move(server))
 {
+    // Note: ClientConnection doesn't inherit from enable_shared_from_this
+    // self_ = std::static_pointer_cast<ClientConnectionRistBidirectional>(shared_from_this());
     LOG(INFO, LOG_TAG) << "Creating bidirectional RIST client connection\n";
     buffer_.resize(8192); // Initial buffer size
 }
@@ -117,6 +119,8 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
     
     while (!connected_ && std::chrono::steady_clock::now() < timeout)
     {
+        LOG(DEBUG, LOG_TAG) << "Waiting for RIST connections: sender=" << sender_connected_ 
+                           << ", receiver=" << receiver_connected_ << "\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     
@@ -167,6 +171,9 @@ void ClientConnectionRistBidirectional::getNextMessage(const MessageHandler<msg:
 {
     std::lock_guard<std::mutex> lock(handler_mutex_);
     pending_handler_ = handler;
+    LOG(DEBUG, LOG_TAG) << "Registered message handler, waiting for RIST data callback\n";
+    // Ensure callback is active (already set in initRist)
+    queue_cv_.notify_one(); // Wake up message processor thread
 }
 
 void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, WriteHandler&& write_handler)
@@ -234,7 +241,7 @@ bool ClientConnectionRistBidirectional::initRist()
 
     // Create RIST sender context for sending backchannel to server
     rist_logging_settings log_settings_sender = log_settings_;
-    log_settings_receiver.log_cb_arg = static_cast<void*>(const_cast<char*>(" sender "));
+    log_settings_sender.log_cb_arg = static_cast<void*>(const_cast<char*>(" sender "));
     ret = rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, &log_settings_sender);
     if (ret != 0)
     {
@@ -262,6 +269,7 @@ bool ClientConnectionRistBidirectional::initRist()
     }
 
     // Set data callback for event-driven reception (replaces polling)
+    LOG(INFO, LOG_TAG) << "Setting RIST receiver data callback...\n";
     ret = rist_receiver_data_callback_set2(receiver_ctx_, ristDataCallback, this);
     if (ret != 0)
     {
@@ -269,6 +277,7 @@ bool ClientConnectionRistBidirectional::initRist()
         cleanupRist();
         return false;
     }
+    LOG(INFO, LOG_TAG) << "RIST receiver data callback set successfully\n";
 
     // Configure receiver to connect to server's sender (main port)
     std::string receiver_url = "rist://" + server_.host + ":" + std::to_string(server_.port);
@@ -293,8 +302,8 @@ bool ClientConnectionRistBidirectional::initRist()
     }
     free(receiver_config);
 
-    // Configure sender to connect to server's backchannel receiver (port + 1)
-    uint16_t backchannel_port = server_.port + 1;
+    // Configure sender to connect to server's backchannel receiver (port + 2)
+    uint16_t backchannel_port = server_.port + 2;
     std::string sender_url = "rist://" + server_.host + ":" + std::to_string(backchannel_port);
     LOG(INFO, LOG_TAG) << "Using RIST sender URL: " << sender_url << "\n";
 
@@ -361,8 +370,12 @@ int ClientConnectionRistBidirectional::ristDataCallback(void* arg, struct rist_d
 {
     auto* client = static_cast<ClientConnectionRistBidirectional*>(arg);
     if (!client || !data_block) {
+        LOG(ERROR, LOG_TAG) << "Invalid callback args or data block\n";
         return 0;
     }
+    
+    LOG(INFO, LOG_TAG) << "CLIENT DATA CALLBACK TRIGGERED: " << data_block->payload_len 
+                      << " bytes on vport " << data_block->virt_dst_port << "\n";
 
     try {
         // Queue audio and control messages (received from server)
@@ -449,7 +462,10 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
                                 
                                 std::lock_guard<std::mutex> handler_lock(handler_mutex_);
                                 if (pending_handler_) {
-                                    messageReceived(std::move(message), pending_handler_);
+                                    messageReceived(std::move(message), [this, h = pending_handler_](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
+                                        h(ec, std::move(msg));
+                                        if (!ec) getNextMessage(h); // Chain next read like TCP/WebSocket
+                                    });
                                     pending_handler_ = nullptr;
                                 }
                             } else {
@@ -465,6 +481,7 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
                 } else {
                     LOG(DEBUG, LOG_TAG) << "Received data too small for message header: " << msg.data.size() << " < " << base_msg_size_ << "\n";
                 }
+                buffer_.clear(); // Mimic WebSocket buffer_.consume
             }
         }
         catch (const std::exception& e) {

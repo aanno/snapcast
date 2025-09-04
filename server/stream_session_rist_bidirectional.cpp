@@ -151,7 +151,7 @@ bool StreamSessionRistBidirectional::initRist()
     free(sender_config);
 
     // Configure receiver context to bind on a different port for backchannel
-    uint16_t backchannel_port = client_port_ + 1;  // Use next port for backchannel
+    uint16_t backchannel_port = client_port_ + 2;  // Use +2 to avoid RTCP conflict
     std::string receiver_url = "rist://@0.0.0.0:" + std::to_string(backchannel_port);
     LOG(INFO, LOG_TAG) << "Using RIST receiver URL (bind): " << receiver_url << "\n";
 
@@ -338,8 +338,12 @@ int StreamSessionRistBidirectional::ristDataCallback(void* arg, struct rist_data
 {
     auto* session = static_cast<StreamSessionRistBidirectional*>(arg);
     if (!session || !data_block) {
+        LOG(ERROR, LOG_TAG) << "Invalid callback args or data block\n";
         return 0;
     }
+    
+    LOG(DEBUG, LOG_TAG) << "Data callback triggered: " << data_block->payload_len 
+                       << " bytes on vport " << data_block->virt_dst_port << "\n";
 
     try {
         // Only queue backchannel messages (client to server)

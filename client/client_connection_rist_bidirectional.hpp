@@ -92,6 +92,8 @@ private:
     std::atomic<bool> connected_{false};          ///< overall connection status
     std::atomic<bool> running_{false};            ///< worker thread running
     
+    std::shared_ptr<ClientConnectionRistBidirectional> self_; ///< self reference for lifetime management
+    
     // Message queue for async processing
     struct QueuedMessage {
         std::vector<uint8_t> data;
