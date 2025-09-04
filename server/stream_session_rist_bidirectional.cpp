@@ -36,7 +36,7 @@ static constexpr auto LOG_LIBRIST_TAG = "libRIST";
 
 static int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
     (void)arg;
-    fprintf(stdout, "[RIST] [%d] %s", level, msg);
+    // fprintf(stdout, "[RIST] [%d] %s", level, msg);
     switch (level) {
         case RIST_LOG_ERROR:
             LOG(ERROR, LOG_LIBRIST_TAG) << msg << "\n";
