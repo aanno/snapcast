@@ -32,6 +32,7 @@
 #include <atomic>
 #include <memory>
 #include <thread>
+#include <vector>
 
 /// Hybrid RIST client connection
 /**
@@ -77,6 +78,10 @@ private:
     /// Pending message handlers for media data
     MessageHandler<msg::BaseMessage> pending_handler_;
     std::mutex handler_mutex_;               ///< protect pending_handler_
+    
+    /// Buffer for message processing and connection state
+    std::vector<uint8_t> buffer_;            ///< buffer for received messages
+    std::atomic<bool> connected_{false};     ///< connection status
 };
 
 #endif // HAS_LIBRIST

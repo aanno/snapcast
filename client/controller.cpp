@@ -25,6 +25,7 @@
 
 #ifdef HAS_LIBRIST
 #include "client_connection_rist.hpp"
+#include "client_connection_rist_bidirectional.hpp"
 #endif
 
 // local headers
@@ -436,7 +437,7 @@ void Controller::start()
 #endif
 #ifdef HAS_LIBRIST
         else if (settings_.server.protocol == "rist")
-            clientConnection_ = make_unique<ClientConnectionRist>(io_context_, settings_.server);
+            clientConnection_ = make_unique<ClientConnectionRistBidirectional>(io_context_, settings_.server);
 #endif
         else
             clientConnection_ = make_unique<ClientConnectionTcp>(io_context_, settings_.server);

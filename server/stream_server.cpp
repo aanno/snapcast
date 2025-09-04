@@ -25,6 +25,7 @@
 #include "stream_session_tcp.hpp"
 #ifdef HAS_LIBRIST
 #include "stream_session_rist.hpp"
+#include "stream_session_rist_bidirectional.hpp"
 #endif
 
 // 3rd party headers
@@ -242,16 +243,27 @@ void StreamServer::start()
     startAccept();
 
 #ifdef HAS_LIBRIST
+    // Debug RIST configuration
+    LOG(INFO, LOG_TAG) << "DEBUG: RIST enabled = " << settings_.rist.enabled << "\n";
+    LOG(INFO, LOG_TAG) << "DEBUG: RIST port = " << settings_.rist.port << "\n";
+    LOG(INFO, LOG_TAG) << "DEBUG: RIST addresses count = " << settings_.rist.bind_to_address.size() << "\n";
+    for (const auto& addr : settings_.rist.bind_to_address) {
+        LOG(INFO, LOG_TAG) << "DEBUG: RIST address = " << addr << "\n";
+    }
+
     // Initialize RIST sessions if enabled
     if (settings_.rist.enabled)
     {
+        LOG(INFO, LOG_TAG) << "RIST is enabled, creating sessions...\n";
         for (const auto& address : settings_.rist.bind_to_address)
         {
             try
             {
-                LOG(INFO, LOG_TAG) << "Creating RIST session for address: " << address << ", port: " << settings_.rist.port << "\n";
-                auto rist_session = make_shared<StreamSessionRist>(this, settings_, address, settings_.rist.port, io_context_);
+                LOG(INFO, LOG_TAG) << "Creating bidirectional RIST session for address: " << address << ", port: " << settings_.rist.port << "\n";
+                auto rist_session = make_shared<StreamSessionRistBidirectional>(this, settings_, address, settings_.rist.port, io_context_);
+                rist_session->setSelfReference(rist_session);  // Keep session alive
                 addSession(rist_session);
+                LOG(INFO, LOG_TAG) << "Successfully created RIST session for: " << address << ":" << settings_.rist.port << "\n";
             }
             catch (const std::exception& e)
             {
@@ -259,6 +271,12 @@ void StreamServer::start()
             }
         }
     }
+    else
+    {
+        LOG(INFO, LOG_TAG) << "RIST is disabled in configuration\n";
+    }
+#else
+    LOG(INFO, LOG_TAG) << "RIST support not compiled in (HAS_LIBRIST not defined)\n";
 #endif
 }
 

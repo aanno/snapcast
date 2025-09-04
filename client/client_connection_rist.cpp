@@ -221,7 +221,7 @@ void ClientConnectionRist::ristReceiverThread()
                 // Process the message
                 if (data_block->payload_len >= base_msg_size_)
                 {
-                    base_message_.deserialize(buffer_.data());
+                    base_message_.deserialize(reinterpret_cast<char*>(buffer_.data()));
                     
                     if (base_message_.type > message_type::kLast)
                     {
@@ -234,7 +234,7 @@ void ClientConnectionRist::ristReceiverThread()
                     else if (base_message_.size <= data_block->payload_len)
                     {
                         // We have a complete message
-                        auto message = msg::factory::createMessage(base_message_, buffer_.data());
+                        auto message = msg::factory::createMessage(base_message_, reinterpret_cast<char*>(buffer_.data()));
                         
                         std::lock_guard<std::mutex> lock(handler_mutex_);
                         if (pending_handler_)
