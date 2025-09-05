@@ -10,6 +10,8 @@
 /tmp/
 /heaptrack/
 /cpu/
+/testrist/client
+/testrist/server
 
 # Precompiled Headers
 *.gch
