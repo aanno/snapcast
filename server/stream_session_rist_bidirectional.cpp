@@ -150,8 +150,8 @@ bool StreamSessionRistBidirectional::initRist()
     }
     
     // Manually set optimized RIST parameters for low latency audio streaming
-    sender_config->recovery_length_min = 50;  // bufmin: 50ms minimum buffer (vs default 1000ms)
-    sender_config->recovery_length_max = 50;  // bufmax: 50ms maximum buffer (fixed for low latency)
+    sender_config->recovery_length_min = 200;  // bufmin: 200ms minimum buffer for connection stability
+    sender_config->recovery_length_max = 200;  // bufmax: 200ms maximum buffer (still much lower than 1000ms default)
     sender_config->recovery_rtt_min = RIST_DEFAULT_RECOVERY_RTT_MIN;    // rttmin: 5ms (default)
     sender_config->recovery_rtt_max = RIST_DEFAULT_RECOVERY_RTT_MAX;    // rttmax: 500ms (default)
     sender_config->recovery_reorder_buffer = RIST_DEFAULT_RECOVERY_REORDER_BUFFER;  // reorder: 15 packets (default)
@@ -186,8 +186,8 @@ bool StreamSessionRistBidirectional::initRist()
     }
     
     // Manually set optimized RIST parameters for low latency backchannel communication
-    receiver_config->recovery_length_min = 50;  // bufmin: 50ms minimum buffer (vs default 1000ms)
-    receiver_config->recovery_length_max = 50;  // bufmax: 50ms maximum buffer (fixed for low latency)
+    receiver_config->recovery_length_min = 200;  // bufmin: 200ms minimum buffer for connection stability
+    receiver_config->recovery_length_max = 200;  // bufmax: 200ms maximum buffer (still much lower than 1000ms default)
     receiver_config->recovery_rtt_min = RIST_DEFAULT_RECOVERY_RTT_MIN;    // rttmin: 5ms (default)
     receiver_config->recovery_rtt_max = RIST_DEFAULT_RECOVERY_RTT_MAX;    // rttmax: 500ms (default)
     receiver_config->recovery_reorder_buffer = RIST_DEFAULT_RECOVERY_REORDER_BUFFER;  // reorder: 15 packets (default)
