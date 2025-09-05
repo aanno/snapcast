@@ -234,24 +234,13 @@ if(NOT WIN32 AND NOT ANDROID)
     endif(BUILD_WITH_PIPEWIRE)
 
     if(BUILD_WITH_LIBRIST)
-      # Try to find librist using pkg-config
-      pkg_search_module(LIBRIST librist)
-      if(NOT LIBRIST_FOUND)
-        # Fallback: look for system-installed librist
-        find_path(LIBRIST_INCLUDE_DIRS librist/librist.h
-                  PATHS /usr/include /usr/local/include)
-        find_library(LIBRIST_LIBRARIES rist
-                     PATHS /usr/lib64 /usr/lib /usr/local/lib)
-        if(LIBRIST_INCLUDE_DIRS AND LIBRIST_LIBRARIES)
-          set(LIBRIST_FOUND TRUE)
-          message(STATUS "Found librist: ${LIBRIST_LIBRARIES}")
-        endif()
-      endif()
-      if(LIBRIST_FOUND)
-        add_compile_definitions(HAS_LIBRIST)
-      else()
-        message(FATAL_ERROR "librist not found. Install librist or disable with -DBUILD_WITH_LIBRIST=OFF")
-      endif()
+      # Use custom static librist build - build dir first for librist_config.h
+      set(LIBRIST_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/librist/build/include" "${CMAKE_SOURCE_DIR}/librist/include")
+      # librist static library with its dependencies
+      set(LIBRIST_LIBRARIES "${CMAKE_SOURCE_DIR}/librist/build/librist.a" "cjson" "mbedtls" "mbedx509" "mbedcrypto")
+      set(LIBRIST_FOUND TRUE)
+      message(STATUS "Using static librist: ${LIBRIST_LIBRARIES}")
+      add_compile_definitions(HAS_LIBRIST)
     endif(BUILD_WITH_LIBRIST)
 
     if(BUILD_WITH_AVAHI)
