@@ -2,6 +2,8 @@
 
 You're correct, libRIST v0.2.7 allows bufmin and bufmax configuration via rist_peer_config (seen in rist-common.c, ristreceiver.c, ristsender.c). The logs show bufmin=1000, bufmax=1000 (ms) as defaults. Override these in your rist_receiver_set_config call (e.g., set bufmin=50, bufmax=50) to reduce buffering delay. Ensure fifo_size is a power of 2 (e.g., 64ms) to avoid the "Desired fifo size must be a power of 2" error (snapclient.log: 19-19-15.410). Extend client hello timeout to >3 seconds as a fallback. Test and verify reduced latency.
 
+Despite FIFO size increase to 50ms and polling timeout adjustment to 10ms, libRIST's 1000ms buffer (bufmin=1000, bufmax=1000) causes ~2-second stream death (snapclient.log: 19-19-19.448, "stream is dead (2009 ms)"). Hardcoded buffer settings in libRIST v0.2.7 are overriding attempts to reduce latency. Extend client hello timeout to >3 seconds to account for buffer delay. If possible, patch libRIST to allow lower bufmin/bufmax (e.g., 50ms) or upgrade to a newer version with configurable buffers. Check system scheduling (RR scheduler failure noted) and network jitter for additional delays.
+
 ## FIFO Size
 
 `ret = rist_receiver_set_output_fifo_size(receiver_ctx_, 50); // 50ms FIFO - balanced approach`
