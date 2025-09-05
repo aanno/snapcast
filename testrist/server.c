@@ -168,10 +168,14 @@ int main() {
     
     // Apply optimized parameters like Snapcast
     struct rist_peer_config *mutable_sender_config = sender_config;
-    mutable_sender_config->recovery_length_min = 200;
-    mutable_sender_config->recovery_length_max = 200;
-    mutable_sender_config->recovery_rtt_min = 5;
-    mutable_sender_config->recovery_rtt_max = 500;
+    mutable_sender_config->recovery_length_min = 200;  // bufmin: 200ms minimum buffer for connection stability
+    mutable_sender_config->recovery_length_max = 200;  // bufmax: 200ms maximum buffer (still much lower than 1000ms default)
+    mutable_sender_config->recovery_rtt_min = 5;       // rttmin: 5ms (default)
+    mutable_sender_config->recovery_rtt_max = 500;     // rttmax: 500ms (default)
+    mutable_sender_config->recovery_reorder_buffer = 15;  // reorder: 15 packets (default)
+    mutable_sender_config->min_retries = 6;            // min_retries: 6 (default)
+    mutable_sender_config->max_retries = 20;           // max_retries: 20 (default)
+    mutable_sender_config->congestion_control_mode = 0;   // Default congestion control
     
     struct rist_peer *sender_peer;
     if (rist_peer_create(g_server.sender_ctx, &sender_peer, sender_config) != 0) {
@@ -186,12 +190,16 @@ int main() {
         return 1;
     }
     
-    // Apply same parameters
+    // Apply same parameters identical to Snapcast
     struct rist_peer_config *mutable_receiver_config = receiver_config;
-    mutable_receiver_config->recovery_length_min = 200;
-    mutable_receiver_config->recovery_length_max = 200;
-    mutable_receiver_config->recovery_rtt_min = 5;
-    mutable_receiver_config->recovery_rtt_max = 500;
+    mutable_receiver_config->recovery_length_min = 200;  // bufmin: 200ms minimum buffer for connection stability
+    mutable_receiver_config->recovery_length_max = 200;  // bufmax: 200ms maximum buffer (still much lower than 1000ms default)
+    mutable_receiver_config->recovery_rtt_min = 5;       // rttmin: 5ms (default)
+    mutable_receiver_config->recovery_rtt_max = 500;     // rttmax: 500ms (default)
+    mutable_receiver_config->recovery_reorder_buffer = 15;  // reorder: 15 packets (default)
+    mutable_receiver_config->min_retries = 6;            // min_retries: 6 (default)
+    mutable_receiver_config->max_retries = 20;           // max_retries: 20 (default)
+    mutable_receiver_config->congestion_control_mode = 0;   // Default congestion control
     
     struct rist_peer *receiver_peer;
     if (rist_peer_create(g_server.receiver_ctx, &receiver_peer, receiver_config) != 0) {

@@ -32,6 +32,9 @@
 // libRIST headers
 #include <librist/logging.h>
 
+// Configuration toggle: Use callbacks (like testrist) vs polling
+#define USE_CALLBACK 1
+
 // standard headers
 #include <iostream>
 #include <cstring>
@@ -284,12 +287,24 @@ bool ClientConnectionRistBidirectional::initRist()
         return false;
     }
 
+#if USE_CALLBACK
+    // Set data callback for event-driven reception (like testrist - known working approach)
+    ret = rist_receiver_data_callback_set2(receiver_ctx_, ristDataCallback, this);
+    if (ret != 0) {
+        LOG(ERROR, LOG_TAG) << "Failed to set receiver data callback: " << ret << "\n";
+        cleanupRist();
+        return false;
+    }
+    LOG(INFO, LOG_TAG) << "RIST receiver data callback enabled (testrist-style)\n";
+    use_polling_fallback_ = false;
+#else
     // Skip callback registration to prevent race conditions - use polling-only approach
     LOG(INFO, LOG_TAG) << "Skipping RIST receiver data callback registration - using polling-only mode\n";
     
     // CRITICAL: Add polling fallback since callback isn't being called in libRIST v0.2.7
     LOG(WARNING, LOG_TAG) << "Adding polling fallback due to libRIST v0.2.7 callback issue\n";
     use_polling_fallback_ = true;
+#endif
     
     // Set stats callback to monitor packet flow (debugging aid)
     ret = rist_stats_callback_set(receiver_ctx_, 1000, ClientConnectionRistBidirectional::ristStatsCallback, this);
@@ -424,7 +439,7 @@ int ClientConnectionRistBidirectional::ristDataCallback(void* arg, struct rist_d
         return 0;
     }
     
-    LOG(INFO, LOG_TAG) << "CLIENT DATA CALLBACK TRIGGERED: " << data_block->payload_len 
+    LOG(INFO, LOG_TAG) << "*** CALLBACK RECEIVED DATA *** " << data_block->payload_len 
                       << " bytes on vport " << data_block->virt_dst_port << " (VPORT_AUDIO=" << VPORT_AUDIO << ", VPORT_CONTROL=" << VPORT_CONTROL << ")\n";
 
     try {
@@ -478,6 +493,35 @@ int ClientConnectionRistBidirectional::ristStatsCallback(void* arg, const struct
 
 void ClientConnectionRistBidirectional::messageProcessorThread()
 {
+#if USE_CALLBACK
+    LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread with callback mode (testrist-style)\n";
+    
+    // In callback mode, just process queued messages from the callback
+    while (running_) {
+        QueuedMessage msg;
+        
+        // Wait for messages queued by callback
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            queue_cv_.wait(lock, [this] { return !message_queue_.empty() || !running_; });
+            
+            if (!running_) break;
+            
+            if (message_queue_.empty()) continue;
+            
+            msg = std::move(message_queue_.front());
+            message_queue_.pop();
+        }
+        
+        try {
+            // Process callback-queued message
+            processMessage(msg);
+        }
+        catch (const std::exception& e) {
+            LOG(ERROR, LOG_TAG) << "Error processing callback message: " << e.what() << "\n";
+        }
+    }
+#else
     LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread with unified polling\n";
 
     while (running_) {
@@ -516,6 +560,7 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
+#endif
 
     LOG(INFO, LOG_TAG) << "Bidirectional RIST receiver thread stopped\n";
 }
