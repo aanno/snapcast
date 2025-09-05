@@ -540,8 +540,12 @@ void ClientConnectionRistBidirectional::processMessage(const QueuedMessage& msg)
                         // Stage 1: Parse message header (first base_msg_size_ bytes)
                         base_message_.deserialize(reinterpret_cast<char*>(buffer_.data()));
                         
-                        LOG(DEBUG, LOG_TAG) << "Parsed message header: type=" << base_message_.type 
-                                           << ", size=" << base_message_.size << ", id=" << base_message_.id << "\n";
+                        if (base_message_.type == message_type::kCodecHeader) {
+                            LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client received CodecHeader (" << base_message_.size << " bytes) on vport " << msg.virt_port << "\n";
+                        } else {
+                            LOG(DEBUG, LOG_TAG) << "Parsed message header: type=" << base_message_.type 
+                                               << ", size=" << base_message_.size << ", id=" << base_message_.id << "\n";
+                        }
                         
                         if (base_message_.type > message_type::kLast) {
                             LOG(ERROR, LOG_TAG) << "Unknown message type received: " << base_message_.type << "\n";
@@ -555,12 +559,19 @@ void ClientConnectionRistBidirectional::processMessage(const QueuedMessage& msg)
                             auto message = msg::factory::createMessage(base_message_, reinterpret_cast<char*>(buffer_.data()) + base_msg_size_);
                             
                             if (message) {
-                                LOG(DEBUG, LOG_TAG) << "Processing complete message from server\n";
+                                if (base_message_.type == message_type::kCodecHeader) {
+                                    LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client processing complete CodecHeader message from server\n";
+                                } else {
+                                    LOG(DEBUG, LOG_TAG) << "Processing complete message from server\n";
+                                }
                                 tv now;
                                 base_message_.received = now;
                                 
                                 std::lock_guard<std::mutex> handler_lock(handler_mutex_);
                                 if (pending_handler_) {
+                                    if (base_message_.type == message_type::kCodecHeader) {
+                                        LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client calling handler for CodecHeader\n";
+                                    }
                                     messageReceived(std::move(message), [this, h = pending_handler_](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
                                         h(ec, std::move(msg));
                                         if (!ec) getNextMessage(h); // Chain next read like TCP/WebSocket
@@ -568,7 +579,11 @@ void ClientConnectionRistBidirectional::processMessage(const QueuedMessage& msg)
                                     pending_handler_ = nullptr;
                                 }
                             } else {
-                                LOG(WARNING, LOG_TAG) << "Failed to create message from factory\n";
+                                if (base_message_.type == message_type::kCodecHeader) {
+                                    LOG(ERROR, LOG_TAG) << "*** TRACE CODECHEADER *** FAILED to create CodecHeader message from factory!\n";
+                                } else {
+                                    LOG(WARNING, LOG_TAG) << "Failed to create message from factory\n";
+                                }
                             }
                         } else {
                             LOG(DEBUG, LOG_TAG) << "Incomplete message - expected " << base_message_.size << " bytes, got " << msg.data.size() << "\n";

@@ -316,7 +316,7 @@ uint16_t StreamSessionRistBidirectional::getVirtualPortForMessage(const shared_c
             LOG(DEBUG, LOG_TAG) << "ServerSettings -> VPORT_CONTROL (" << VPORT_CONTROL << ")\n";
             return VPORT_CONTROL; // ServerSettings on 2000
         } else if (base_msg.type == message_type::kCodecHeader) {
-            LOG(DEBUG, LOG_TAG) << "CodecHeader -> VPORT_AUDIO (" << VPORT_AUDIO << ")\n";
+            LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Server sending CodecHeader (" << base_msg.size << " bytes) -> VPORT_AUDIO (" << VPORT_AUDIO << ")\n";
             return VPORT_AUDIO; // CodecHeader on 1000
         } else if (base_msg.type == message_type::kWireChunk) {
             return VPORT_AUDIO; // Audio data on 1000
@@ -370,6 +370,18 @@ void StreamSessionRistBidirectional::sendAsync(const shared_const_buffer& buffer
     data_block.virt_src_port = virt_port;
     data_block.virt_dst_port = virt_port;
 
+    // Add special tracing for CodecHeader
+    if (virt_port == VPORT_AUDIO && data_size > 1000) {
+        // Likely CodecHeader - add enhanced tracing
+        if (data_size >= sizeof(msg::BaseMessage)) {
+            msg::BaseMessage temp_msg;
+            temp_msg.deserialize(const_cast<char*>(data_ptr));
+            if (temp_msg.type == message_type::kCodecHeader) {
+                LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Server about to send CodecHeader via RIST: " << data_size << " bytes on vport " << virt_port << "\n";
+            }
+        }
+    }
+    
     // Send data via RIST sender context
     int ret = rist_sender_data_write(sender_ctx_, &data_block);
     if (ret < 0) {
@@ -380,7 +392,22 @@ void StreamSessionRistBidirectional::sendAsync(const shared_const_buffer& buffer
         return;
     }
 
-    LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST on virtual port " << virt_port << " (ret=" << ret << ")\n";
+    // Enhanced logging for CodecHeader
+    if (virt_port == VPORT_AUDIO && data_size > 1000) {
+        if (data_size >= sizeof(msg::BaseMessage)) {
+            msg::BaseMessage temp_msg;
+            temp_msg.deserialize(const_cast<char*>(data_ptr));
+            if (temp_msg.type == message_type::kCodecHeader) {
+                LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Server successfully sent CodecHeader via RIST: " << data_size << " bytes (ret=" << ret << ")\n";
+            } else {
+                LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST on virtual port " << virt_port << " (ret=" << ret << ")\n";
+            }
+        } else {
+            LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST on virtual port " << virt_port << " (ret=" << ret << ")\n";
+        }
+    } else {
+        LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST on virtual port " << virt_port << " (ret=" << ret << ")\n";
+    }
     
     if (handler) {
         handler(boost::system::error_code(), data_size);
