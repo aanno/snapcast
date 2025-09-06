@@ -484,10 +484,12 @@ void Controller::worker()
             getNextMessage();
 
             // Say hello to the server
+            LOG(INFO, LOG_TAG) << "*** HELLO SEND *** Preparing to send Hello message to server\n";
             std::optional<msg::Hello::Auth> auth;
             if (settings_.server.auth.has_value())
                 auth = msg::Hello::Auth{settings_.server.auth->scheme, settings_.server.auth->param};
             auto hello = std::make_shared<msg::Hello>(macAddress, settings_.host_id, settings_.instance, auth);
+            LOG(INFO, LOG_TAG) << "*** HELLO SEND *** Sending Hello with MAC: " << macAddress << ", host_id: " << settings_.host_id << "\n";
             clientConnection_->sendRequest(hello, 10s, [this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response) mutable
             {
                 if (ec)

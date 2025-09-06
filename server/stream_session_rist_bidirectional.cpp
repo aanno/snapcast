@@ -258,6 +258,9 @@ void StreamSessionRistBidirectional::start()
 
     running_ = true;
     
+    // Initialize self_ for message processing (required for server Hello/ServerSettings/CodecHeader flow)
+    self_ = std::static_pointer_cast<StreamSessionRistBidirectional>(shared_from_this());
+    
     // Start worker thread for processing messages from callback
     worker_thread_ = std::thread(&StreamSessionRistBidirectional::messageProcessorThread, this);
     
@@ -528,7 +531,7 @@ void StreamSessionRistBidirectional::messageProcessorThread()
                                 
                                 tv now;
                                 baseMessage_.received = now;
-                                // Follow WebSocket pattern: pass payload only (buffer + header_size)
+                                // RIST pattern: pass payload only (server expects JSON payload, not full buffer)
                                 messageReceiver_->onMessageReceived(self_, baseMessage_, reinterpret_cast<char*>(buffer_.data()) + base_msg_size_);
                             } else {
                                 LOG(WARNING, LOG_TAG) << "Cannot process backchannel message - no message receiver or no self reference\n";
