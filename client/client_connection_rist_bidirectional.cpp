@@ -624,8 +624,14 @@ void ClientConnectionRistBidirectional::processMessage(const QueuedMessage& msg)
                                         LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client calling handler for CodecHeader\n";
                                     }
                                     messageReceived(std::move(message), [this, h](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
+                                        LOG(INFO, LOG_TAG) << "*** CALLBACK TRACE *** messageReceived callback invoked, ec=" << ec << "\n";
                                         h(ec, std::move(msg));
-                                        if (!ec) getNextMessage(h); // Chain next read like TCP/WebSocket
+                                        if (!ec) {
+                                            LOG(INFO, LOG_TAG) << "*** CALLBACK TRACE *** Chaining to getNextMessage()\n";
+                                            getNextMessage(h); // Chain next read like TCP/WebSocket
+                                        } else {
+                                            LOG(ERROR, LOG_TAG) << "*** CALLBACK TRACE *** NOT chaining due to error: " << ec << "\n";
+                                        }
                                     });
                                 } else {
                                     if (base_message_.type == message_type::kCodecHeader) {
