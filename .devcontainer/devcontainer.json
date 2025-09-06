@@ -7,7 +7,7 @@
 		// "args": { "VARIANT": "42" }
 	},
 	"runArgs": [
-		// "--device", "/dev/snd",
+		"--device", "/dev/snd",
 		"--group-add", "audio",
 		// TODO: without this, no access to /dev/snd/ (all files there are nobody:nobody)
 		// not possible
@@ -34,21 +34,24 @@
 		"nvidia.com/gpu=all"
 	],
 	"mounts": [
-		"source=/run/user/${localEnv:CONTAINER_USERID},target=/run/user/${localEnv:CONTAINER_USERID},type=bind,consistency=cached",
-		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/lib/apt,target=/var/lib/apt,type=bind,z,consistency=cached",
-		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/cache/apt,target=/var/cache/apt,type=bind,z,consistency=cached",
-		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/lib/dnf,target=/var/lib/dnf,type=bind,z,consistency=cached",
-		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/cache/dnf,target=/var/cache/dnf,type=bind,z,consistency=cached",
-		"source=${localEnv:PIP_CACHE_DIR},target=/pip,type=bind,z,consistency=cached",
-		"source=${localEnv:PNPM_CACHE_DIR},target=/pnpm,type=bind,z,consistency=cached",
+		// not in podman: ,consistency=cached
+		"source=/run/user/${localEnv:CONTAINER_USERID},target=/run/user/${localEnv:CONTAINER_USERID},type=bind",
+		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/lib/apt,target=/var/lib/apt,type=bind,z",
+		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/cache/apt,target=/var/cache/apt,type=bind,z",
+		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/lib/dnf,target=/var/lib/dnf,type=bind,z",
+		"source=${localEnv:LINUX_CONFIG}/build-with-docker/var/cache/dnf,target=/var/cache/dnf,type=bind,z",
+		"source=${localEnv:PIP_CACHE_DIR},target=/pip,type=bind,z",
+		"source=${localEnv:PNPM_CACHE_DIR},target=/pnpm,type=bind,z",
 		// https://github.com/containers/podman/issues/11239
 		// -v /dev/:/dev:rslave --mount type=devpts,destination=/dev/pts.
-		"source=/dev,target=/dev,type=bind,rslave,consistency=cached",
-		"source=/dev/pts,target=/dev/pts,type=devpts,consistency=cached"
-		// "source=${localEnv:VOLTA_HOME}/tools,target=/home/vscode/.volta/tools,type=bind,z,consistency=cached"
+		"source=/dev,target=/dev,type=bind,bind-propagation=rslave",
+		// "source=/dev,target=/dev,type=bind",
+		// not in podman: "source=/dev/pts,target=/dev/pts,type=devpts"
+		"type=devpts,destination=/dev/pts"
+		// "source=${localEnv:VOLTA_HOME}/tools,target=/home/vscode/.volta/tools,type=bind,z"
 	],
 	"workspaceFolder": "/workspaces/cpp",
-	"workspaceMount": "source=.,target=/workspaces/cpp,type=bind,z,consistency=cached",
+	"workspaceMount": "source=.,target=/workspaces/cpp,type=bind,z",
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.
