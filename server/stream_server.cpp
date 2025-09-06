@@ -27,6 +27,7 @@
 #include "stream_session_rist_bidirectional.hpp"
 #include "common/message/server_settings.hpp"
 #include "common/message/codec_header.hpp"
+#include "common/message/time.hpp"
 #endif
 
 // 3rd party headers
@@ -337,14 +338,27 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
 {
     LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << ", vport=" << vport << "\n";
     
-    // Handle RIST messages the same way as TCP/WebSocket messages
+    // Handle RIST-specific messages directly (don't forward to session-based handler)
     try 
     {
-        if (messageReceiver_ != nullptr && !payload.empty())
+        if (baseMessage.type == message_type::kTime && !payload.empty())
         {
-            // Forward payload directly to main message receiver
-            // The baseMessage already contains the parsed header info
-            messageReceiver_->onMessageReceived(nullptr, baseMessage, const_cast<char*>(payload.data()));
+            // Handle Time messages for RIST clients
+            auto timeMsg = std::make_shared<msg::Time>();
+            timeMsg->deserialize(baseMessage, const_cast<char*>(payload.data()));
+            timeMsg->refersTo = timeMsg->id;
+            timeMsg->latency = timeMsg->received - timeMsg->sent;
+            
+            // Send Time response back via RIST transport
+            if (rist_transport_)
+            {
+                rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, *timeMsg);
+                LOG(DEBUG, LOG_TAG) << "Sent Time response via RIST\n";
+            }
+        }
+        else
+        {
+            LOG(DEBUG, LOG_TAG) << "RIST message type " << baseMessage.type << " handled directly (no forwarding needed)\n";
         }
     }
     catch (const std::exception& e)

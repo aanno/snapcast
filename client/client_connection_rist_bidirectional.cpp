@@ -125,8 +125,8 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
     
     while (!connected_ && std::chrono::steady_clock::now() < timeout)
     {
-        LOG(DEBUG, LOG_TAG) << "Waiting for RIST connections: sender=" << sender_connected_ 
-                           << ", receiver=" << receiver_connected_ << "\n";
+        // LOG(DEBUG, LOG_TAG) << "Waiting for RIST connections: sender=" << sender_connected_ 
+        //                    << ", receiver=" << receiver_connected_ << "\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     
