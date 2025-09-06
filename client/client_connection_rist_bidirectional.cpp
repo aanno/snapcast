@@ -24,74 +24,23 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "common/utils.hpp"
-
-
-
-#include "common/message/message.hpp"
-
-// libRIST headers
-#include <librist/logging.h>
-
-// Configuration toggle: Use callbacks (like testrist) vs polling
-#define USE_CALLBACK 1
+#include "common/rist_transport.hpp"
+#include "common/message/hello.hpp"
 
 // standard headers
 #include <iostream>
-#include <cstring>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <thread>
 
 using namespace std;
 
 static constexpr auto LOG_TAG = "ConnectionRISTBi";
-static constexpr auto LOG_LIBRIST_TAG = "libRIST";
-
-static int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
-    char* context = static_cast<char*>(arg);
-    // fprintf(stdout, "[RIST] [%d] %s", level, msg);
-    switch (level) {
-        case RIST_LOG_ERROR:
-            LOG(ERROR, LOG_LIBRIST_TAG) << context << msg << "\n";
-            break;
-        case RIST_LOG_WARN:
-            LOG(WARNING, LOG_LIBRIST_TAG) << context << msg << "\n";
-            break;
-        case RIST_LOG_INFO:
-            LOG(INFO, LOG_LIBRIST_TAG) << context << msg << "\n";
-            break;
-        case RIST_LOG_DEBUG:
-            LOG(DEBUG, LOG_LIBRIST_TAG) << context << msg << "\n";
-            break;
-        default:
-            LOG(DEBUG, LOG_LIBRIST_TAG) << context << msg << "\n";
-            break;
-    }
-    return 0;
-}
-
-// libRIST debug logging callback
-static int ristLogCallback(void* /*arg*/, enum rist_log_level level, const char* msg)
-{
-    const char* level_str = "UNKNOWN";
-    switch (level) {
-        case RIST_LOG_ERROR: level_str = "ERROR"; break;
-        case RIST_LOG_WARN: level_str = "WARN"; break;
-        case RIST_LOG_NOTICE: level_str = "NOTICE"; break;
-        case RIST_LOG_INFO: level_str = "INFO"; break;
-        case RIST_LOG_DEBUG: level_str = "DEBUG"; break;
-        default: break;
-    }
-    LOG(DEBUG, LOG_TAG) << "[libRIST-" << level_str << "] " << msg << "\n";
-    return 0;
-}
 
 ClientConnectionRistBidirectional::ClientConnectionRistBidirectional(boost::asio::io_context& io_context, ClientSettings::Server server)
-    : ClientConnection(io_context, std::move(server)), use_polling_fallback_(false)
+    : ClientConnection(io_context, std::move(server)), running_(false)
 {
-    // Note: ClientConnection doesn't inherit from enable_shared_from_this
-    // self_ = std::static_pointer_cast<ClientConnectionRistBidirectional>(shared_from_this());
-    LOG(INFO, LOG_TAG) << "Creating bidirectional RIST client connection\n";
-    buffer_.resize(8192); // Initial buffer size
+    LOG(INFO, LOG_TAG) << "Creating RIST client connection with RistTransport integration\n";
 }
 
 ClientConnectionRistBidirectional::~ClientConnectionRistBidirectional()
@@ -102,63 +51,57 @@ ClientConnectionRistBidirectional::~ClientConnectionRistBidirectional()
 
 boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint)
 {
-    LOG(INFO, LOG_TAG) << "Connecting to bidirectional RIST server: " << endpoint.address().to_string() << ":" << endpoint.port() << "\n";
+    LOG(INFO, LOG_TAG) << "Connecting to RIST server: " << endpoint.address().to_string() << ":" << endpoint.port() << "\n";
 
-    if (!initRist())
+    // Create and configure RIST transport in CLIENT mode
+    rist_transport_ = std::make_unique<RistTransport>(RistTransport::Mode::CLIENT, this);
+    
+    if (!rist_transport_->configureClient(endpoint.address().to_string(), endpoint.port()))
     {
-        LOG(ERROR, LOG_TAG) << "Failed to initialize bidirectional RIST\n";
+        LOG(ERROR, LOG_TAG) << "Failed to configure RIST client\n";
         return boost::system::errc::make_error_code(boost::system::errc::connection_refused);
     }
 
-    // Don't override connected_ - let connection callbacks set it
+    if (!rist_transport_->start())
+    {
+        LOG(ERROR, LOG_TAG) << "Failed to start RIST client\n";
+        return boost::system::errc::make_error_code(boost::system::errc::connection_refused);
+    }
+
     running_ = true;
+    connected_ = true;
 
-    // Start worker thread for processing messages from callback
-    worker_thread_ = std::thread(&ClientConnectionRistBidirectional::messageProcessorThread, this);
-    
-    // Remove duplicate polling thread - messageProcessorThread handles all polling
-    LOG(INFO, LOG_TAG) << "Using unified polling in messageProcessorThread only\n";
+    // Start message processing thread
+    message_thread_ = std::thread(&ClientConnectionRistBidirectional::messageProcessorThread, this);
 
-    // Wait for both RIST connections to be established (max 5 seconds)
-    LOG(INFO, LOG_TAG) << "Waiting for RIST connections to establish...\n";
-    auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    
-    while (!connected_ && std::chrono::steady_clock::now() < timeout)
-    {
-        // LOG(DEBUG, LOG_TAG) << "Waiting for RIST connections: sender=" << sender_connected_ 
-        //                    << ", receiver=" << receiver_connected_ << "\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    
-    if (!connected_)
-    {
-        LOG(ERROR, LOG_TAG) << "RIST connection establishment timed out\n";
-        disconnect();
-        return boost::system::errc::make_error_code(boost::system::errc::connection_refused);
-    }
+    // Send Hello message to initiate handshake
+    sendHello();
 
-    LOG(INFO, LOG_TAG) << "Bidirectional RIST client connection established\n";
+    LOG(INFO, LOG_TAG) << "RIST client connection established\n";
     return boost::system::error_code();
 }
 
 void ClientConnectionRistBidirectional::disconnect()
 {
-    LOG(DEBUG, LOG_TAG) << "Disconnecting bidirectional RIST client\n";
+    LOG(DEBUG, LOG_TAG) << "Disconnecting RIST client\n";
     
     running_ = false;
     connected_ = false;
 
-    // Wake up worker thread and wait for it to finish
-    queue_cv_.notify_all();
-    if (worker_thread_.joinable())
+    if (rist_transport_)
     {
-        worker_thread_.join();
+        rist_transport_->stop();
+        rist_transport_.reset();
     }
-    
-    // Polling thread removed - only messageProcessorThread handles data
 
-    cleanupRist();
-    LOG(DEBUG, LOG_TAG) << "Bidirectional RIST client disconnected\n";
+    queue_cv_.notify_all();
+    
+    if (message_thread_.joinable())
+    {
+        message_thread_.join();
+    }
+
+    LOG(DEBUG, LOG_TAG) << "RIST client disconnected\n";
 }
 
 std::string ClientConnectionRistBidirectional::getMacAddress()
@@ -171,60 +114,27 @@ std::string ClientConnectionRistBidirectional::getMacAddress()
     
     if (mac.empty())
         mac = "00:00:00:00:00:00";
-    LOG(INFO, LOG_TAG) << "My MAC: \"" << mac << "\", host: " << server_.host << "\n";
+    LOG(DEBUG, LOG_TAG) << "My MAC: \"" << mac << "\", host: " << server_.host << "\n";
     return mac;
 }
 
 void ClientConnectionRistBidirectional::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
 {
-    try {
-        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Entry - handler valid: " << (handler ? "yes" : "no") << "\n";
-        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Object type: " << typeid(*this).name() << "\n";
-        
-        {
-            std::lock_guard<std::mutex> lock(queue_mutex_);
-            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Queue size: " << message_queue_.size() << "\n";
-            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Passed queue size logging\n";
-        }
-        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Released queue mutex\n";
-        
-        {
-            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Attempting to acquire handler mutex\n";
-            std::unique_lock<std::mutex> lock(handler_mutex_, std::try_to_lock);
-            if (!lock.owns_lock()) {
-                LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** DEADLOCK DETECTED - handler_mutex already locked\n";
-                return;
-            }
-            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Acquired handler mutex\n";
-            if (!handler) {
-                LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** Invalid handler provided\n";
-                return;
-            }
-            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Handler validation passed\n";
-            pending_handler_ = handler;
-            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Handler registered, notifying queue_cv_\n";
-        }
-        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Released handler mutex\n";
-        
-        // Use notify_all to ensure wakeup even if thread missed notification
-        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** About to call notify_all\n";
-        queue_cv_.notify_all();
-        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Notification sent\n";
+    LOG(DEBUG, LOG_TAG) << "getNextMessage called\n";
+    
+    {
+        std::lock_guard<std::mutex> lock(handler_mutex_);
+        pending_handler_ = handler;
     }
-    catch (const std::exception& e) {
-        LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** Exception caught: " << e.what() << "\n";
-        throw; // Re-throw for debugging
-    }
-    catch (...) {
-        LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** Unknown exception caught\n";
-        throw;
-    }
+    
+    queue_cv_.notify_one();
 }
 
 void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, WriteHandler&& write_handler)
 {
-    if (!sender_ctx_ || !sender_connected_) {
-        LOG(WARNING, LOG_TAG) << "Cannot send backchannel data - RIST sender not connected\n";
+    if (!rist_transport_)
+    {
+        LOG(WARNING, LOG_TAG) << "Cannot send data - RIST transport not available\n";
         write_handler(boost::system::error_code(boost::asio::error::not_connected), 0);
         return;
     }
@@ -233,652 +143,160 @@ void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, Wr
     const auto* data_ptr = boost::asio::buffer_cast<const char*>(buffer.data());
     size_t data_size = buffer.size();
 
-    if (data_size == 0) {
+    if (data_size == 0)
+    {
         LOG(WARNING, LOG_TAG) << "Attempting to send empty buffer\n";
         write_handler(boost::system::error_code(), 0);
         return;
     }
 
-    // Create RIST data block for backchannel
-    struct rist_data_block data_block = {};
-    data_block.payload = data_ptr;
-    data_block.payload_len = data_size;
-    data_block.ts_ntp = 0; // Let librist populate timestamp
-    data_block.virt_src_port = VPORT_BACKCHANNEL;
-    data_block.virt_dst_port = VPORT_BACKCHANNEL;
-
-    // Send data via RIST sender context
-    int ret = rist_sender_data_write(sender_ctx_, &data_block);
-    if (ret < 0) {
-        LOG(ERROR, LOG_TAG) << "Failed to send backchannel data via RIST: " << ret << "\n";
-        write_handler(boost::system::error_code(boost::asio::error::broken_pipe), 0);
+    // Create message from buffer data
+    msg::BaseMessage base_message;
+    base_message.deserialize(const_cast<char*>(data_ptr));
+    
+    auto message = msg::factory::createMessage(base_message, const_cast<char*>(data_ptr) + sizeof(msg::BaseMessage));
+    if (!message)
+    {
+        LOG(ERROR, LOG_TAG) << "Failed to create message for sending\n";
+        write_handler(boost::system::error_code(boost::asio::error::invalid_argument), 0);
         return;
     }
 
-    LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST backchannel\n";
-    write_handler(boost::system::error_code(), data_size);
-}
-
-bool ClientConnectionRistBidirectional::initRist()
-{
-    LOG(INFO, LOG_TAG) << "Initializing RIST logging\n";
-
-    log_settings_ = {};
-    log_settings_.log_level = RIST_LOG_DEBUG; // Set debug level
-    log_settings_.log_stream = nullptr; // stdout; // Output to stdout
-    log_settings_.log_cb = rist_log_callback; // Set callback
-    log_settings_.log_cb_arg = static_cast<void*>(const_cast<char*>(" global ")); // Optional user data (set if needed)
-    rist_logging_set_global(&log_settings_);
-
-    LOG(INFO, LOG_TAG) << "Initializing bidirectional RIST client\n";
-    LOG(INFO, LOG_TAG) << "DEBUG: Server host = " << server_.host << "\n";
-    LOG(INFO, LOG_TAG) << "DEBUG: Server port = " << server_.port << "\n";
-
-    // Create RIST receiver context for receiving audio/control from server
-    rist_logging_settings log_settings_receiver = log_settings_;
-    log_settings_receiver.log_cb_arg = static_cast<void*>(const_cast<char*>(" receiver "));
-    int ret = rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, &log_settings_receiver);
-    if (ret != 0)
+    // Send via RIST backchannel
+    if (rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, *message))
     {
-        LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver context: " << ret << "\n";
-        return false;
+        LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST backchannel\n";
+        write_handler(boost::system::error_code(), data_size);
     }
-    
-    // CRITICAL: Minimize libRIST buffering to reduce data output thread delay
-    LOG(INFO, LOG_TAG) << "Configuring libRIST receiver for minimal buffering/delay\n";
-    
-    // Set balanced FIFO size - not too small (causes overflow) not too large (causes delay)
-    ret = rist_receiver_set_output_fifo_size(receiver_ctx_, 64); // 64ms FIFO - power of 2 for optimized buffering
-    if (ret != 0) {
-        LOG(WARNING, LOG_TAG) << "Failed to set receiver output FIFO size to 64ms: " << ret << "\n";
-    } else {
-        LOG(INFO, LOG_TAG) << "Set receiver output FIFO size to 64ms (power of 2 for optimized buffering)\n";
-    }
-
-    // Create RIST sender context for sending backchannel to server
-    rist_logging_settings log_settings_sender = log_settings_;
-    log_settings_sender.log_cb_arg = static_cast<void*>(const_cast<char*>(" sender "));
-    ret = rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, &log_settings_sender);
-    if (ret != 0)
+    else
     {
-        LOG(ERROR, LOG_TAG) << "Failed to create RIST sender context: " << ret << "\n";
-        rist_destroy(receiver_ctx_);
-        receiver_ctx_ = nullptr;
-        return false;
-    }
-
-    // Set connection status callbacks
-    ret = rist_connection_status_callback_set(receiver_ctx_, receiverConnectionStatusCallback, this);
-    if (ret != 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to set receiver connection status callback: " << ret << "\n";
-        cleanupRist();
-        return false;
-    }
-
-    ret = rist_connection_status_callback_set(sender_ctx_, senderConnectionStatusCallback, this);
-    if (ret != 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to set sender connection status callback: " << ret << "\n";
-        cleanupRist();
-        return false;
-    }
-
-#if USE_CALLBACK
-    // Set data callback for event-driven reception (like testrist - known working approach)
-    ret = rist_receiver_data_callback_set2(receiver_ctx_, ristDataCallback, this);
-    if (ret != 0) {
-        LOG(ERROR, LOG_TAG) << "Failed to set receiver data callback: " << ret << "\n";
-        cleanupRist();
-        return false;
-    }
-    LOG(INFO, LOG_TAG) << "RIST receiver data callback enabled (testrist-style)\n";
-    use_polling_fallback_ = false;
-#else
-    // Skip callback registration to prevent race conditions - use polling-only approach
-    LOG(INFO, LOG_TAG) << "Skipping RIST receiver data callback registration - using polling-only mode\n";
-    
-    // CRITICAL: Add polling fallback since callback isn't being called in libRIST v0.2.7
-    LOG(WARNING, LOG_TAG) << "Adding polling fallback due to libRIST v0.2.7 callback issue\n";
-    use_polling_fallback_ = true;
-#endif
-    
-    // Set stats callback to monitor packet flow (debugging aid)
-    ret = rist_stats_callback_set(receiver_ctx_, 1000, ClientConnectionRistBidirectional::ristStatsCallback, this);
-    if (ret != 0) {
-        LOG(WARNING, LOG_TAG) << "Failed to set RIST receiver stats callback: " << ret << "\n";
-    } else {
-        LOG(DEBUG, LOG_TAG) << "RIST receiver stats callback set successfully\n";
-    }
-
-    // Configure receiver to connect to server's sender (main port)
-    std::string receiver_url = "rist://" + server_.host + ":" + std::to_string(server_.port);
-    LOG(INFO, LOG_TAG) << "Using RIST receiver URL: " << receiver_url << "\n";
-
-    struct rist_peer_config* receiver_config = nullptr;
-    ret = rist_parse_address2(receiver_url.c_str(), &receiver_config);
-    if (ret < 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to parse RIST receiver URL: " << receiver_url << ", error: " << ret << "\n";
-        cleanupRist();
-        return false;
-    }
-    
-    // Manually set optimized RIST parameters for low latency audio reception
-    receiver_config->recovery_length_min = 200;  // bufmin: 200ms minimum buffer for connection stability
-    receiver_config->recovery_length_max = 200;  // bufmax: 200ms maximum buffer (still much lower than 1000ms default)
-    receiver_config->recovery_rtt_min = RIST_DEFAULT_RECOVERY_RTT_MIN;    // rttmin: 5ms (default)
-    receiver_config->recovery_rtt_max = RIST_DEFAULT_RECOVERY_RTT_MAX;    // rttmax: 500ms (default)
-    receiver_config->recovery_reorder_buffer = RIST_DEFAULT_RECOVERY_REORDER_BUFFER;  // reorder: 15 packets (default)
-    receiver_config->min_retries = RIST_DEFAULT_MIN_RETRIES;       // min_retries: 6 (default)
-    receiver_config->max_retries = RIST_DEFAULT_MAX_RETRIES;       // max_retries: 20 (default)
-    receiver_config->congestion_control_mode = RIST_DEFAULT_CONGESTION_CONTROL_MODE;  // Default congestion control
-    
-    LOG(INFO, LOG_TAG) << "Applied optimized RIST receiver parameters: bufmin=" << receiver_config->recovery_length_min 
-                       << "ms, bufmax=" << receiver_config->recovery_length_max << "ms, rttmin=" << receiver_config->recovery_rtt_min 
-                       << "ms, rttmax=" << receiver_config->recovery_rtt_max << "ms\n";
-
-    ret = rist_peer_create(receiver_ctx_, &receiver_peer_, receiver_config);
-    if (ret != 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver peer: " << ret << "\n";
-        free(receiver_config);
-        cleanupRist();
-        return false;
-    }
-    free(receiver_config);
-
-    // Configure sender to connect to server's backchannel receiver (port + 2)
-    uint16_t backchannel_port = server_.port + 2;
-    std::string sender_url = "rist://" + server_.host + ":" + std::to_string(backchannel_port);
-    LOG(INFO, LOG_TAG) << "Using RIST sender URL: " << sender_url << "\n";
-
-    struct rist_peer_config* sender_config = nullptr;
-    ret = rist_parse_address2(sender_url.c_str(), &sender_config);
-    if (ret < 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to parse RIST sender URL: " << sender_url << ", error: " << ret << "\n";
-        cleanupRist();
-        return false;
-    }
-    
-    // Manually set optimized RIST parameters for low latency backchannel communication
-    sender_config->recovery_length_min = 200;  // bufmin: 200ms minimum buffer for connection stability
-    sender_config->recovery_length_max = 200;  // bufmax: 200ms maximum buffer (still much lower than 1000ms default)
-    sender_config->recovery_rtt_min = RIST_DEFAULT_RECOVERY_RTT_MIN;    // rttmin: 5ms (default)
-    sender_config->recovery_rtt_max = RIST_DEFAULT_RECOVERY_RTT_MAX;    // rttmax: 500ms (default)
-    sender_config->recovery_reorder_buffer = RIST_DEFAULT_RECOVERY_REORDER_BUFFER;  // reorder: 15 packets (default)
-    sender_config->min_retries = RIST_DEFAULT_MIN_RETRIES;       // min_retries: 6 (default)
-    sender_config->max_retries = RIST_DEFAULT_MAX_RETRIES;       // max_retries: 20 (default)
-    sender_config->congestion_control_mode = RIST_DEFAULT_CONGESTION_CONTROL_MODE;  // Default congestion control
-    
-    LOG(INFO, LOG_TAG) << "Applied optimized RIST sender parameters: bufmin=" << sender_config->recovery_length_min 
-                       << "ms, bufmax=" << sender_config->recovery_length_max << "ms, rttmin=" << sender_config->recovery_rtt_min 
-                       << "ms, rttmax=" << sender_config->recovery_rtt_max << "ms\n";
-
-    ret = rist_peer_create(sender_ctx_, &sender_peer_, sender_config);
-    if (ret != 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to create RIST sender peer: " << ret << "\n";
-        free(sender_config);
-        cleanupRist();
-        return false;
-    }
-    free(sender_config);
-
-    // Start both contexts
-    ret = rist_start(receiver_ctx_);
-    if (ret != 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to start RIST receiver context: " << ret << "\n";
-        cleanupRist();
-        return false;
-    }
-
-    ret = rist_start(sender_ctx_);
-    if (ret != 0)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to start RIST sender context: " << ret << "\n";
-        cleanupRist();
-        return false;
-    }
-
-    LOG(INFO, LOG_TAG) << "Bidirectional RIST client initialized successfully\n";
-    return true;
-}
-
-void ClientConnectionRistBidirectional::cleanupRist()
-{
-    if (receiver_ctx_)
-    {
-        LOG(DEBUG, LOG_TAG) << "Cleaning up RIST receiver context\n";
-        rist_destroy(receiver_ctx_);
-        receiver_ctx_ = nullptr;
-        receiver_peer_ = nullptr;
-    }
-    
-    if (sender_ctx_)
-    {
-        LOG(DEBUG, LOG_TAG) << "Cleaning up RIST sender context\n";
-        rist_destroy(sender_ctx_);
-        sender_ctx_ = nullptr;
-        sender_peer_ = nullptr;
+        LOG(ERROR, LOG_TAG) << "Failed to send data via RIST\n";
+        write_handler(boost::system::error_code(boost::asio::error::broken_pipe), 0);
     }
 }
 
-int ClientConnectionRistBidirectional::ristDataCallback(void* arg, struct rist_data_block* data_block)
+// RistTransportReceiver interface
+void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport)
 {
-    LOG(INFO, LOG_TAG) << "*** RIST DATA CALLBACK ENTRY *** arg=" << arg << " data_block=" << data_block << "\n";
+    LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << ", vport=" << vport << "\n";
     
-    auto* client = static_cast<ClientConnectionRistBidirectional*>(arg);
-    if (!client || !data_block) {
-        LOG(ERROR, LOG_TAG) << "Invalid callback args or data block\n";
-        return 0;
-    }
-    
-    LOG(INFO, LOG_TAG) << "*** CALLBACK RECEIVED DATA *** " << data_block->payload_len 
-                      << " bytes on vport " << data_block->virt_dst_port << " (VPORT_AUDIO=" << VPORT_AUDIO << ", VPORT_CONTROL=" << VPORT_CONTROL << ")\n";
-
-    try {
-        // Log ALL packets first for debugging
-        LOG(DEBUG, LOG_TAG) << "Received packet: " << data_block->payload_len 
-                           << " bytes on vport " << data_block->virt_dst_port << "\n";
-        
-        // Queue audio and control messages (received from server)
-        if (data_block->virt_dst_port == VPORT_AUDIO || data_block->virt_dst_port == VPORT_CONTROL) {
-            // Minimal processing in callback - just queue the data
-            QueuedMessage msg;
-            msg.data.resize(data_block->payload_len);
-            memcpy(msg.data.data(), data_block->payload, data_block->payload_len);
-            msg.virt_port = data_block->virt_dst_port;
+    try
+    {
+        // Create message from received data
+        auto message = msg::factory::createMessage(baseMessage, const_cast<char*>(payload.data()));
+        if (message)
+        {
+            // Set received timestamp
+            tv now;
+            message->received = now;
             
+            // Queue message for processing
             {
-                std::lock_guard<std::mutex> lock(client->queue_mutex_);
-                client->message_queue_.push(std::move(msg));
+                std::lock_guard<std::mutex> lock(queue_mutex_);
+                message_queue_.push(std::move(message));
             }
-            client->queue_cv_.notify_one();
-            
-            LOG(DEBUG, LOG_TAG) << "Queued data: " << data_block->payload_len 
-                               << " bytes on virtual port " << data_block->virt_dst_port << "\n";
-        } else {
-            LOG(WARNING, LOG_TAG) << "Ignoring packet on unexpected virtual port: " << data_block->virt_dst_port 
-                                 << " (expected " << VPORT_AUDIO << " or " << VPORT_CONTROL << ")\n";
+            queue_cv_.notify_one();
+        }
+        else
+        {
+            LOG(ERROR, LOG_TAG) << "Failed to create message from RIST data\n";
         }
     }
-    catch (const std::exception& e) {
-        LOG(ERROR, LOG_TAG) << "Exception in RIST data callback: " << e.what() << "\n";
+    catch (const std::exception& e)
+    {
+        LOG(ERROR, LOG_TAG) << "Error processing RIST message: " << e.what() << "\n";
     }
-
-    return 0; // Success
 }
 
-int ClientConnectionRistBidirectional::ristStatsCallback(void* arg, const struct rist_stats* stats)
+void ClientConnectionRistBidirectional::onRistClientConnected(const std::string& clientId)
 {
-    auto* client = static_cast<ClientConnectionRistBidirectional*>(arg);
-    if (!client || !stats) {
-        return 0;
+    LOG(INFO, LOG_TAG) << "RIST connection established: " << clientId << "\n";
+    connected_ = true;
+}
+
+void ClientConnectionRistBidirectional::onRistClientDisconnected(const std::string& clientId)
+{
+    LOG(INFO, LOG_TAG) << "RIST connection lost: " << clientId << "\n";
+    connected_ = false;
+}
+
+void ClientConnectionRistBidirectional::sendHello()
+{
+    if (!rist_transport_)
+        return;
+
+    try
+    {
+        msg::Hello hello;
+        hello.MAC = getMacAddress();
+        hello.hostname = boost::asio::ip::host_name();
+        hello.version = VERSION;
+        hello.clientName = "Snapclient";
+        hello.os = OS;
+        hello.arch = ARCH;
+        hello.instance = 1;
+        hello.uuid = getMacAddress(); // Use MAC as UUID for simplicity
+        
+        if (rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, hello))
+        {
+            LOG(INFO, LOG_TAG) << "Sent Hello message to server\n";
+        }
+        else
+        {
+            LOG(ERROR, LOG_TAG) << "Failed to send Hello message\n";
+        }
     }
-    
-    if (stats->stats_json) {
-        LOG(DEBUG, LOG_TAG) << "RIST receiver stats: " << stats->stats_json << "\n";
-    } else {
-        LOG(DEBUG, LOG_TAG) << "RIST receiver stats callback triggered (no JSON data)\n";
+    catch (const std::exception& e)
+    {
+        LOG(ERROR, LOG_TAG) << "Error sending Hello message: " << e.what() << "\n";
     }
-    
-    return 0;
 }
 
 void ClientConnectionRistBidirectional::messageProcessorThread()
 {
-#if USE_CALLBACK
-    LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread with callback mode (testrist-style)\n";
-    LOG(INFO, LOG_TAG) << "*** THREAD START *** Object type: " << typeid(*this).name() << "\n";
+    LOG(INFO, LOG_TAG) << "Starting RIST message processor thread\n";
     
-    // In callback mode, just process queued messages from the callback
-    while (running_) {
-        QueuedMessage message;
+    while (running_)
+    {
+        std::unique_ptr<msg::BaseMessage> message;
         
-        // Wait for and get one message from the queue
+        // Wait for message or handler
         {
             std::unique_lock<std::mutex> lock(queue_mutex_);
-            LOG(INFO, LOG_TAG) << "*** THREAD WAIT *** Waiting for message, queue size: " << message_queue_.size() << ", running: " << running_ << "\n";
-            
             queue_cv_.wait(lock, [this] { 
-                bool condition = !message_queue_.empty() || !running_;
-                if (!condition) {
-                    LOG(INFO, LOG_TAG) << "*** THREAD WAIT *** Condition false, queue size: " << message_queue_.size() << ", running: " << running_ << "\n";
-                }
-                return condition;
+                return !message_queue_.empty() || !running_;
             });
             
-            LOG(INFO, LOG_TAG) << "*** THREAD WAKE *** Woke up! Queue size: " << message_queue_.size() << ", running: " << running_ << "\n";
-            
-            if (!running_) {
-                LOG(INFO, LOG_TAG) << "*** THREAD STOP *** Thread stopping\n";
+            if (!running_)
                 break;
-            }
-            
-            if (message_queue_.empty()) {
-                LOG(WARNING, LOG_TAG) << "*** THREAD EMPTY *** Queue empty after wake - continuing\n";
+                
+            if (message_queue_.empty())
                 continue;
-            }
-            
-            LOG(INFO, LOG_TAG) << "*** QUEUE DEBUG *** Dequeuing message: " << message_queue_.front().data.size() 
-                               << " bytes on vport " << message_queue_.front().virt_port << "\n";
+                
             message = std::move(message_queue_.front());
             message_queue_.pop();
         }
         
-        // Process the message
-        LOG(INFO, LOG_TAG) << "*** PROCESS MESSAGE ENTRY *** " << message.data.size() 
-                           << " bytes on vport " << message.virt_port << "\n";
-        try {
-            processMessage(message);
-        }
-        catch (const std::exception& e) {
-            LOG(ERROR, LOG_TAG) << "Error processing callback message: " << e.what() << "\n";
-        }
-    }
-#else
-    LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread with unified polling\n";
-
-    while (running_) {
-        // Direct unified polling approach - no callbacks to avoid race conditions
-        struct rist_data_block* data_block = nullptr;
-        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 10); // 10ms timeout - matches FIFO stability
-        
-        if (ret > 0 && data_block) {
-            LOG(INFO, LOG_TAG) << "*** POLLING RECEIVED DATA *** " << data_block->payload_len 
-                               << " bytes on vport " << data_block->virt_dst_port << "\n";
-            
-            // Create message directly from polled data
-            QueuedMessage msg;
-            msg.data.resize(data_block->payload_len);
-            memcpy(msg.data.data(), data_block->payload, data_block->payload_len);
-            msg.virt_port = data_block->virt_dst_port;
-            
-            // Free the data block immediately
-            rist_receiver_data_block_free2(&data_block);
-            
-            LOG(DEBUG, LOG_TAG) << "Polled and queued data: " << msg.data.size() 
-                               << " bytes on virtual port " << msg.virt_port << "\n";
-                               
-            // Process polled message immediately
-            try {
-                processMessage(msg);
-            }
-            catch (const std::exception& e) {
-                LOG(ERROR, LOG_TAG) << "Error processing polled message: " << e.what() << "\n";
-            }
-        } else if (ret < 0) {
-            LOG(ERROR, LOG_TAG) << "Polling error: " << ret << "\n";
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        } else {
-            // No data available, wait and try again
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-    }
-#endif
-
-    LOG(INFO, LOG_TAG) << "Bidirectional RIST receiver thread stopped\n";
-}
-
-void ClientConnectionRistBidirectional::processMessage(const QueuedMessage& msg)
-{
-    try {
-        // Process the message (heavy processing moved out of callback)
-        if (msg.virt_port == VPORT_AUDIO || msg.virt_port == VPORT_CONTROL) {
-                // Ensure we have enough buffer space
-                std::lock_guard<std::mutex> lock(buffer_mutex_);
-                if (buffer_.size() < msg.data.size()) {
-                    buffer_.resize(msg.data.size());
-                }
-
-                // Copy data to our buffer
-                memcpy(buffer_.data(), msg.data.data(), msg.data.size());
-
-                // Process the message - follow TCP two-stage approach
-                if (msg.data.size() >= base_msg_size_) {
-                    try {
-                        // Stage 1: Parse message header (first base_msg_size_ bytes)
-                        base_message_.deserialize(reinterpret_cast<char*>(buffer_.data()));
-                        
-                        if (base_message_.type == message_type::kCodecHeader) {
-                            LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client received CodecHeader (" << base_message_.size << " bytes) on vport " << msg.virt_port << "\n";
-                        } else {
-                            LOG(DEBUG, LOG_TAG) << "Parsed message header: type=" << base_message_.type 
-                                               << ", size=" << base_message_.size << ", id=" << base_message_.id << "\n";
-                        }
-                        
-                        if (base_message_.type > message_type::kLast) {
-                            LOG(ERROR, LOG_TAG) << "Unknown message type received: " << base_message_.type << "\n";
-                        }
-                        else if (base_message_.size > msg::max_size) {
-                            LOG(ERROR, LOG_TAG) << "Message too large: " << base_message_.size << "\n";
-                        }
-                        else if (base_message_.size <= msg.data.size()) {
-                            // Stage 2: We have a complete message, create and process it
-                            // Follow WebSocket pattern: pass payload only (buffer + header_size)
-                            auto message = msg::factory::createMessage(base_message_, reinterpret_cast<char*>(buffer_.data()) + base_msg_size_);
-                            
-                            if (message) {
-                                if (base_message_.type == message_type::kCodecHeader) {
-                                    LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client processing complete CodecHeader message from server\n";
-                                } else {
-                                    LOG(DEBUG, LOG_TAG) << "Processing complete message from server\n";
-                                }
-                                tv now;
-                                base_message_.received = now;
-                                
-                                MessageHandler<msg::BaseMessage> handler;
-                                {
-                                    std::lock_guard<std::mutex> handler_lock(handler_mutex_);
-                                    handler = pending_handler_;
-                                    pending_handler_ = nullptr;
-                                }
-                                if (handler) {
-                                    if (base_message_.type == message_type::kCodecHeader) {
-                                        LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client calling handler for CodecHeader\n";
-                                    }
-                                    messageReceived(std::move(message), [this, handler](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
-                                        LOG(INFO, LOG_TAG) << "*** CALLBACK TRACE *** messageReceived callback invoked, ec=" << ec << "\n";
-                                        handler(ec, std::move(msg));
-                                        if (!ec) {
-                                            LOG(INFO, LOG_TAG) << "*** CALLBACK TRACE *** Chaining to getNextMessage()\n";
-                                            getNextMessage(handler); // Chain next read like TCP/WebSocket
-                                        } else {
-                                            LOG(ERROR, LOG_TAG) << "*** CALLBACK TRACE *** NOT chaining due to error: " << ec << "\n";
-                                        }
-                                    });
-                                } else {
-                                    if (base_message_.type == message_type::kCodecHeader) {
-                                        LOG(ERROR, LOG_TAG) << "*** TRACE CODECHEADER *** NO HANDLER AVAILABLE - CodecHeader will be DROPPED!\n";
-                                    } else {
-                                        LOG(WARNING, LOG_TAG) << "No message handler available for message type " << base_message_.type << "\n";
-                                    }
-                                }
-                            } else {
-                                if (base_message_.type == message_type::kCodecHeader) {
-                                    LOG(ERROR, LOG_TAG) << "*** TRACE CODECHEADER *** FAILED to create CodecHeader message from factory!\n";
-                                } else {
-                                    LOG(WARNING, LOG_TAG) << "Failed to create message from factory\n";
-                                }
-                            }
-                        } else {
-                            LOG(DEBUG, LOG_TAG) << "Incomplete message - expected " << base_message_.size << " bytes, got " << msg.data.size() << "\n";
-                        }
-                    }
-                    catch (const std::exception& e) {
-                        LOG(ERROR, LOG_TAG) << "Error parsing message: " << e.what() << "\n";
-                    }
-                } else {
-                    LOG(DEBUG, LOG_TAG) << "Received data too small for message header: " << msg.data.size() << " < " << base_msg_size_ << "\n";
-                }
-        } else {
-            LOG(WARNING, LOG_TAG) << "Ignoring packet on unexpected virtual port: " << msg.virt_port 
-                                 << " (expected " << VPORT_AUDIO << " or " << VPORT_CONTROL << ")\n";
-        }
-    }
-    catch (const std::exception& e) {
-        LOG(ERROR, LOG_TAG) << "Exception in processMessage: " << e.what() << "\n";
-    }
-}
-
-void ClientConnectionRistBidirectional::pollingThread()
-{
-    LOG(INFO, LOG_TAG) << "Starting RIST polling thread (libRIST v0.2.7 callback workaround)\n";
-    
-    while (running_ && receiver_ctx_) {
-        // Use only rist_receiver_data_read2 API (rist_receiver_data_read is deprecated)
-        struct rist_data_block* data_block = nullptr;
-        int ret = rist_receiver_data_read2(receiver_ctx_, &data_block, 5); // 5ms timeout
-        
-        if (ret != 0 || data_block != nullptr) {
-            LOG(DEBUG, LOG_TAG) << "Polling result: ret=" << ret << ", data_block=" << data_block << "\n";
-        }
-        
-        if (ret > 0 && data_block) {
-            LOG(INFO, LOG_TAG) << "*** POLLING RECEIVED DATA *** " << data_block->payload_len 
-                              << " bytes on vport " << data_block->virt_dst_port << "\n";
-            
-            // Process the same way as callback would
-            if (data_block->virt_dst_port == VPORT_AUDIO || data_block->virt_dst_port == VPORT_CONTROL) {
-                QueuedMessage msg;
-                msg.data.resize(data_block->payload_len);
-                memcpy(msg.data.data(), data_block->payload, data_block->payload_len);
-                msg.virt_port = data_block->virt_dst_port;
-                
-                {
-                    std::lock_guard<std::mutex> lock(queue_mutex_);
-                    message_queue_.push(std::move(msg));
-                }
-                queue_cv_.notify_one();
-                
-                LOG(DEBUG, LOG_TAG) << "Polled and queued data: " << data_block->payload_len 
-                                   << " bytes on virtual port " << data_block->virt_dst_port << "\n";
-            } else {
-                LOG(WARNING, LOG_TAG) << "Polling: Ignoring packet on unexpected virtual port: " << data_block->virt_dst_port 
-                                     << " (expected " << VPORT_AUDIO << " or " << VPORT_CONTROL << ")\n";
-            }
-            
-            // Free the data block
-            rist_receiver_data_block_free2(&data_block);
-        } else if (ret < 0) {
-            LOG(DEBUG, LOG_TAG) << "Polling error or timeout: " << ret << "\n";
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-        // If ret == 0, no data available, continue polling
-    }
-    
-    LOG(INFO, LOG_TAG) << "RIST polling thread stopped\n";
-}
-
-void ClientConnectionRistBidirectional::receiverConnectionStatusCallback(void* arg, struct rist_peer* /*peer*/, enum rist_connection_status status)
-{
-    auto* client = static_cast<ClientConnectionRistBidirectional*>(arg);
-    if (!client)
-    {
-        return;
-    }
-
-    switch (status)
-    {
-        case RIST_CONNECTION_ESTABLISHED:
-            LOG(INFO, LOG_TAG) << "RIST receiver connection established\n";
-            client->receiver_connected_ = true;
-            client->connected_ = client->receiver_connected_ && client->sender_connected_;
-            break;
-        case RIST_CONNECTION_TIMED_OUT:
-            LOG(WARNING, LOG_TAG) << "RIST receiver connection timed out\n";
-            client->receiver_connected_ = false;
-            client->connected_ = false;
-            break;
-        case RIST_CLIENT_CONNECTED:
-            LOG(INFO, LOG_TAG) << "RIST receiver client connected\n";
-            client->receiver_connected_ = true;
-            client->connected_ = client->receiver_connected_ && client->sender_connected_;
-            break;
-        case RIST_CLIENT_TIMED_OUT:
-            LOG(WARNING, LOG_TAG) << "RIST receiver client timed out\n";
-            client->receiver_connected_ = false;
-            client->connected_ = false;
-            break;
-        default:
-            LOG(WARNING, LOG_TAG) << "Unknown RIST receiver connection status: " << status << "\n";
-            break;
-    }
-}
-
-void ClientConnectionRistBidirectional::senderConnectionStatusCallback(void* arg, struct rist_peer* /*peer*/, enum rist_connection_status status)
-{
-    auto* client = static_cast<ClientConnectionRistBidirectional*>(arg);
-    if (!client)
-    {
-        return;
-    }
-
-    switch (status)
-    {
-        case RIST_CONNECTION_ESTABLISHED:
-            LOG(INFO, LOG_TAG) << "RIST sender connection established\n";
-            client->sender_connected_ = true;
-            client->connected_ = client->receiver_connected_ && client->sender_connected_;
-            break;
-        case RIST_CONNECTION_TIMED_OUT:
-            LOG(WARNING, LOG_TAG) << "RIST sender connection timed out\n";
-            client->sender_connected_ = false;
-            client->connected_ = false;
-            break;
-        case RIST_CLIENT_CONNECTED:
-            LOG(INFO, LOG_TAG) << "RIST sender client connected\n";
-            client->sender_connected_ = true;
-            client->connected_ = client->receiver_connected_ && client->sender_connected_;
-            break;
-        case RIST_CLIENT_TIMED_OUT:
-            LOG(WARNING, LOG_TAG) << "RIST sender client timed out\n";
-            client->sender_connected_ = false;
-            client->connected_ = false;
-            break;
-        default:
-            LOG(WARNING, LOG_TAG) << "Unknown RIST sender connection status: " << status << "\n";
-            break;
-    }
-}
-
-void ClientConnectionRistBidirectional::messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler)
-{
-    LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Type: " << message->type << ", refersTo: " << message->refersTo << "\n";
-    LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Object type: " << typeid(*this).name() << "\n";
-    
-    // Check for pending request (same logic as parent ClientConnection)
-    for (auto iter = pending_requests_.begin(); iter != pending_requests_.end(); ++iter)
-    {
-        auto request = *iter;
-        if (auto req = request.lock())
+        // Process message with handler
+        MessageHandler<msg::BaseMessage> handler;
         {
-            if (req->id() == message->refersTo)
-            {
-                LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Found pending request for refersTo: " << message->refersTo << "\n";
-                
-                req->setValue(std::move(message));
-                pending_requests_.erase(iter);
-                
-                // CRITICAL FIX: For RIST bidirectional, we need to chain getNextMessage even for responses
-                // TODO: Find a way to recreate the message safely for the handler
-                LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Skipping handler for response (to avoid crash), but chaining getNextMessage\n";
-                getNextMessage(handler);
-                return;
-            }
+            std::lock_guard<std::mutex> lock(handler_mutex_);
+            handler = pending_handler_;
+            pending_handler_ = nullptr;
+        }
+        
+        if (handler && message)
+        {
+            LOG(DEBUG, LOG_TAG) << "Processing message type: " << message->type << "\n";
+            handler(boost::system::error_code(), std::move(message));
+        }
+        else if (message)
+        {
+            LOG(WARNING, LOG_TAG) << "No handler available for message type: " << message->type << "\n";
         }
     }
     
-    // Normal message path (not a response to pending request)
-    LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Invoking handler for standalone type: " << message->type << "\n";
-    if (handler) {
-        handler({}, std::move(message));
-    }
+    LOG(INFO, LOG_TAG) << "RIST message processor thread stopped\n";
 }
-
-
 
 #endif // HAS_LIBRIST

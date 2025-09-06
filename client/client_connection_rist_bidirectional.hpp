@@ -23,31 +23,28 @@
 // local headers
 #include "client_connection.hpp"
 #include "client_settings.hpp"
+#include "common/rist_transport.hpp"
 
 // 3rd party headers
-#include <librist/librist.h>
 #include <boost/asio/ip/tcp.hpp>
 
 // standard headers
-#include <atomic>
 #include <memory>
 #include <thread>
 #include <mutex>
-#include <vector>
 #include <queue>
 #include <condition_variable>
 
-/// Bidirectional RIST client connection
+/// Simple RIST client connection using RistTransport
 /**
- * Bidirectional RIST client connection endpoint using multiplexing.
- * Uses virtual ports to separate different data types:
+ * RIST client connection using the clean RistTransport class.
+ * Follows the same parallel transport pattern as the server.
+ * Uses virtual ports for communication:
  * - Audio data: virtual port 1000 (received)
- * - Control messages: virtual port 2000 (received)
+ * - Control messages: virtual port 2000 (received) 
  * - Backchannel: virtual port 3000 (sent)
- * Receives media data and control messages via RIST protocol.
- * Sends backchannel messages via RIST protocol.
  */
-class ClientConnectionRistBidirectional : public ClientConnection
+class ClientConnectionRistBidirectional : public ClientConnection, public RistTransportReceiver
 {
 public:
     /// c'tor
@@ -59,75 +56,32 @@ public:
     std::string getMacAddress() override;
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
 
-protected:
-    /// Override messageReceived to maintain RIST callback chain
-    void messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler) override;
+    // RistTransportReceiver interface
+    void onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport) override;
+    void onRistClientConnected(const std::string& clientId) override;
+    void onRistClientDisconnected(const std::string& clientId) override;
 
 private:
     boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
     void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) override;
 
-    /// Initialize RIST receiver and sender
-    bool initRist();
-    /// Cleanup RIST contexts
-    void cleanupRist();
-    /// RIST data callback for audio/control messages (just queues data)
-    static int ristDataCallback(void* arg, struct rist_data_block* data_block);
-    /// RIST stats callback for monitoring packet flow
-    static int ristStatsCallback(void* arg, const struct rist_stats* stats);
-    /// Worker thread that processes queued messages
+    /// Send Hello message to initiate handshake
+    void sendHello();
+    /// Message processing thread
     void messageProcessorThread();
-    /// Polling thread for libRIST v0.2.7 callback fallback
-    void pollingThread();
-    /// RIST connection status callbacks
-    static void receiverConnectionStatusCallback(void* arg, struct rist_peer* peer, enum rist_connection_status status);
-    static void senderConnectionStatusCallback(void* arg, struct rist_peer* peer, enum rist_connection_status status);
 
 private:
-    // Virtual ports for multiplexing (must match server)
-    static constexpr uint16_t VPORT_AUDIO = 1000;        ///< Audio data port
-    static constexpr uint16_t VPORT_CONTROL = 2000;      ///< Control messages (server->client)
-    static constexpr uint16_t VPORT_BACKCHANNEL = 3000;  ///< Backchannel (client->server)
+    std::unique_ptr<RistTransport> rist_transport_;        ///< RIST transport instance
     
-    // Message queue for async processing
-    struct QueuedMessage {
-        std::vector<uint8_t> data;
-        uint16_t virt_port;
-    };
+    std::queue<std::unique_ptr<msg::BaseMessage>> message_queue_; ///< Message queue
+    std::mutex queue_mutex_;                               ///< Protect message queue
+    std::condition_variable queue_cv_;                     ///< Notify message thread
+    std::thread message_thread_;                           ///< Message processing thread
     
-    /// Process a single message (internal helper)
-    void processMessage(const QueuedMessage& msg);
-
-    /// Dual RIST contexts for bidirectional communication
-    struct rist_ctx* receiver_ctx_{nullptr};     ///< RIST receiver context (audio/control from server)
-    struct rist_peer* receiver_peer_{nullptr};   ///< RIST receiver peer
-    struct rist_ctx* sender_ctx_{nullptr};       ///< RIST sender context (backchannel to server)
-    struct rist_peer* sender_peer_{nullptr};     ///< RIST sender peer
+    MessageHandler<msg::BaseMessage> pending_handler_;     ///< Pending message handler
+    std::mutex handler_mutex_;                             ///< Protect handler
     
-    std::atomic<bool> receiver_connected_{false}; ///< receiver connection status
-    std::atomic<bool> sender_connected_{false};   ///< sender connection status
-    std::atomic<bool> connected_{false};          ///< overall connection status
-    std::atomic<bool> running_{false};            ///< worker thread running
-    
-    std::shared_ptr<ClientConnectionRistBidirectional> self_; ///< self reference for lifetime management
-    
-    std::queue<QueuedMessage> message_queue_;     ///< queue for messages from callback
-    std::mutex queue_mutex_;                      ///< protect message queue  
-    std::condition_variable queue_cv_;            ///< notify worker thread
-    std::thread worker_thread_;                   ///< worker thread for processing messages
-    
-    /// Pending message handlers for audio/control data
-    MessageHandler<msg::BaseMessage> pending_handler_;
-    std::mutex handler_mutex_;                    ///< protect pending_handler_
-    
-    /// Buffer for message processing
-    std::vector<uint8_t> buffer_;                 ///< buffer for received messages
-    std::mutex buffer_mutex_;                     ///< protect buffer access
-    rist_logging_settings log_settings_;
-    
-    /// Polling fallback for libRIST v0.2.7 callback issue
-    bool use_polling_fallback_;                   ///< use polling instead of callback
-    std::thread polling_thread_;                  ///< polling thread for data reception
+    std::atomic<bool> running_;                            ///< Thread running flag
 };
 
 #endif // HAS_LIBRIST
