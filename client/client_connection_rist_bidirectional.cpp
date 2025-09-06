@@ -824,6 +824,7 @@ void ClientConnectionRistBidirectional::senderConnectionStatusCallback(void* arg
 void ClientConnectionRistBidirectional::messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler)
 {
     LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Type: " << message->type << ", refersTo: " << message->refersTo << "\n";
+    LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Object type: " << typeid(*this).name() << "\n";
     
     // Check for pending request (same logic as parent ClientConnection)
     for (auto iter = pending_requests_.begin(); iter != pending_requests_.end(); ++iter)
