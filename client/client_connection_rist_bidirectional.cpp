@@ -177,11 +177,26 @@ std::string ClientConnectionRistBidirectional::getMacAddress()
 
 void ClientConnectionRistBidirectional::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
 {
-    std::lock_guard<std::mutex> lock(handler_mutex_);
-    pending_handler_ = handler;
-    LOG(DEBUG, LOG_TAG) << "Registered message handler, waiting for RIST data callback\n";
-    // Ensure callback is active (already set in initRist)
-    queue_cv_.notify_one(); // Wake up message processor thread
+    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Entry - handler valid: " << (handler ? "yes" : "no") << "\n";
+    
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Queue size: " << message_queue_.size() << "\n";
+    }
+    
+    {
+        std::lock_guard<std::mutex> lock(handler_mutex_);
+        if (!handler) {
+            LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** Invalid handler provided\n";
+            return;
+        }
+        pending_handler_ = handler;
+        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Handler registered, notifying queue_cv_\n";
+    }
+    
+    // Use notify_all to ensure wakeup even if thread missed notification
+    queue_cv_.notify_all();
+    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Notification sent\n";
 }
 
 void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, WriteHandler&& write_handler)
@@ -503,11 +518,27 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
         // Wait for and get one message from the queue
         {
             std::unique_lock<std::mutex> lock(queue_mutex_);
-            queue_cv_.wait(lock, [this] { return !message_queue_.empty() || !running_; });
+            LOG(INFO, LOG_TAG) << "*** THREAD WAIT *** Waiting for message, queue size: " << message_queue_.size() << ", running: " << running_ << "\n";
             
-            if (!running_) break;
+            queue_cv_.wait(lock, [this] { 
+                bool condition = !message_queue_.empty() || !running_;
+                if (!condition) {
+                    LOG(INFO, LOG_TAG) << "*** THREAD WAIT *** Condition false, queue size: " << message_queue_.size() << ", running: " << running_ << "\n";
+                }
+                return condition;
+            });
             
-            if (message_queue_.empty()) continue;
+            LOG(INFO, LOG_TAG) << "*** THREAD WAKE *** Woke up! Queue size: " << message_queue_.size() << ", running: " << running_ << "\n";
+            
+            if (!running_) {
+                LOG(INFO, LOG_TAG) << "*** THREAD STOP *** Thread stopping\n";
+                break;
+            }
+            
+            if (message_queue_.empty()) {
+                LOG(WARNING, LOG_TAG) << "*** THREAD EMPTY *** Queue empty after wake - continuing\n";
+                continue;
+            }
             
             LOG(INFO, LOG_TAG) << "*** QUEUE DEBUG *** Dequeuing message: " << message_queue_.front().data.size() 
                                << " bytes on vport " << message_queue_.front().virt_port << "\n";
@@ -820,5 +851,7 @@ void ClientConnectionRistBidirectional::messageReceived(std::unique_ptr<msg::Bas
         handler({}, std::move(message));
     }
 }
+
+
 
 #endif // HAS_LIBRIST
