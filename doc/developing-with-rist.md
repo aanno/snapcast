@@ -255,6 +255,78 @@ std::string sender_url = "rist://" + server + ":" + std::to_string(port + 2);   
 - `server/stream_session_rist_bidirectional.cpp` - Changed client_port_ + 1 to client_port_ + 2
 - `client/client_connection_rist_bidirectional.cpp` - Changed server_.port + 1 to server_.port + 2
 
+## Message Processing Chain Issues 🔧
+
+### Handler Lifecycle Problem ✅ FIXED
+
+**Issue**: `pending_handler_` was cleared before callback execution in `processMessage()`, causing subsequent messages (like CodecHeader) to be dropped.
+
+**Solution**: Store handler before clearing `pending_handler_`:
+
+```cpp
+if (pending_handler_) {
+    auto h = pending_handler_;      // Store handler first
+    pending_handler_ = nullptr;     // Clear before callback
+    messageReceived(std::move(message), [this, h](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
+        h(ec, std::move(msg));
+        if (!ec) getNextMessage(h);    // Chain with same handler
+    });
+}
+```
+
+**Files Modified**: `client/client_connection_rist_bidirectional.cpp` - processMessage()
+
+### BaseMessage Copy Crash ✅ FIXED
+
+**Issue**: `BaseMessage` is not safely copyable, causing segmentation faults when trying to copy for both pending request resolution and handler callback.
+
+**Solution**: Avoid copying `BaseMessage` entirely. For responses to pending requests, skip handler callback temporarily:
+
+```cpp
+void messageReceived(std::unique_ptr<msg::BaseMessage> message, MessageHandler<msg::BaseMessage> handler) override {
+    // Check for pending request
+    if (req->id() == message->refersTo) {
+        req->setValue(std::move(message));  // Move to pending request
+        getNextMessage(handler);            // Chain without calling handler
+        return;
+    }
+    // Normal message path
+    handler({}, std::move(message));
+}
+```
+
+**Files Modified**: 
+- `client/client_connection.hpp` - Made `messageReceived` virtual
+- `client/client_connection_rist_bidirectional.hpp` - Added override
+- `client/client_connection_rist_bidirectional.cpp` - Implemented safe messageReceived
+
+### Thread Stalling Issue 🔧 IN PROGRESS
+
+**Issue**: After ServerSettings processing, `getNextMessage()` is called but the message processor thread never wakes up to process the queued CodecHeader.
+
+**Symptoms**:
+- CodecHeader (1400 bytes) successfully queued on vport 1000
+- `getNextMessage()` shows queue size: 1
+- No subsequent `*** THREAD WAKE ***` logs
+- Log shows `(Controller)` instead of `(ConnectionRISTBi)` tag
+
+**Investigation**:
+- All virtual methods properly declared in ClientConnection base class
+- `getNextMessage()` is virtual and pure virtual (`= 0`)
+- Issue appears to be object type or call stack related
+
+**Debugging Added**:
+```cpp
+void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override {
+    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Entry - handler valid: " << (handler ? "yes" : "no");
+    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Queue size: " << message_queue_.size();
+    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Object type: " << typeid(*this).name();
+    // ... rest of implementation
+}
+```
+
+**Files Modified**: `client/client_connection_rist_bidirectional.cpp` - Enhanced getNextMessage() and messageProcessorThread() logging
+
 ## References
 
 - [libRIST Documentation](https://code.videolan.org/rist/librist)

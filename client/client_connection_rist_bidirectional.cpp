@@ -178,6 +178,7 @@ std::string ClientConnectionRistBidirectional::getMacAddress()
 void ClientConnectionRistBidirectional::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
 {
     LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Entry - handler valid: " << (handler ? "yes" : "no") << "\n";
+    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Object type: " << typeid(*this).name() << "\n";
     
     {
         std::lock_guard<std::mutex> lock(queue_mutex_);
@@ -510,6 +511,7 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
 {
 #if USE_CALLBACK
     LOG(INFO, LOG_TAG) << "Starting bidirectional RIST receiver thread with callback mode (testrist-style)\n";
+    LOG(INFO, LOG_TAG) << "*** THREAD START *** Object type: " << typeid(*this).name() << "\n";
     
     // In callback mode, just process queued messages from the callback
     while (running_) {
