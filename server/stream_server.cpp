@@ -74,7 +74,7 @@ void StreamServer::addSession(const std::shared_ptr<StreamSession>& session)
 
 void StreamServer::onChunkEncoded(const PcmStream* pcmStream, bool isDefaultStream, const std::shared_ptr<msg::PcmChunk>& chunk, double /*duration*/)
 {
-    LOG(DEBUG, LOG_TAG) << "*** AUDIO CHUNK *** onChunkEncoded: stream=" << pcmStream->getName() << ", isDefault=" << isDefaultStream << ", chunkSize=" << chunk->payloadSize << "\n";
+    // LOG(DEBUG, LOG_TAG) << "*** AUDIO CHUNK *** onChunkEncoded: stream=" << pcmStream->getName() << ", isDefault=" << isDefaultStream << ", chunkSize=" << chunk->payloadSize << "\n";
     shared_const_buffer buffer(*chunk);
 
     // make a copy of the sessions to avoid that a session get's deleted
