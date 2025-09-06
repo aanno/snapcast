@@ -8,6 +8,9 @@ volta install node pnpm
 ~/.volta/bin/pnpm setup
 . ~/.bashrc
 pnpm install -g @anthropic-ai/claude-code
+
+# install dependencies of librist
+sudo dnf install cjson-devel  mbedtls-devel meson ninja-build pkgconf-pkg-config
 ```
 
 ## vscode
