@@ -498,9 +498,9 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
     
     // In callback mode, just process queued messages from the callback
     while (running_) {
-        std::vector<QueuedMessage> messages_to_process;
+        QueuedMessage message;
         
-        // Wait for messages queued by callback and drain the entire queue
+        // Wait for and get one message from the queue
         {
             std::unique_lock<std::mutex> lock(queue_mutex_);
             queue_cv_.wait(lock, [this] { return !message_queue_.empty() || !running_; });
@@ -509,35 +509,20 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
             
             if (message_queue_.empty()) continue;
             
-            // CRITICAL FIX: Drain ALL queued messages to prevent condition variable race
-            LOG(INFO, LOG_TAG) << "*** QUEUE DEBUG *** Draining queue with " << message_queue_.size() << " messages\n";
-            while (!message_queue_.empty()) {
-                LOG(INFO, LOG_TAG) << "*** QUEUE DEBUG *** Dequeuing message: " << message_queue_.front().data.size() 
-                                   << " bytes on vport " << message_queue_.front().virt_port << "\n";
-                messages_to_process.push_back(std::move(message_queue_.front()));
-                message_queue_.pop();
-            }
+            LOG(INFO, LOG_TAG) << "*** QUEUE DEBUG *** Dequeuing message: " << message_queue_.front().data.size() 
+                               << " bytes on vport " << message_queue_.front().virt_port << "\n";
+            message = std::move(message_queue_.front());
+            message_queue_.pop();
         }
         
-        // Process all dequeued messages outside the lock
-        for (auto& msg : messages_to_process) {
-            LOG(INFO, LOG_TAG) << "*** PROCESS MESSAGE ENTRY *** " << msg.data.size() 
-                               << " bytes on vport " << msg.virt_port << "\n";
-            try {
-                processMessage(msg);
-            }
-            catch (const std::exception& e) {
-                LOG(ERROR, LOG_TAG) << "Error processing callback message: " << e.what() << "\n";
-            }
+        // Process the message
+        LOG(INFO, LOG_TAG) << "*** PROCESS MESSAGE ENTRY *** " << message.data.size() 
+                           << " bytes on vport " << message.virt_port << "\n";
+        try {
+            processMessage(message);
         }
-        
-        // CRITICAL: Check for additional messages queued during processing (final race fix)
-        {
-            std::lock_guard<std::mutex> lock(queue_mutex_);
-            if (!message_queue_.empty()) {
-                LOG(INFO, LOG_TAG) << "*** RACE FIX *** Found " << message_queue_.size() << " additional messages after processing - looping\n";
-                continue; // Loop back to drain additional messages immediately
-            }
+        catch (const std::exception& e) {
+            LOG(ERROR, LOG_TAG) << "Error processing callback message: " << e.what() << "\n";
         }
     }
 #else
