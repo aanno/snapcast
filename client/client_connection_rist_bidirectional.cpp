@@ -498,9 +498,9 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
     
     // In callback mode, just process queued messages from the callback
     while (running_) {
-        QueuedMessage msg;
+        std::vector<QueuedMessage> messages_to_process;
         
-        // Wait for messages queued by callback
+        // Wait for messages queued by callback and drain the entire queue
         {
             std::unique_lock<std::mutex> lock(queue_mutex_);
             queue_cv_.wait(lock, [this] { return !message_queue_.empty() || !running_; });
@@ -509,16 +509,35 @@ void ClientConnectionRistBidirectional::messageProcessorThread()
             
             if (message_queue_.empty()) continue;
             
-            msg = std::move(message_queue_.front());
-            message_queue_.pop();
+            // CRITICAL FIX: Drain ALL queued messages to prevent condition variable race
+            LOG(INFO, LOG_TAG) << "*** QUEUE DEBUG *** Draining queue with " << message_queue_.size() << " messages\n";
+            while (!message_queue_.empty()) {
+                LOG(INFO, LOG_TAG) << "*** QUEUE DEBUG *** Dequeuing message: " << message_queue_.front().data.size() 
+                                   << " bytes on vport " << message_queue_.front().virt_port << "\n";
+                messages_to_process.push_back(std::move(message_queue_.front()));
+                message_queue_.pop();
+            }
         }
         
-        try {
-            // Process callback-queued message
-            processMessage(msg);
+        // Process all dequeued messages outside the lock
+        for (auto& msg : messages_to_process) {
+            LOG(INFO, LOG_TAG) << "*** PROCESS MESSAGE ENTRY *** " << msg.data.size() 
+                               << " bytes on vport " << msg.virt_port << "\n";
+            try {
+                processMessage(msg);
+            }
+            catch (const std::exception& e) {
+                LOG(ERROR, LOG_TAG) << "Error processing callback message: " << e.what() << "\n";
+            }
         }
-        catch (const std::exception& e) {
-            LOG(ERROR, LOG_TAG) << "Error processing callback message: " << e.what() << "\n";
+        
+        // CRITICAL: Check for additional messages queued during processing (final race fix)
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            if (!message_queue_.empty()) {
+                LOG(INFO, LOG_TAG) << "*** RACE FIX *** Found " << message_queue_.size() << " additional messages after processing - looping\n";
+                continue; // Loop back to drain additional messages immediately
+            }
         }
     }
 #else
@@ -614,14 +633,21 @@ void ClientConnectionRistBidirectional::processMessage(const QueuedMessage& msg)
                                 
                                 std::lock_guard<std::mutex> handler_lock(handler_mutex_);
                                 if (pending_handler_) {
+                                    auto h = pending_handler_;
+                                    pending_handler_ = nullptr;
                                     if (base_message_.type == message_type::kCodecHeader) {
                                         LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client calling handler for CodecHeader\n";
                                     }
-                                    messageReceived(std::move(message), [this, h = pending_handler_](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
+                                    messageReceived(std::move(message), [this, h](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
                                         h(ec, std::move(msg));
                                         if (!ec) getNextMessage(h); // Chain next read like TCP/WebSocket
                                     });
-                                    pending_handler_ = nullptr;
+                                } else {
+                                    if (base_message_.type == message_type::kCodecHeader) {
+                                        LOG(ERROR, LOG_TAG) << "*** TRACE CODECHEADER *** NO HANDLER AVAILABLE - CodecHeader will be DROPPED!\n";
+                                    } else {
+                                        LOG(WARNING, LOG_TAG) << "No message handler available for message type " << base_message_.type << "\n";
+                                    }
                                 }
                             } else {
                                 if (base_message_.type == message_type::kCodecHeader) {
