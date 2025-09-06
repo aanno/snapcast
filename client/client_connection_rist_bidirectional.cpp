@@ -177,27 +177,48 @@ std::string ClientConnectionRistBidirectional::getMacAddress()
 
 void ClientConnectionRistBidirectional::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
 {
-    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Entry - handler valid: " << (handler ? "yes" : "no") << "\n";
-    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Object type: " << typeid(*this).name() << "\n";
-    
-    {
-        std::lock_guard<std::mutex> lock(queue_mutex_);
-        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Queue size: " << message_queue_.size() << "\n";
-    }
-    
-    {
-        std::lock_guard<std::mutex> lock(handler_mutex_);
-        if (!handler) {
-            LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** Invalid handler provided\n";
-            return;
+    try {
+        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Entry - handler valid: " << (handler ? "yes" : "no") << "\n";
+        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Object type: " << typeid(*this).name() << "\n";
+        
+        {
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Queue size: " << message_queue_.size() << "\n";
+            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Passed queue size logging\n";
         }
-        pending_handler_ = handler;
-        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Handler registered, notifying queue_cv_\n";
+        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Released queue mutex\n";
+        
+        {
+            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Attempting to acquire handler mutex\n";
+            std::unique_lock<std::mutex> lock(handler_mutex_, std::try_to_lock);
+            if (!lock.owns_lock()) {
+                LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** DEADLOCK DETECTED - handler_mutex already locked\n";
+                return;
+            }
+            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Acquired handler mutex\n";
+            if (!handler) {
+                LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** Invalid handler provided\n";
+                return;
+            }
+            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Handler validation passed\n";
+            pending_handler_ = handler;
+            LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Handler registered, notifying queue_cv_\n";
+        }
+        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Released handler mutex\n";
+        
+        // Use notify_all to ensure wakeup even if thread missed notification
+        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** About to call notify_all\n";
+        queue_cv_.notify_all();
+        LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Notification sent\n";
     }
-    
-    // Use notify_all to ensure wakeup even if thread missed notification
-    queue_cv_.notify_all();
-    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Notification sent\n";
+    catch (const std::exception& e) {
+        LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** Exception caught: " << e.what() << "\n";
+        throw; // Re-throw for debugging
+    }
+    catch (...) {
+        LOG(ERROR, LOG_TAG) << "*** GET NEXT MESSAGE *** Unknown exception caught\n";
+        throw;
+    }
 }
 
 void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, WriteHandler&& write_handler)
@@ -649,19 +670,22 @@ void ClientConnectionRistBidirectional::processMessage(const QueuedMessage& msg)
                                 tv now;
                                 base_message_.received = now;
                                 
-                                std::lock_guard<std::mutex> handler_lock(handler_mutex_);
-                                if (pending_handler_) {
-                                    auto h = pending_handler_;
+                                MessageHandler<msg::BaseMessage> handler;
+                                {
+                                    std::lock_guard<std::mutex> handler_lock(handler_mutex_);
+                                    handler = pending_handler_;
                                     pending_handler_ = nullptr;
+                                }
+                                if (handler) {
                                     if (base_message_.type == message_type::kCodecHeader) {
                                         LOG(INFO, LOG_TAG) << "*** TRACE CODECHEADER *** Client calling handler for CodecHeader\n";
                                     }
-                                    messageReceived(std::move(message), [this, h](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
+                                    messageReceived(std::move(message), [this, handler](boost::system::error_code ec, std::unique_ptr<msg::BaseMessage> msg) {
                                         LOG(INFO, LOG_TAG) << "*** CALLBACK TRACE *** messageReceived callback invoked, ec=" << ec << "\n";
-                                        h(ec, std::move(msg));
+                                        handler(ec, std::move(msg));
                                         if (!ec) {
                                             LOG(INFO, LOG_TAG) << "*** CALLBACK TRACE *** Chaining to getNextMessage()\n";
-                                            getNextMessage(h); // Chain next read like TCP/WebSocket
+                                            getNextMessage(handler); // Chain next read like TCP/WebSocket
                                         } else {
                                             LOG(ERROR, LOG_TAG) << "*** CALLBACK TRACE *** NOT chaining due to error: " << ec << "\n";
                                         }

@@ -11,6 +11,8 @@ pnpm install -g @anthropic-ai/claude-code
 
 # install dependencies of librist
 sudo dnf install cjson-devel  mbedtls-devel meson ninja-build pkgconf-pkg-config
+
+sudo ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
 ```
 
 ## vscode
