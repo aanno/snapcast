@@ -74,7 +74,7 @@ void StreamServer::addSession(const std::shared_ptr<StreamSession>& session)
 
 void StreamServer::onChunkEncoded(const PcmStream* pcmStream, bool isDefaultStream, const std::shared_ptr<msg::PcmChunk>& chunk, double /*duration*/)
 {
-    // LOG(TRACE, LOG_TAG) << "onChunkRead (" << pcmStream->getName() << "): " << duration << "ms\n";
+    LOG(DEBUG, LOG_TAG) << "*** AUDIO CHUNK *** onChunkEncoded: stream=" << pcmStream->getName() << ", isDefault=" << isDefaultStream << ", chunkSize=" << chunk->payloadSize << "\n";
     shared_const_buffer buffer(*chunk);
 
     // make a copy of the sessions to avoid that a session get's deleted
@@ -107,10 +107,25 @@ void StreamServer::onChunkEncoded(const PcmStream* pcmStream, bool isDefaultStre
             }
         }
 
+        LOG(DEBUG, LOG_TAG) << "*** SESSION CHECK *** clientId=" << session->clientId 
+                       << ", hasPcmStream=" << (session->pcmStream() != nullptr)
+                       << ", isDefaultStream=" << isDefaultStream 
+                       << ", pcmStreamMatch=" << (session->pcmStream().get() == pcmStream) << "\n";
+                       
         if (!session->pcmStream() && isDefaultStream) //->getName() == "default")
+        {
+            LOG(DEBUG, LOG_TAG) << "*** SENDING AUDIO *** to " << session->clientId << " (default stream path)\n";
             session->send(buffer);
+        }
         else if (session->pcmStream().get() == pcmStream)
+        {
+            LOG(DEBUG, LOG_TAG) << "*** SENDING AUDIO *** to " << session->clientId << " (matched stream path)\n";
             session->send(buffer);
+        }
+        else
+        {
+            LOG(DEBUG, LOG_TAG) << "*** SKIPPING AUDIO *** for " << session->clientId << " (no stream match)\n";
+        }
     }
 }
 
