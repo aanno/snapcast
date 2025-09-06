@@ -788,4 +788,42 @@ void ClientConnectionRistBidirectional::senderConnectionStatusCallback(void* arg
     }
 }
 
+void ClientConnectionRistBidirectional::messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler)
+{
+    LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Type: " << message->type << ", refersTo: " << message->refersTo << "\n";
+    
+    // Check for pending request (same logic as parent ClientConnection)
+    for (auto iter = pending_requests_.begin(); iter != pending_requests_.end(); ++iter)
+    {
+        auto request = *iter;
+        if (auto req = request.lock())
+        {
+            if (req->id() == message->refersTo)
+            {
+                LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Found pending request for refersTo: " << message->refersTo << "\n";
+                
+                // CRITICAL FIX: For RIST bidirectional, always invoke handler to maintain processing chain
+                // Capture message type before moving it
+                auto msg_type = message->type;
+                auto msg_copy = std::make_unique<msg::BaseMessage>(*message); // Copy for handler
+                req->setValue(std::move(message));
+                pending_requests_.erase(iter);
+                
+                LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Invoking handler for response type: " << msg_type << "\n";
+                if (handler) {
+                    handler({}, std::move(msg_copy));
+                }
+                // Note: Don't call getNextMessage here - the handler callback will call it
+                return;
+            }
+        }
+    }
+    
+    // Normal message path (not a response to pending request)
+    LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Invoking handler for standalone type: " << message->type << "\n";
+    if (handler) {
+        handler({}, std::move(message));
+    }
+}
+
 #endif // HAS_LIBRIST
