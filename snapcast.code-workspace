@@ -4,7 +4,12 @@
 			"path": "."
 		}
 	],
-	"settings": {},
+	"settings": {
+		"files.associations": {
+			"any": "cpp",
+			"complex": "cpp"
+		}
+	},
 	"extensions": {
 		"recommendations": [
 			"ms-vscode.cpptools",

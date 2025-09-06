@@ -25,6 +25,8 @@
 #include "stream_session_tcp.hpp"
 #ifdef HAS_LIBRIST
 #include "stream_session_rist_bidirectional.hpp"
+#include "common/message/server_settings.hpp"
+#include "common/message/codec_header.hpp"
 #endif
 
 // 3rd party headers
@@ -41,6 +43,9 @@ static constexpr auto LOG_TAG = "StreamServer";
 
 StreamServer::StreamServer(boost::asio::io_context& io_context, ServerSettings serverSettings, StreamMessageReceiver* messageReceiver)
     : io_context_(io_context), config_timer_(io_context), settings_(std::move(serverSettings)), messageReceiver_(messageReceiver)
+#ifdef HAS_LIBRIST
+    , active_pcm_stream_(nullptr)
+#endif
 {
 }
 
@@ -127,6 +132,16 @@ void StreamServer::onChunkEncoded(const PcmStream* pcmStream, bool isDefaultStre
             LOG(DEBUG, LOG_TAG) << "*** SKIPPING AUDIO *** for " << session->clientId << " (no stream match)\n";
         }
     }
+
+#ifdef HAS_LIBRIST
+    // Send audio via RIST transport (parallel to TCP/WebSocket sessions)
+    if (rist_transport_ && isDefaultStream)
+    {
+        // Update active stream reference for CodecHeader
+        active_pcm_stream_ = const_cast<streamreader::PcmStream*>(pcmStream);
+        rist_transport_->sendAudioChunk(chunk);
+    }
+#endif
 }
 
 
@@ -257,32 +272,30 @@ void StreamServer::start()
     startAccept();
 
 #ifdef HAS_LIBRIST
-    // Debug RIST configuration
-    LOG(INFO, LOG_TAG) << "DEBUG: RIST enabled = " << settings_.rist.enabled << "\n";
-    LOG(INFO, LOG_TAG) << "DEBUG: RIST port = " << settings_.rist.port << "\n";
-    LOG(INFO, LOG_TAG) << "DEBUG: RIST addresses count = " << settings_.rist.bind_to_address.size() << "\n";
-    for (const auto& addr : settings_.rist.bind_to_address) {
-        LOG(INFO, LOG_TAG) << "DEBUG: RIST address = " << addr << "\n";
-    }
-
-    // Initialize RIST sessions if enabled
-    if (settings_.rist.enabled)
+    // Initialize RIST transport if enabled
+    if (settings_.rist.enabled && !settings_.rist.bind_to_address.empty())
     {
-        LOG(INFO, LOG_TAG) << "RIST is enabled, creating sessions...\n";
-        for (const auto& address : settings_.rist.bind_to_address)
+        LOG(INFO, LOG_TAG) << "RIST is enabled, creating transport...\n";
+        rist_transport_ = std::make_unique<RistTransport>(RistTransport::Mode::SERVER, this);
+        
+        // Configure for first address (like the old code)
+        const std::string& address = settings_.rist.bind_to_address[0];
+        if (rist_transport_->configureServer(address, settings_.rist.port))
         {
-            try
+            if (rist_transport_->start())
             {
-                LOG(INFO, LOG_TAG) << "Creating bidirectional RIST session for address: " << address << ", port: " << settings_.rist.port << "\n";
-                auto rist_session = make_shared<StreamSessionRistBidirectional>(this, settings_, address, settings_.rist.port, io_context_);
-                rist_session->setSelfReference(rist_session);  // Keep session alive
-                addSession(rist_session);
-                LOG(INFO, LOG_TAG) << "Successfully created RIST session for: " << address << ":" << settings_.rist.port << "\n";
+                LOG(INFO, LOG_TAG) << "Successfully started RIST transport for: " << address << ":" << settings_.rist.port << "\n";
             }
-            catch (const std::exception& e)
+            else
             {
-                LOG(ERROR, LOG_TAG) << "error creating RIST session: " << e.what() << "\n";
+                LOG(ERROR, LOG_TAG) << "Failed to start RIST transport\n";
+                rist_transport_.reset();
             }
+        }
+        else
+        {
+            LOG(ERROR, LOG_TAG) << "Failed to configure RIST transport\n";
+            rist_transport_.reset();
         }
     }
     else
@@ -301,6 +314,15 @@ void StreamServer::stop()
         acceptor->cancel();
     acceptor_.clear();
 
+#ifdef HAS_LIBRIST
+    // Stop RIST transport
+    if (rist_transport_)
+    {
+        rist_transport_->stop();
+        rist_transport_.reset();
+    }
+#endif
+
     std::lock_guard<std::recursive_mutex> mlock(sessionsMutex_);
     cleanup();
     for (const auto& s : sessions_)
@@ -309,3 +331,65 @@ void StreamServer::stop()
             session->stop();
     }
 }
+
+#ifdef HAS_LIBRIST
+void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport)
+{
+    LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << ", vport=" << vport << "\n";
+    
+    // Handle RIST messages the same way as TCP/WebSocket messages
+    try 
+    {
+        if (messageReceiver_ != nullptr && !payload.empty())
+        {
+            // Forward payload directly to main message receiver
+            // The baseMessage already contains the parsed header info
+            messageReceiver_->onMessageReceived(nullptr, baseMessage, const_cast<char*>(payload.data()));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG(ERROR, LOG_TAG) << "Error processing RIST message: " << e.what() << "\n";
+    }
+}
+
+void StreamServer::onRistClientConnected(const std::string& clientId)
+{
+    LOG(INFO, LOG_TAG) << "RIST client connected: " << clientId << "\n";
+    
+    // Send ServerSettings and CodecHeader like the testrist server
+    if (rist_transport_)
+    {
+        // Create and send ServerSettings
+        msg::ServerSettings serverSettings;
+        // TODO: Populate serverSettings from settings_
+        rist_transport_->sendMessage(RistTransport::VPORT_CONTROL, serverSettings);
+        LOG(INFO, LOG_TAG) << "Sent ServerSettings to RIST client: " << clientId << "\n";
+        
+        // Send CodecHeader from active stream if available
+        if (active_pcm_stream_)
+        {
+            auto codecHeader = active_pcm_stream_->getHeader();
+            if (codecHeader)
+            {
+                rist_transport_->sendMessage(RistTransport::VPORT_AUDIO, *codecHeader);
+                LOG(INFO, LOG_TAG) << "Sent CodecHeader (" << codecHeader->payloadSize << " bytes) to RIST client: " << clientId << "\n";
+            }
+            else
+            {
+                LOG(WARNING, LOG_TAG) << "No CodecHeader available for RIST client: " << clientId << "\n";
+            }
+        }
+        else
+        {
+            LOG(WARNING, LOG_TAG) << "No active PCM stream available for RIST client: " << clientId << " - CodecHeader will be sent with first audio chunk\n";
+        }
+    }
+}
+
+void StreamServer::onRistClientDisconnected(const std::string& clientId)
+{
+    LOG(INFO, LOG_TAG) << "RIST client disconnected: " << clientId << "\n";
+    // Note: Unlike TCP sessions, RIST doesn't need explicit cleanup
+}
+#endif
