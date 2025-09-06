@@ -802,18 +802,13 @@ void ClientConnectionRistBidirectional::messageReceived(std::unique_ptr<msg::Bas
             {
                 LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Found pending request for refersTo: " << message->refersTo << "\n";
                 
-                // CRITICAL FIX: For RIST bidirectional, always invoke handler to maintain processing chain
-                // Capture message type before moving it
-                auto msg_type = message->type;
-                auto msg_copy = std::make_unique<msg::BaseMessage>(*message); // Copy for handler
                 req->setValue(std::move(message));
                 pending_requests_.erase(iter);
                 
-                LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Invoking handler for response type: " << msg_type << "\n";
-                if (handler) {
-                    handler({}, std::move(msg_copy));
-                }
-                // Note: Don't call getNextMessage here - the handler callback will call it
+                // CRITICAL FIX: For RIST bidirectional, we need to chain getNextMessage even for responses
+                // TODO: Find a way to recreate the message safely for the handler
+                LOG(INFO, LOG_TAG) << "*** RIST MESSAGE RECEIVED *** Skipping handler for response (to avoid crash), but chaining getNextMessage\n";
+                getNextMessage(handler);
                 return;
             }
         }
