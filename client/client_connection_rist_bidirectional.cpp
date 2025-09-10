@@ -181,9 +181,8 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
             return;
         }
 
-        // Set received timestamp
-        tv now;
-        message->received = now;
+        // Keep the original message timestamp for proper timing synchronization
+        // Do not override message->received as it contains the server timestamp
         
         // Use the normal handler mechanism for all messages
         MessageHandler<msg::BaseMessage> handler;
