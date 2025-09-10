@@ -185,43 +185,22 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
         tv now;
         message->received = now;
         
-        // Handle WireChunk messages directly to avoid timing issues
-        if (message->type == message_type::kWireChunk)
+        // Use the normal handler mechanism for all messages
+        MessageHandler<msg::BaseMessage> handler;
         {
-            // Audio chunks need immediate processing to avoid age-related drops
-            // Call Controller's message handling directly rather than going through correlation system
-            LOG(DEBUG, LOG_TAG) << "Processing WireChunk immediately to avoid timing issues\n";
-            
-            // TODO: Find the right way to get chunks directly to the Stream
-            // For now, try the normal handler but with a fresh handler each time
-            MessageHandler<msg::BaseMessage> audioHandler = [this](const boost::system::error_code& ec, std::shared_ptr<msg::BaseMessage> response) {
-                // Audio processing completed
-                if (ec) {
-                    LOG(DEBUG, LOG_TAG) << "Audio chunk processing error: " << ec.message() << "\n";
-                }
-            };
-            
-            messageReceived(std::move(message), audioHandler);
+            std::lock_guard<std::mutex> lock(next_message_mutex_);
+            handler = next_message_handler_;
+            next_message_handler_ = nullptr;
+        }
+
+        if (handler)
+        {
+            LOG(DEBUG, LOG_TAG) << "Processing message type " << message->type << " through normal pipeline\n";
+            messageReceived(std::move(message), handler);
         }
         else
         {
-            // For control messages, use the normal handler mechanism
-            MessageHandler<msg::BaseMessage> handler;
-            {
-                std::lock_guard<std::mutex> lock(next_message_mutex_);
-                handler = next_message_handler_;
-                next_message_handler_ = nullptr;
-            }
-
-            if (handler)
-            {
-                LOG(DEBUG, LOG_TAG) << "Processing message type " << message->type << " through normal pipeline\n";
-                messageReceived(std::move(message), handler);
-            }
-            else
-            {
-                LOG(WARNING, LOG_TAG) << "No handler available for RIST message type: " << message->type << "\n";
-            }
+            LOG(WARNING, LOG_TAG) << "No handler available for RIST message type: " << message->type << "\n";
         }
     }
     catch (const std::exception& e)
