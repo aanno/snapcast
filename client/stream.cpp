@@ -45,7 +45,7 @@ static constexpr auto kCorrectionBegin = 100us;
 
 // age for dropping old chunks
 // should be 0, but is configurable for libRIST testing
-// value is in [1000 * ms], e.g. 30ms = 30000
+// value is in [1000 * ms = us], e.g. 30ms = 30000
 static constexpr auto oldChunkAge = 0;
 
 // #define LOG_LATENCIES
