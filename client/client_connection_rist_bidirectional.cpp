@@ -181,43 +181,28 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
         tv now;
         message->received = now;
         
-        // Handle WireChunk messages differently - they don't use request-response correlation
-        if (message->type == message_type::kWireChunk)
+        // Handle all messages through the normal pipeline
+        // The Controller needs to see ALL messages, including WireChunk (audio) messages
+        MessageHandler<msg::BaseMessage> handler;
         {
-            // Audio chunks should be processed immediately, bypass handler mechanism
-            LOG(DEBUG, LOG_TAG) << "Processing WireChunk directly for audio playback\n";
-            
-            // Create a dummy handler for audio chunks and process immediately
-            MessageHandler<msg::BaseMessage> audioHandler = [this](const boost::system::error_code& ec, std::shared_ptr<msg::BaseMessage> response) {
-                // Audio chunks don't need response handling, but messageReceived expects a handler
-                if (ec) {
-                    LOG(DEBUG, LOG_TAG) << "Audio chunk processing completed with error: " << ec.message() << "\n";
-                } else {
-                    LOG(DEBUG, LOG_TAG) << "Audio chunk processed successfully\n";
-                }
-            };
-            
-            messageReceived(std::move(message), audioHandler);
+            std::lock_guard<std::mutex> lock(next_message_mutex_);
+            handler = next_message_handler_;
+            // For audio chunks, don't clear the handler - keep it for the next message
+            if (message->type != message_type::kWireChunk) {
+                next_message_handler_ = nullptr;
+            }
+        }
+
+        if (handler)
+        {
+            // All messages go through the normal ClientConnection pipeline
+            // This ensures the Controller receives them for proper processing
+            LOG(DEBUG, LOG_TAG) << "Processing message type " << message->type << " through normal pipeline\n";
+            messageReceived(std::move(message), handler);
         }
         else
         {
-            // For control messages (ServerSettings, CodecHeader, etc.), use the normal handler mechanism
-            MessageHandler<msg::BaseMessage> handler;
-            {
-                std::lock_guard<std::mutex> lock(next_message_mutex_);
-                handler = next_message_handler_;
-                next_message_handler_ = nullptr;
-            }
-
-            if (handler)
-            {
-                // Call the ClientConnection's messageReceived method to handle request-response correlation
-                messageReceived(std::move(message), handler);
-            }
-            else
-            {
-                LOG(WARNING, LOG_TAG) << "No handler available for RIST message type: " << message->type << "\n";
-            }
+            LOG(WARNING, LOG_TAG) << "No handler available for RIST message type: " << message->type << "\n";
         }
     }
     catch (const std::exception& e)
