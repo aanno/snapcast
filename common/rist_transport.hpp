@@ -90,6 +90,8 @@ public:
 
     /// Send message on specified virtual port
     bool sendMessage(uint16_t vport, const msg::BaseMessage& message);
+    /// Send raw data directly on specified virtual port (for pre-serialized data)
+    bool sendRawData(uint16_t vport, const void* data, size_t size);
     /// Send audio chunk (convenience method for VPORT_AUDIO)
     bool sendAudioChunk(const std::shared_ptr<msg::PcmChunk>& chunk);
 

@@ -341,7 +341,43 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
     // Handle RIST-specific messages directly (don't forward to session-based handler)
     try 
     {
-        if (baseMessage.type == message_type::kTime && !payload.empty())
+        if (baseMessage.type == message_type::kHello && !payload.empty())
+        {
+            // Handle Hello messages from RIST clients
+            auto helloMsg = std::make_shared<msg::Hello>();
+            helloMsg->deserialize(baseMessage, const_cast<char*>(payload.data()));
+            
+            LOG(INFO, LOG_TAG) << "RIST Hello received from client: " << helloMsg->getMacAddress() << "\n";
+            
+            // Send ServerSettings response via RIST transport
+            if (rist_transport_)
+            {
+                msg::ServerSettings serverSettings;
+                // TODO: Populate serverSettings from settings_
+                rist_transport_->sendMessage(RistTransport::VPORT_CONTROL, serverSettings);
+                LOG(INFO, LOG_TAG) << "Sent ServerSettings to RIST client via control channel\n";
+                
+                // Send CodecHeader from active stream if available
+                if (active_pcm_stream_)
+                {
+                    auto codecHeader = active_pcm_stream_->getHeader();
+                    if (codecHeader)
+                    {
+                        rist_transport_->sendMessage(RistTransport::VPORT_AUDIO, *codecHeader);
+                        LOG(INFO, LOG_TAG) << "Sent CodecHeader (" << codecHeader->payloadSize << " bytes) to RIST client via audio channel\n";
+                    }
+                    else
+                    {
+                        LOG(WARNING, LOG_TAG) << "No CodecHeader available from active stream\n";
+                    }
+                }
+                else
+                {
+                    LOG(WARNING, LOG_TAG) << "No active stream available for CodecHeader\n";
+                }
+            }
+        }
+        else if (baseMessage.type == message_type::kTime && !payload.empty())
         {
             // Handle Time messages for RIST clients
             auto timeMsg = std::make_shared<msg::Time>();
@@ -353,12 +389,12 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
             if (rist_transport_)
             {
                 rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, *timeMsg);
-                LOG(DEBUG, LOG_TAG) << "Sent Time response via RIST\n";
+                LOG(DEBUG, LOG_TAG) << "Sent Time response via RIST backchannel\n";
             }
         }
         else
         {
-            LOG(DEBUG, LOG_TAG) << "RIST message type " << baseMessage.type << " handled directly (no forwarding needed)\n";
+            LOG(DEBUG, LOG_TAG) << "RIST message type " << baseMessage.type << " not handled (no action needed)\n";
         }
     }
     catch (const std::exception& e)

@@ -38,7 +38,7 @@
 /// Simple RIST client connection using RistTransport
 /**
  * RIST client connection using the clean RistTransport class.
- * Follows the same parallel transport pattern as the server.
+ * Follows the testrist pattern with direct message handling.
  * Uses virtual ports for communication:
  * - Audio data: virtual port 1000 (received)
  * - Control messages: virtual port 2000 (received) 
@@ -65,23 +65,13 @@ private:
     boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
     void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) override;
 
-    /// Send Hello message to initiate handshake
-    void sendHello();
-    /// Message processing thread
-    void messageProcessorThread();
-
 private:
     std::unique_ptr<RistTransport> rist_transport_;        ///< RIST transport instance
     
-    std::queue<std::unique_ptr<msg::BaseMessage>> message_queue_; ///< Message queue
-    std::mutex queue_mutex_;                               ///< Protect message queue
-    std::condition_variable queue_cv_;                     ///< Notify message thread
-    std::thread message_thread_;                           ///< Message processing thread
+    MessageHandler<msg::BaseMessage> next_message_handler_; ///< Handler for next message
+    std::mutex next_message_mutex_;                        ///< Protect next message handler
     
-    MessageHandler<msg::BaseMessage> pending_handler_;     ///< Pending message handler
-    std::mutex handler_mutex_;                             ///< Protect handler
-    
-    std::atomic<bool> running_;                            ///< Thread running flag
+    std::atomic<bool> running_;                            ///< Running flag
 };
 
 #endif // HAS_LIBRIST

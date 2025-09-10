@@ -24,14 +24,12 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "common/utils.hpp"
-#include "common/rist_transport.hpp"
-#include "common/message/hello.hpp"
+#include "common/message/factory.hpp"
 
 // standard headers
 #include <iostream>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <thread>
 
 using namespace std;
 
@@ -40,7 +38,7 @@ static constexpr auto LOG_TAG = "ConnectionRISTBi";
 ClientConnectionRistBidirectional::ClientConnectionRistBidirectional(boost::asio::io_context& io_context, ClientSettings::Server server)
     : ClientConnection(io_context, std::move(server)), running_(false)
 {
-    LOG(INFO, LOG_TAG) << "Creating RIST client connection with RistTransport integration\n";
+    LOG(INFO, LOG_TAG) << "Creating RIST client connection with RistTransport\n";
 }
 
 ClientConnectionRistBidirectional::~ClientConnectionRistBidirectional()
@@ -69,14 +67,6 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
     }
 
     running_ = true;
-    connected_ = true;
-
-    // Start message processing thread
-    message_thread_ = std::thread(&ClientConnectionRistBidirectional::messageProcessorThread, this);
-
-    // Send Hello message to initiate handshake
-    sendHello();
-
     LOG(INFO, LOG_TAG) << "RIST client connection established\n";
     return boost::system::error_code();
 }
@@ -86,19 +76,11 @@ void ClientConnectionRistBidirectional::disconnect()
     LOG(DEBUG, LOG_TAG) << "Disconnecting RIST client\n";
     
     running_ = false;
-    connected_ = false;
 
     if (rist_transport_)
     {
         rist_transport_->stop();
         rist_transport_.reset();
-    }
-
-    queue_cv_.notify_all();
-    
-    if (message_thread_.joinable())
-    {
-        message_thread_.join();
     }
 
     LOG(DEBUG, LOG_TAG) << "RIST client disconnected\n";
@@ -122,19 +104,23 @@ void ClientConnectionRistBidirectional::getNextMessage(const MessageHandler<msg:
 {
     LOG(DEBUG, LOG_TAG) << "getNextMessage called\n";
     
-    {
-        std::lock_guard<std::mutex> lock(handler_mutex_);
-        pending_handler_ = handler;
-    }
-    
-    queue_cv_.notify_one();
+    // Store the handler for when we receive the next message
+    std::lock_guard<std::mutex> lock(next_message_mutex_);
+    next_message_handler_ = handler;
 }
 
 void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, WriteHandler&& write_handler)
 {
     if (!rist_transport_)
     {
-        LOG(WARNING, LOG_TAG) << "Cannot send data - RIST transport not available\n";
+        LOG(ERROR, LOG_TAG) << "Cannot send data - RIST transport not available\n";
+        write_handler(boost::system::error_code(boost::asio::error::not_connected), 0);
+        return;
+    }
+
+    if (!running_)
+    {
+        LOG(ERROR, LOG_TAG) << "Cannot send data - RIST client not connected\n";
         write_handler(boost::system::error_code(boost::asio::error::not_connected), 0);
         return;
     }
@@ -150,56 +136,68 @@ void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, Wr
         return;
     }
 
-    // Create message from buffer data
-    msg::BaseMessage base_message;
-    base_message.deserialize(const_cast<char*>(data_ptr));
-    
-    auto message = msg::factory::createMessage(base_message, const_cast<char*>(data_ptr) + sizeof(msg::BaseMessage));
-    if (!message)
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to create message for sending\n";
-        write_handler(boost::system::error_code(boost::asio::error::invalid_argument), 0);
-        return;
-    }
+    try {
+        // Parse message header to get type and ID for logging (but don't re-serialize)
+        msg::BaseMessage base_message;
+        base_message.deserialize(const_cast<char*>(data_ptr));
+        
+        LOG(DEBUG, LOG_TAG) << "Sending message type " << base_message.type << " (id=" << base_message.id << ") via RIST backchannel\n";
 
-    // Send via RIST backchannel
-    if (rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, *message))
-    {
-        LOG(DEBUG, LOG_TAG) << "Sent " << data_size << " bytes via RIST backchannel\n";
-        write_handler(boost::system::error_code(), data_size);
+        // Send raw data directly via RIST transport's sendRawData method
+        bool success = rist_transport_->sendRawData(RistTransport::VPORT_BACKCHANNEL, data_ptr, data_size);
+        if (success)
+        {
+            LOG(DEBUG, LOG_TAG) << "Successfully sent " << data_size << " bytes via RIST backchannel\n";
+            write_handler(boost::system::error_code(), data_size);
+        }
+        else
+        {
+            LOG(ERROR, LOG_TAG) << "Failed to send " << data_size << " bytes via RIST backchannel\n";
+            write_handler(boost::system::error_code(boost::asio::error::broken_pipe), 0);
+        }
     }
-    else
-    {
-        LOG(ERROR, LOG_TAG) << "Failed to send data via RIST\n";
-        write_handler(boost::system::error_code(boost::asio::error::broken_pipe), 0);
+    catch (const std::exception& e) {
+        LOG(ERROR, LOG_TAG) << "Exception while sending message via RIST: " << e.what() << "\n";
+        write_handler(boost::system::error_code(boost::asio::error::invalid_argument), 0);
     }
 }
 
 // RistTransportReceiver interface
 void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport)
 {
-    LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << ", vport=" << vport << "\n";
+    LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << " (id=" << baseMessage.id << "), vport=" << vport << "\n";
     
     try
     {
         // Create message from received data
         auto message = msg::factory::createMessage(baseMessage, const_cast<char*>(payload.data()));
-        if (message)
+        if (!message)
         {
-            // Set received timestamp
-            tv now;
-            message->received = now;
-            
-            // Queue message for processing
-            {
-                std::lock_guard<std::mutex> lock(queue_mutex_);
-                message_queue_.push(std::move(message));
-            }
-            queue_cv_.notify_one();
+            LOG(ERROR, LOG_TAG) << "Failed to create message from RIST data\n";
+            return;
+        }
+
+        // Set received timestamp
+        tv now;
+        message->received = now;
+        
+        // Use the base ClientConnection's message handling infrastructure
+        // This will handle request-response correlation automatically
+        MessageHandler<msg::BaseMessage> handler;
+        {
+            std::lock_guard<std::mutex> lock(next_message_mutex_);
+            handler = next_message_handler_;
+            next_message_handler_ = nullptr;
+        }
+
+        if (handler)
+        {
+            // Call the ClientConnection's messageReceived method to handle request-response correlation
+            messageReceived(std::move(message), handler);
         }
         else
         {
-            LOG(ERROR, LOG_TAG) << "Failed to create message from RIST data\n";
+            LOG(WARNING, LOG_TAG) << "No handler available for RIST message type: " << message->type << "\n";
         }
     }
     catch (const std::exception& e)
@@ -211,92 +209,11 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
 void ClientConnectionRistBidirectional::onRistClientConnected(const std::string& clientId)
 {
     LOG(INFO, LOG_TAG) << "RIST connection established: " << clientId << "\n";
-    connected_ = true;
 }
 
 void ClientConnectionRistBidirectional::onRistClientDisconnected(const std::string& clientId)
 {
     LOG(INFO, LOG_TAG) << "RIST connection lost: " << clientId << "\n";
-    connected_ = false;
-}
-
-void ClientConnectionRistBidirectional::sendHello()
-{
-    if (!rist_transport_)
-        return;
-
-    try
-    {
-        msg::Hello hello;
-        hello.MAC = getMacAddress();
-        hello.hostname = boost::asio::ip::host_name();
-        hello.version = VERSION;
-        hello.clientName = "Snapclient";
-        hello.os = OS;
-        hello.arch = ARCH;
-        hello.instance = 1;
-        hello.uuid = getMacAddress(); // Use MAC as UUID for simplicity
-        
-        if (rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, hello))
-        {
-            LOG(INFO, LOG_TAG) << "Sent Hello message to server\n";
-        }
-        else
-        {
-            LOG(ERROR, LOG_TAG) << "Failed to send Hello message\n";
-        }
-    }
-    catch (const std::exception& e)
-    {
-        LOG(ERROR, LOG_TAG) << "Error sending Hello message: " << e.what() << "\n";
-    }
-}
-
-void ClientConnectionRistBidirectional::messageProcessorThread()
-{
-    LOG(INFO, LOG_TAG) << "Starting RIST message processor thread\n";
-    
-    while (running_)
-    {
-        std::unique_ptr<msg::BaseMessage> message;
-        
-        // Wait for message or handler
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex_);
-            queue_cv_.wait(lock, [this] { 
-                return !message_queue_.empty() || !running_;
-            });
-            
-            if (!running_)
-                break;
-                
-            if (message_queue_.empty())
-                continue;
-                
-            message = std::move(message_queue_.front());
-            message_queue_.pop();
-        }
-        
-        // Process message with handler
-        MessageHandler<msg::BaseMessage> handler;
-        {
-            std::lock_guard<std::mutex> lock(handler_mutex_);
-            handler = pending_handler_;
-            pending_handler_ = nullptr;
-        }
-        
-        if (handler && message)
-        {
-            LOG(DEBUG, LOG_TAG) << "Processing message type: " << message->type << "\n";
-            handler(boost::system::error_code(), std::move(message));
-        }
-        else if (message)
-        {
-            LOG(WARNING, LOG_TAG) << "No handler available for message type: " << message->type << "\n";
-        }
-    }
-    
-    LOG(INFO, LOG_TAG) << "RIST message processor thread stopped\n";
 }
 
 #endif // HAS_LIBRIST

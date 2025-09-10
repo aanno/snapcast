@@ -266,6 +266,35 @@ bool RistTransport::sendMessage(uint16_t vport, const msg::BaseMessage& message)
     return true;
 }
 
+bool RistTransport::sendRawData(uint16_t vport, const void* data, size_t size)
+{
+    if (!running_ || !sender_ctx_) {
+        LOG(WARNING, LOG_TAG) << "Cannot send raw data - transport not available or not running\n";
+        return false;
+    }
+    
+    if (!data || size == 0) {
+        LOG(WARNING, LOG_TAG) << "Cannot send empty data\n";
+        return false;
+    }
+    
+    // Create RIST data block
+    struct rist_data_block data_block = {};
+    data_block.payload = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(data));
+    data_block.payload_len = size;
+    data_block.virt_dst_port = vport;
+    data_block.ts_ntp = 0; // Let RIST handle timestamps
+    
+    int ret = rist_sender_data_write(sender_ctx_, &data_block);
+    if (ret < 0) {
+        LOG(ERROR, LOG_TAG) << "Failed to send raw data (" << size << " bytes) on vport " << vport << ", ret=" << ret << "\n";
+        return false;
+    }
+    
+    LOG(DEBUG, LOG_TAG) << "Sent raw data (" << size << " bytes) on vport " << vport << "\n";
+    return true;
+}
+
 int RistTransport::dataCallback(void* arg, struct rist_data_block* data_block)
 {
     auto* transport = static_cast<RistTransport*>(arg);
