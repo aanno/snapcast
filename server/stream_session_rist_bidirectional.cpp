@@ -58,7 +58,9 @@ bool StreamSessionRistBidirectional::initRist()
     log_settings_.log_stream = nullptr; // stdout; // Output to stdout
     log_settings_.log_cb = rist_log_callback; // Set callback
     log_settings_.log_cb_arg = const_cast<char*>(LOG_GLOBAL);
-    rist_logging_set_global(&log_settings_);
+    if (rist_logging_set_global(&log_settings_) != 0) {
+        LOG(WARNING, LOG_TAG) << "Failed to set RIST global logging\n";
+    }
 
     LOG(INFO, LOG_TAG) << "Initializing bidirectional RIST server\n";
     
