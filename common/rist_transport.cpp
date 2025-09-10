@@ -117,7 +117,8 @@ bool RistTransport::start()
     // Create RIST contexts
     rist_logging_settings log_settings_sender = log_settings_;
     log_settings_sender.log_cb_arg = const_cast<char*>(LOG_SENDER);
-    if (rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, &log_settings_sender) != 0)
+    // TODO: setting log_settings_sender causes crashes in client (and maybe server too)
+    if (rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, nullptr /* &log_settings_sender */) != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST sender context\n";
         return false;
@@ -125,7 +126,8 @@ bool RistTransport::start()
 
     rist_logging_settings log_settings_receiver = log_settings_;
     log_settings_receiver.log_cb_arg = const_cast<char*>(LOG_RECEIVER);
-    if (rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, &log_settings_receiver) != 0)
+    // TODO: setting log_settings_receiver causes crashes in client (and maybe server too)
+    if (rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, nullptr /* &log_settings_receiver */) != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver context\n";
         rist_destroy(sender_ctx_);
