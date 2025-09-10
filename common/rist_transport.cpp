@@ -34,6 +34,30 @@
 
 using namespace std;
 
+// TODO: Does this causes crashes in libRIST?
+int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
+    char* context = static_cast<char*>(arg);
+    // fprintf(stdout, "[RIST] [%d] %s", level, msg);
+    switch (level) {
+        case RIST_LOG_ERROR:
+            LOG(ERROR, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+        case RIST_LOG_WARN:
+            LOG(WARNING, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+        case RIST_LOG_INFO:
+            LOG(INFO, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+        case RIST_LOG_DEBUG:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+        default:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+    }
+    return 0;
+}
+
 
 RistTransport::RistTransport(Mode mode, RistTransportReceiver* receiver)
     : mode_(mode), receiver_(receiver), sender_ctx_(nullptr), receiver_ctx_(nullptr), port_(0), running_(false)
@@ -81,23 +105,27 @@ bool RistTransport::start()
     LOG(INFO, LOG_TAG) << "Virtual ports: " << VPORT_AUDIO << " (audio), " << VPORT_CONTROL << " (control), " << VPORT_BACKCHANNEL << " (backchannel)\n";
 
     // Initialize RIST logging
-    struct rist_logging_settings log_settings = {};
-    log_settings.log_level = RIST_LOG_DEBUG;
-    log_settings.log_stream = nullptr; // stdout disabled to avoid duplication
-    log_settings.log_cb = rist_log_callback;
-    log_settings.log_cb_arg = const_cast<char*>(LOG_GLOBAL);
-    if (rist_logging_set_global(&log_settings) != 0) {
+    log_settings_ = {};
+    log_settings_.log_level = RIST_LOG_DEBUG;
+    log_settings_.log_stream = nullptr; // stdout disabled to avoid duplication
+    log_settings_.log_cb = rist_log_callback;
+    log_settings_.log_cb_arg = const_cast<char*>(LOG_GLOBAL);
+    if (rist_logging_set_global(&log_settings_) != 0) {
         LOG(WARNING, LOG_TAG) << "Failed to set RIST global logging\n";
     }
 
     // Create RIST contexts
-    if (rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, nullptr) != 0)
+    rist_logging_settings log_settings_sender = log_settings_;
+    log_settings_sender.log_cb_arg = const_cast<char*>(LOG_SENDER);
+    if (rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, &log_settings_sender) != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST sender context\n";
         return false;
     }
 
-    if (rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, nullptr) != 0)
+    rist_logging_settings log_settings_receiver = log_settings_;
+    log_settings_receiver.log_cb_arg = const_cast<char*>(LOG_RECEIVER);
+    if (rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, &log_settings_receiver) != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver context\n";
         rist_destroy(sender_ctx_);
