@@ -353,6 +353,8 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
             if (rist_transport_)
             {
                 msg::ServerSettings serverSettings;
+                // Set refersTo field to correlate with Hello request
+                serverSettings.refersTo = baseMessage.id;
                 // TODO: Populate serverSettings from settings_
                 rist_transport_->sendMessage(RistTransport::VPORT_CONTROL, serverSettings);
                 LOG(INFO, LOG_TAG) << "Sent ServerSettings to RIST client via control channel\n";
