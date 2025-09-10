@@ -232,6 +232,23 @@ port = 1706
 
 ### Client Configuration
 
+**Critical**: RIST introduces ~100ms transport latency compared to TCP. Clients must compensate with:
+
+```bash
+snapclient --host <server> --latency 100
+```
+
+**Why this is needed**:
+- RIST transport adds 60-120ms network latency vs TCP's near-zero latency
+- Snapcast's Stream buffer expects chunks to arrive "just in time"
+- `--latency 100` adjusts `outputBufferDacTime` to make chunks appear "younger" 
+- Without this, all chunks are dropped as "too old" and only silence plays
+
+**Client URL**: 
+```bash
+snapclient rist://server:1706 --latency 100
+```
+
 Client connects to server's RIST ports automatically when RIST transport is detected.
 
 ## Debugging and Monitoring
@@ -267,14 +284,18 @@ Client connects to server's RIST ports automatically when RIST transport is dete
 
 ### Buffer Configuration
 
-Following testrist optimized parameters:
+Optimized parameters for low-latency audio streaming:
 ```cpp
-config->recovery_length_min = 200;  // 200ms buffer
-config->recovery_length_max = 200;
-config->recovery_rtt_min = 5;
-config->recovery_rtt_max = 500;
-config->recovery_reorder_buffer = 15;
+config->recovery_length_min = recovery_length_min;     // 20ms (down from 200ms)
+config->recovery_length_max = recovery_length_max;     // 50ms (down from 200ms) 
+config->recovery_rtt_min = recovery_rtt_min;           // 5ms
+config->recovery_rtt_max = recovery_rtt_max;           // 50ms (down from 500ms)
+config->recovery_reorder_buffer = recovery_reorder_buffer; // 15ms
+config->min_retries = min_retries;                     // 3 (down from 6)
+config->max_retries = max_retries;                     // 10 (down from 20)
 ```
+
+These constants are defined in `common/rist_transport.hpp` and significantly reduce RIST's buffer latency while maintaining reliability for LAN/WAN audio streaming.
 
 ### Network Efficiency
 

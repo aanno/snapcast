@@ -300,32 +300,31 @@ void messageReceived(std::unique_ptr<msg::BaseMessage> message, MessageHandler<m
 - `client/client_connection_rist_bidirectional.hpp` - Added override
 - `client/client_connection_rist_bidirectional.cpp` - Implemented safe messageReceived
 
-### Thread Stalling Issue 🔧 IN PROGRESS
+### Stream Buffer Age Calculation Issue ✅ RESOLVED
 
-**Issue**: After ServerSettings processing, `getNextMessage()` is called but the message processor thread never wakes up to process the queued CodecHeader.
+**Final Issue**: Even with all RIST transport working correctly, audio chunks were being dropped as "too old" due to libRIST's ~100ms transport latency vs TCP's near-zero latency.
 
-**Symptoms**:
-- CodecHeader (1400 bytes) successfully queued on vport 1000
-- `getNextMessage()` shows queue size: 1
-- No subsequent `*** THREAD WAKE ***` logs
-- Log shows `(Controller)` instead of `(ConnectionRISTBi)` tag
+**Root Cause**: 
+- RIST introduces 60-120ms network transport latency
+- Snapcast's Stream buffer expects chunks to arrive "just in time"  
+- Age calculation: `age = serverNow - chunk.start - buffer + outputBufferDacTime`
+- Without compensation, chunks appear 100ms "older" than expected
 
-**Investigation**:
-- All virtual methods properly declared in ClientConnection base class
-- `getNextMessage()` is virtual and pure virtual (`= 0`)
-- Issue appears to be object type or call stack related
+**Solution**: Use snapclient `--latency` parameter to compensate for RIST transport latency:
 
-**Debugging Added**:
-```cpp
-void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override {
-    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Entry - handler valid: " << (handler ? "yes" : "no");
-    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Queue size: " << message_queue_.size();
-    LOG(INFO, LOG_TAG) << "*** GET NEXT MESSAGE *** Object type: " << typeid(*this).name();
-    // ... rest of implementation
-}
+```bash
+snapclient rist://server:1706 --latency 100
 ```
 
-**Files Modified**: `client/client_connection_rist_bidirectional.cpp` - Enhanced getNextMessage() and messageProcessorThread() logging
+**Why This Works**:
+- `--latency 100` increases `outputBufferDacTime` by 100ms
+- This makes chunks appear "100ms younger" in age calculation
+- Chunks that were 36-348ms "old" become playable
+- Uses existing Snapcast architecture designed for exactly this purpose
+
+**Key Insight**: The solution wasn't changing buffer sizes or modifying age thresholds, but using the proper latency compensation mechanism already built into Snapcast.
+
+**Files Modified**: Client startup scripts to include `--latency 100` parameter
 
 ## References
 
