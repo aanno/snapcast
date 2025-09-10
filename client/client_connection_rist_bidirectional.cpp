@@ -181,28 +181,43 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
         tv now;
         message->received = now;
         
-        // Handle all messages through the normal pipeline
-        // The Controller needs to see ALL messages, including WireChunk (audio) messages
-        MessageHandler<msg::BaseMessage> handler;
+        // Handle WireChunk messages directly to avoid timing issues
+        if (message->type == message_type::kWireChunk)
         {
-            std::lock_guard<std::mutex> lock(next_message_mutex_);
-            handler = next_message_handler_;
-            // For audio chunks, don't clear the handler - keep it for the next message
-            if (message->type != message_type::kWireChunk) {
-                next_message_handler_ = nullptr;
-            }
-        }
-
-        if (handler)
-        {
-            // All messages go through the normal ClientConnection pipeline
-            // This ensures the Controller receives them for proper processing
-            LOG(DEBUG, LOG_TAG) << "Processing message type " << message->type << " through normal pipeline\n";
-            messageReceived(std::move(message), handler);
+            // Audio chunks need immediate processing to avoid age-related drops
+            // Call Controller's message handling directly rather than going through correlation system
+            LOG(DEBUG, LOG_TAG) << "Processing WireChunk immediately to avoid timing issues\n";
+            
+            // TODO: Find the right way to get chunks directly to the Stream
+            // For now, try the normal handler but with a fresh handler each time
+            MessageHandler<msg::BaseMessage> audioHandler = [this](const boost::system::error_code& ec, std::shared_ptr<msg::BaseMessage> response) {
+                // Audio processing completed
+                if (ec) {
+                    LOG(DEBUG, LOG_TAG) << "Audio chunk processing error: " << ec.message() << "\n";
+                }
+            };
+            
+            messageReceived(std::move(message), audioHandler);
         }
         else
         {
-            LOG(WARNING, LOG_TAG) << "No handler available for RIST message type: " << message->type << "\n";
+            // For control messages, use the normal handler mechanism
+            MessageHandler<msg::BaseMessage> handler;
+            {
+                std::lock_guard<std::mutex> lock(next_message_mutex_);
+                handler = next_message_handler_;
+                next_message_handler_ = nullptr;
+            }
+
+            if (handler)
+            {
+                LOG(DEBUG, LOG_TAG) << "Processing message type " << message->type << " through normal pipeline\n";
+                messageReceived(std::move(message), handler);
+            }
+            else
+            {
+                LOG(WARNING, LOG_TAG) << "No handler available for RIST message type: " << message->type << "\n";
+            }
         }
     }
     catch (const std::exception& e)
