@@ -117,7 +117,54 @@ void StreamServer::onRistClientConnected(const std::string& clientId) {
 
 ### Client Side
 
-*Note: Client implementation uses existing bidirectional RIST session code that connects to the server's virtual ports.*
+**Architecture**: The client uses `ClientConnectionRistBidirectional` which implements the `RistTransportReceiver` interface, following the same direct communication pattern as the server.
+
+```cpp
+class ClientConnectionRistBidirectional : public ClientConnection, public RistTransportReceiver {
+    std::unique_ptr<RistTransport> rist_transport_;
+};
+```
+
+**Key Implementation Details**:
+
+1. **Connection Establishment**:
+   ```cpp
+   // Client connects to server's RIST ports
+   rist_transport_ = std::make_unique<RistTransport>(RistTransport::Mode::CLIENT, this);
+   rist_transport_->configureClient(server_address, server_port);  // connects to 1706/1708
+   rist_transport_->start();
+   ```
+
+2. **Message Sending** (Fixed Implementation):
+   ```cpp
+   void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) {
+       // Send raw serialized data directly (no re-serialization)
+       const auto* data_ptr = boost::asio::buffer_cast<const char*>(buffer.data());
+       size_t data_size = buffer.size();
+       
+       // Use sendRawData to avoid JSON parse errors
+       bool success = rist_transport_->sendRawData(RistTransport::VPORT_BACKCHANNEL, data_ptr, data_size);
+   }
+   ```
+
+3. **Message Receiving**:
+   ```cpp
+   void onRistMessageReceived(const msg::BaseMessage& baseMessage, 
+                             const std::string& payload, uint16_t vport) {
+       // Handle ServerSettings, CodecHeader, Time responses
+       auto message = msg::factory::createMessage(baseMessage, const_cast<char*>(payload.data()));
+       messageReceived(std::move(message), handler); // Use base ClientConnection correlation
+   }
+   ```
+
+**Critical Fix - sendRawData() Method**:
+The major breakthrough was implementing `RistTransport::sendRawData()` to send pre-serialized message data directly, avoiding the JSON parse errors that occurred when trying to deserialize and re-serialize messages in the client's `write()` method.
+
+**Protocol Flow**:
+1. **Hello Request**: Client sends Hello via vport 3000 (backchannel)
+2. **ServerSettings Response**: Server responds via vport 2000 (control)  
+3. **CodecHeader**: Server sends via vport 1000 (audio)
+4. **Audio Streaming**: Continuous PcmChunks via vport 1000
 
 ### Message Protocol
 
