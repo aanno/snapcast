@@ -37,6 +37,16 @@
 #include <string>
 #include <unordered_map>
 
+// Optimized parameters for low-latency RIST in [ms]
+static constexpr auto recovery_length_min = 20; // was 200 before
+static constexpr auto recovery_length_max = 50; // was 200 before
+static constexpr auto recovery_rtt_min = 5; // was 5 before
+static constexpr auto recovery_rtt_max = 50; // was 500 before
+static constexpr auto recovery_reorder_buffer = 15; // was 15 before
+static constexpr auto min_retries = 3; // was 6 before
+static constexpr auto max_retries = 10; // was 20 before
+static constexpr auto congestion_control_mode = RIST_CONGESTION_CONTROL_MODE_NORMAL;
+
 /// Forward declarations
 namespace msg {
     class BaseMessage;

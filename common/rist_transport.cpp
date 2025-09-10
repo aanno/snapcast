@@ -186,13 +186,14 @@ bool RistTransport::createPeer(struct rist_ctx* ctx, const std::string& url, con
     }
 
     // Apply optimized parameters like testrist
-    config->recovery_length_min = 200;  // 200ms buffer
-    config->recovery_length_max = 200;
-    config->recovery_rtt_min = 5;
-    config->recovery_rtt_max = 500;
-    config->recovery_reorder_buffer = 15;
-    config->min_retries = 6;
-    config->max_retries = 20;
+    config->recovery_length_min = recovery_length_min;
+    config->recovery_length_max = recovery_length_max;
+    config->recovery_rtt_min = recovery_rtt_min;
+    config->recovery_rtt_max = recovery_rtt_max;
+    config->recovery_reorder_buffer = recovery_reorder_buffer;
+    config->min_retries = min_retries;
+    config->max_retries = max_retries;
+    config->congestion_control_mode = congestion_control_mode;
 
     struct rist_peer* peer;
     int ret = rist_peer_create(ctx, &peer, config);

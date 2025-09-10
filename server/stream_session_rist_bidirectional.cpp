@@ -150,14 +150,14 @@ bool StreamSessionRistBidirectional::initRist()
     }
     
     // Manually set optimized RIST parameters for low latency audio streaming
-    sender_config->recovery_length_min = 200;  // bufmin: 200ms minimum buffer for connection stability
-    sender_config->recovery_length_max = 200;  // bufmax: 200ms maximum buffer (still much lower than 1000ms default)
-    sender_config->recovery_rtt_min = RIST_DEFAULT_RECOVERY_RTT_MIN;    // rttmin: 5ms (default)
-    sender_config->recovery_rtt_max = RIST_DEFAULT_RECOVERY_RTT_MAX;    // rttmax: 500ms (default)
-    sender_config->recovery_reorder_buffer = RIST_DEFAULT_RECOVERY_REORDER_BUFFER;  // reorder: 15 packets (default)
-    sender_config->min_retries = RIST_DEFAULT_MIN_RETRIES;       // min_retries: 6 (default)
-    sender_config->max_retries = RIST_DEFAULT_MAX_RETRIES;       // max_retries: 20 (default)
-    sender_config->congestion_control_mode = RIST_DEFAULT_CONGESTION_CONTROL_MODE;  // Default congestion control
+    sender_config->recovery_length_min = recovery_length_min;
+    sender_config->recovery_length_max = recovery_length_max;
+    sender_config->recovery_rtt_min = recovery_rtt_min;
+    sender_config->recovery_rtt_max = recovery_rtt_max;
+    sender_config->recovery_reorder_buffer = recovery_reorder_buffer;
+    sender_config->min_retries = min_retries;
+    sender_config->max_retries = max_retries;
+    sender_config->congestion_control_mode = congestion_control_mode;
     
     LOG(INFO, LOG_TAG) << "Applied optimized RIST sender parameters: bufmin=" << sender_config->recovery_length_min 
                        << "ms, bufmax=" << sender_config->recovery_length_max << "ms, rttmin=" << sender_config->recovery_rtt_min 
@@ -186,15 +186,14 @@ bool StreamSessionRistBidirectional::initRist()
     }
     
     // Manually set optimized RIST parameters for low latency backchannel communication
-    receiver_config->recovery_length_min = 200;  // bufmin: 200ms minimum buffer for connection stability
-    receiver_config->recovery_length_max = 200;  // bufmax: 200ms maximum buffer (still much lower than 1000ms default)
-    receiver_config->recovery_rtt_min = RIST_DEFAULT_RECOVERY_RTT_MIN;    // rttmin: 5ms (default)
-    receiver_config->recovery_rtt_max = RIST_DEFAULT_RECOVERY_RTT_MAX;    // rttmax: 500ms (default)
-    receiver_config->recovery_reorder_buffer = RIST_DEFAULT_RECOVERY_REORDER_BUFFER;  // reorder: 15 packets (default)
-    receiver_config->min_retries = RIST_DEFAULT_MIN_RETRIES;       // min_retries: 6 (default)
-    receiver_config->max_retries = RIST_DEFAULT_MAX_RETRIES;       // max_retries: 20 (default)
-    receiver_config->congestion_control_mode = RIST_DEFAULT_CONGESTION_CONTROL_MODE;  // Default congestion control
-    
+    receiver_config->recovery_length_min = recovery_length_min;
+    receiver_config->recovery_length_max = recovery_length_max;
+    receiver_config->recovery_rtt_min = recovery_rtt_min;
+    receiver_config->recovery_rtt_max = recovery_rtt_max;
+    receiver_config->recovery_reorder_buffer = recovery_reorder_buffer;
+    receiver_config->min_retries = min_retries;
+    receiver_config->max_retries = max_retries;
+    receiver_config->congestion_control_mode = congestion_control_mode;
     LOG(INFO, LOG_TAG) << "Applied optimized RIST receiver parameters: bufmin=" << receiver_config->recovery_length_min 
                        << "ms, bufmax=" << receiver_config->recovery_length_max << "ms, rttmin=" << receiver_config->recovery_rtt_min 
                        << "ms, rttmax=" << receiver_config->recovery_rtt_max << "ms\n";

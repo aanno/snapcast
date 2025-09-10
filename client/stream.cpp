@@ -43,6 +43,11 @@ namespace cs = chronos;
 static constexpr auto LOG_TAG = "Stream";
 static constexpr auto kCorrectionBegin = 100us;
 
+// age for dropping old chunks
+// should be 0, but is configurable for libRIST testing
+// value is in [1000 * ms], e.g. 30ms = 30000
+static constexpr auto oldChunkAge = 0;
+
 // #define LOG_LATENCIES
 
 Stream::Stream(const SampleFormat& in_format, const SampleFormat& out_format)
@@ -315,7 +320,7 @@ bool Stream::getPlayerChunk(void* outputBuffer, const cs::usec& outputBufferDacT
             }
             else
             {
-                if (age.count() > 0)
+                if (age.count() > oldChunkAge)
                 {
                     LOG(DEBUG, LOG_TAG) << "age > 0: " << age.count() / 1000 << "ms, dropping old chunks\n";
                     // age > 0: the top of the stream is too old. We must fast foward.
@@ -339,7 +344,7 @@ bool Stream::getPlayerChunk(void* outputBuffer, const cs::usec& outputBufferDacT
                     }
                 }
 
-                if (age.count() <= 0)
+                if (age.count() <= oldChunkAge)
                 {
                     // the oldest chunk (top of the stream) can be played in this iteration
                     // e.g. age = -20ms (=> should be played in 20ms)

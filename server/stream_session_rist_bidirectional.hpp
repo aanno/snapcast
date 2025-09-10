@@ -20,6 +20,7 @@
 
 // local headers
 #include "stream_session.hpp"
+#include "common/rist_transport.hpp"
 
 // 3rd party headers
 #include <librist/librist.h>
