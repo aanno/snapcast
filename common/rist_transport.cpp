@@ -152,14 +152,12 @@ bool RistTransport::start()
     }
 
     // Set data callback for receiving backchannel messages
-    LOG(INFO, LOG_TAG) << "Setting RIST data callback with this=" << this << "\n";
     if (rist_receiver_data_callback_set2(receiver_ctx_, dataCallback, this) != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to set RIST data callback\n";
         stop();
         return false;
     }
-    LOG(INFO, LOG_TAG) << "RIST data callback set successfully\n";
 
     // Start RIST contexts
     if (rist_start(sender_ctx_) != 0)
@@ -299,19 +297,11 @@ bool RistTransport::sendRawData(uint16_t vport, const void* data, size_t size)
 
 int RistTransport::dataCallback(void* arg, struct rist_data_block* data_block)
 {
-    printf("=== RIST DATA CALLBACK INVOKED === arg=%p\n", arg);
-    fflush(stdout);
-    
     if (!arg) {
-        printf("=== RIST DATA CALLBACK: NULL arg pointer ===\n");
-        fflush(stdout);
         return 0;
     }
     
     auto* transport = static_cast<RistTransport*>(arg);
-    printf("=== RIST DATA CALLBACK: transport=%p ===\n", transport);
-    fflush(stdout);
-    
     return transport->handleDataCallback(data_block);
 }
 
