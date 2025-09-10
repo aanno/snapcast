@@ -48,6 +48,15 @@ void print_timestamp() {
            ts.tv_nsec / 1000000);
 }
 
+// RIST logging callback - simplified to avoid crashes
+int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
+    // Avoid complex operations in callback - just return success
+    (void)arg;    // suppress unused parameter warning
+    (void)level;  // suppress unused parameter warning  
+    (void)msg;    // suppress unused parameter warning
+    return 0;
+}
+
 void send_message(int vport, uint16_t msg_type, uint32_t data_size, const void* data) {
     msg_header_t header = {0};
     header.type = msg_type;
@@ -156,7 +165,10 @@ int main() {
     // Wait a moment for server to start
     sleep(1);
     
-    // Initialize RIST contexts
+    // Skip logging setup entirely to test
+    printf("Skipping RIST logging setup to isolate crash\n");
+
+    // Initialize RIST contexts (NULL logging for contexts)
     if (rist_receiver_create(&g_client.receiver_ctx, RIST_PROFILE_MAIN, NULL) != 0) {
         printf("Failed to create receiver context\n");
         return 1;

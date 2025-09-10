@@ -30,33 +30,11 @@
 
 // standard headers
 #include <sstream>
+#include <cstdlib>
 
 using namespace std;
 
-namespace {
-    /// RIST logging callback (from rist_common.md)
-    int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
-        const char* context = static_cast<char*>(arg);
-        switch (level) {
-            case RIST_LOG_ERROR:
-                LOG(ERROR, RistTransport::LOG_TAG) << context << msg << "\n";
-                break;
-            case RIST_LOG_WARN:
-                LOG(WARNING, RistTransport::LOG_TAG) << context << msg << "\n";
-                break;
-            case RIST_LOG_INFO:
-                LOG(INFO, RistTransport::LOG_TAG) << context << msg << "\n";
-                break;
-            case RIST_LOG_DEBUG:
-                LOG(DEBUG, RistTransport::LOG_TAG) << context << msg << "\n";
-                break;
-            default:
-                LOG(DEBUG, RistTransport::LOG_TAG) << context << msg << "\n";
-                break;
-        }
-        return 0;
-    }
-}
+// RIST logging callback removed - causes crashes in libRIST
 
 
 RistTransport::RistTransport(Mode mode, RistTransportReceiver* receiver)
@@ -104,24 +82,17 @@ bool RistTransport::start()
     LOG(INFO, LOG_TAG) << "Starting RIST transport in " << (mode_ == Mode::SERVER ? "SERVER" : "CLIENT") << " mode\n";
     LOG(INFO, LOG_TAG) << "Virtual ports: " << VPORT_AUDIO << " (audio), " << VPORT_CONTROL << " (control), " << VPORT_BACKCHANNEL << " (backchannel)\n";
 
-    // Initialize RIST logging
-    struct rist_logging_settings log_settings = {};
-    log_settings.log_level = RIST_LOG_DEBUG;
-    log_settings.log_stream = nullptr; // stdout disabled to avoid duplication
-    log_settings.log_cb = rist_log_callback;
-    log_settings.log_cb_arg = const_cast<char*>(" RIST ");
-    if (rist_logging_set_global(&log_settings) != 0) {
-        LOG(WARNING, LOG_TAG) << "Failed to set RIST global logging\n";
-    }
+    // Skip RIST logging setup - it causes crashes in libRIST
+    LOG(INFO, LOG_TAG) << "Skipping RIST logging setup to avoid libRIST crashes\n";
 
     // Create RIST contexts
-    if (rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, &log_settings) != 0)
+    if (rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, nullptr) != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST sender context\n";
         return false;
     }
 
-    if (rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, &log_settings) != 0)
+    if (rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, nullptr) != 0)
     {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver context\n";
         rist_destroy(sender_ctx_);
@@ -208,7 +179,7 @@ bool RistTransport::createPeer(struct rist_ctx* ctx, const std::string& url, con
 {
     LOG(INFO, LOG_TAG) << "Creating RIST " << type << " peer: " << url << "\n";
     
-    struct rist_peer_config* config;
+    struct rist_peer_config* config = nullptr;
     if (rist_parse_address2(url.c_str(), &config) != 0) {
         LOG(ERROR, LOG_TAG) << "Failed to parse RIST URL: " << url << "\n";
         return false;
@@ -224,7 +195,12 @@ bool RistTransport::createPeer(struct rist_ctx* ctx, const std::string& url, con
     config->max_retries = 20;
 
     struct rist_peer* peer;
-    if (rist_peer_create(ctx, &peer, config) != 0) {
+    int ret = rist_peer_create(ctx, &peer, config);
+    
+    // Free the config structure after use (libRIST copies what it needs)
+    free(config);
+    
+    if (ret != 0) {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST " << type << " peer for: " << url << "\n";
         return false;
     }
