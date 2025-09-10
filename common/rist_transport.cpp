@@ -34,7 +34,30 @@
 
 using namespace std;
 
-// RIST logging callback removed - causes crashes in libRIST
+// RIST logging callback removed
+// TODO: Does this causes crashes in libRIST?
+static int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
+    char* context = static_cast<char*>(arg);
+    // fprintf(stdout, "[RIST] [%d] %s", level, msg);
+    switch (level) {
+        case RIST_LOG_ERROR:
+            LOG(ERROR, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+        case RIST_LOG_WARN:
+            LOG(WARNING, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+        case RIST_LOG_INFO:
+            LOG(INFO, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+        case RIST_LOG_DEBUG:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+        default:
+            LOG(DEBUG, LOG_LIBRIST_TAG) << context << msg << "\n";
+            break;
+    }
+    return 0;
+}
 
 
 RistTransport::RistTransport(Mode mode, RistTransportReceiver* receiver)

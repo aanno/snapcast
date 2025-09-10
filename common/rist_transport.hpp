@@ -47,6 +47,12 @@ static constexpr auto min_retries = 3; // was 6 before
 static constexpr auto max_retries = 10; // was 20 before
 static constexpr auto congestion_control_mode = RIST_CONGESTION_CONTROL_MODE_NORMAL;
 
+// RIST logging callback
+static constexpr auto LOG_LIBRIST_TAG = "libRIST";
+
+// TODO: Does this causes crashes in libRIST?
+static int rist_log_callback(void* arg, enum rist_log_level level, const char* msg);
+
 /// Forward declarations
 namespace msg {
     class BaseMessage;
