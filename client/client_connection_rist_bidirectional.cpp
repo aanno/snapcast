@@ -171,18 +171,17 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
     {
         // Set base_message_ to match what TCP client does - this is used by messageReceived() for correlation
         base_message_ = baseMessage;
-        base_message_.received = tv{};
+        // Set received timestamp to current time, exactly like TCP implementation does
+        tv now;
+        base_message_.received = now;
         
-        // Create message from received data
-        auto message = msg::factory::createMessage(baseMessage, const_cast<char*>(payload.data()));
+        // Create message from received data using the updated base_message_
+        auto message = msg::factory::createMessage(base_message_, const_cast<char*>(payload.data()));
         if (!message)
         {
             LOG(ERROR, LOG_TAG) << "Failed to create message from RIST data\n";
             return;
         }
-
-        // Keep the original message timestamp for proper timing synchronization
-        // Do not override message->received as it contains the server timestamp
         
         // Use the normal handler mechanism for all messages
         MessageHandler<msg::BaseMessage> handler;
