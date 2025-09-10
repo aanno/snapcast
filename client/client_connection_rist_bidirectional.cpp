@@ -169,6 +169,10 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
     
     try
     {
+        // Set base_message_ to match what TCP client does - this is used by messageReceived() for correlation
+        base_message_ = baseMessage;
+        base_message_.received = tv{};
+        
         // Create message from received data
         auto message = msg::factory::createMessage(baseMessage, const_cast<char*>(payload.data()));
         if (!message)
