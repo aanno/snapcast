@@ -57,14 +57,14 @@ bool StreamSessionRistBidirectional::initRist()
     log_settings_.log_level = RIST_LOG_DEBUG; // Set debug level
     log_settings_.log_stream = nullptr; // stdout; // Output to stdout
     log_settings_.log_cb = rist_log_callback; // Set callback
-    log_settings_.log_cb_arg = static_cast<void*>(const_cast<char*>(" global ")); // Optional user data (set if needed)
+    log_settings_.log_cb_arg = const_cast<char*>(LOG_GLOBAL);
     rist_logging_set_global(&log_settings_);
 
     LOG(INFO, LOG_TAG) << "Initializing bidirectional RIST server\n";
     
     // Create RIST sender context for sending audio/control to clients
     rist_logging_settings log_settings_sender = log_settings_;
-    log_settings_sender.log_cb_arg = static_cast<void*>(const_cast<char*>(" sender "));
+    log_settings_sender.log_cb_arg = const_cast<char*>(LOG_SENDER);
     int ret = rist_sender_create(&sender_ctx_, RIST_PROFILE_MAIN, 0, &log_settings_sender);
     if (ret != 0) {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST sender context: " << ret << "\n";
@@ -73,7 +73,7 @@ bool StreamSessionRistBidirectional::initRist()
 
     // Create RIST receiver context for receiving backchannel from clients
     rist_logging_settings log_settings_receiver = log_settings_;
-    log_settings_receiver.log_cb_arg = static_cast<void*>(const_cast<char*>(" receiver "));
+    log_settings_receiver.log_cb_arg = const_cast<char*>(LOG_RECEIVER);
     ret = rist_receiver_create(&receiver_ctx_, RIST_PROFILE_MAIN, &log_settings_receiver);
     if (ret != 0) {
         LOG(ERROR, LOG_TAG) << "Failed to create RIST receiver context: " << ret << "\n";
