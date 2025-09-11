@@ -50,6 +50,7 @@ jobs:
           cd librist
           meson setup build --default-library=static
           meson compile -C build
+          cp build/include/librist/librist_config.h include/librist/librist_config.h
       - name: configure
         run: |
           cmake -S . -B build \
@@ -158,6 +159,7 @@ jobs:
           cd librist
           meson setup build --default-library=static
           meson compile -C build
+          cp build/include/librist/librist_config.h include/librist/librist_config.h
       - name: configure
         run: |
           cmake -S . -B build \
@@ -294,6 +296,7 @@ jobs:
           cd librist
           meson setup build --default-library=static
           meson compile -C build
+          cp build/include/librist/librist_config.h include/librist/librist_config.h
       - name: configure
         run: |
           cmake -S . -B build \
@@ -403,6 +406,7 @@ jobs:
           cd librist
           meson setup build --default-library=static
           meson compile -C build
+          cp build/include/librist/librist_config.h include/librist/librist_config.h
       - name: configure
         run: |
           cmake -S . -B build \
@@ -462,6 +466,7 @@ jobs:
           cd librist
           meson setup build --default-library=static
           meson compile -C build
+          cp build/include/librist/librist_config.h include/librist/librist_config.h
       - name: configure
         run: |
           echo vcpkg installation root: ${env:VCPKG_INSTALLATION_ROOT}
