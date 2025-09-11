@@ -401,12 +401,8 @@ jobs:
           path: /Users/runner/Library/Caches/ccache
           key: ${{ runner.os }}-${{ matrix.xcode }}-${{ matrix.build_type }}-ccache-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.xcode }}-${{ matrix.build_type }}-ccache-
-      - name: Build static libRIST
-        run: |
-          cd librist
-          meson setup build --default-library=static
-          meson compile -C build
-          cp build/include/librist/librist_config.h include/librist/librist_config.h
+      - name: Install libRIST on macOS
+        run: brew install librist
       - name: configure
         run: |
           cmake -S . -B build \
@@ -461,12 +457,11 @@ jobs:
           git pull
           vcpkg.exe update
           vcpkg.exe --triplet x64-windows install libflac libvorbis soxr opus openssl boost-asio boost-beast catch2
-      - name: Build static libRIST
+      - name: Install libRIST on Windows
+        shell: pwsh
         run: |
-          cd librist
-          meson setup build --default-library=static
-          meson compile -C build
-          cp build/include/librist/librist_config.h include/librist/librist_config.h
+          git clone https://github.com/tsduck/rist-installer.git
+          pwsh rist-installer/win/install-librist.ps1
       - name: configure
         run: |
           echo vcpkg installation root: ${env:VCPKG_INSTALLATION_ROOT}
