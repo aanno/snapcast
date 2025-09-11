@@ -4,6 +4,10 @@
 
 Snapcast implements RIST (Reliable Internet Stream Transport) support using a clean, bidirectional transport architecture that aligns with RIST's native design principles. This document describes our implementation approach, architectural decisions, and the journey that led to the current design.
 
+RIST is an open protocol for low-latency, reliable streaming over unreliable IP networks, ideal for live audio/video contribution and broadcasting. It uses UDP for low-latency transport, with RTP for media synchronization, and adds reliability through ARQ (Automatic Repeat reQuest) and optional FEC (Forward Error Correction).
+
+It is primarily designed for video, but Snapcast leverages it for audio streaming, benefiting from its robustness and low-latency capabilities. As RIST is bidirectional and multiplexed (with virtual ports), the original snapcast protocol could be used without modification.
+
 ## End-User Guide: Using RIST Transport
 
 ### Quick setup (Linux)
@@ -664,3 +668,9 @@ Future work should focus on creating a client-side `RistTransport` implementatio
 The current RIST implementation represents a significant architectural improvement over initial attempts. By embracing RIST's native design principles and following the proven testrist pattern, we've created a clean, maintainable, and extensible foundation for reliable internet streaming in Snapcast.
 
 The key lesson learned: **don't fight the protocol's nature** - embrace RIST's strengths rather than trying to make it behave like TCP. This alignment between code structure and protocol design results in simpler, more reliable software.
+
+## Acknowledgements
+
+Research for this implementation was done with perplexity AI and grok AI. Most of the inital code was written by Claude Code AI, including this documentation.
+
+However, all tests, prompt directions, and the initial PR were done by [aanno](https://github.com/aanno).
