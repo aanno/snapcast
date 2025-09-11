@@ -65,6 +65,10 @@ public:
     // RIST parameter management
     void updateRistParameters(uint32_t recovery_length_min, uint32_t recovery_length_max);
 
+protected:
+    // non virtual variant of disconnect for use in d'tor
+    void disconnectInternal();
+
 private:
     boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
     void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) override;

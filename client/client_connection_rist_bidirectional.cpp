@@ -44,7 +44,7 @@ ClientConnectionRistBidirectional::ClientConnectionRistBidirectional(boost::asio
 ClientConnectionRistBidirectional::~ClientConnectionRistBidirectional()
 {
     LOG(DEBUG, LOG_TAG) << "~ClientConnectionRistBidirectional\n";
-    disconnect();
+    disconnectInternal();
 }
 
 boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint)
@@ -72,6 +72,11 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
 }
 
 void ClientConnectionRistBidirectional::disconnect()
+{
+    disconnectInternal();
+}
+
+void ClientConnectionRistBidirectional::disconnectInternal()
 {
     LOG(DEBUG, LOG_TAG) << "Disconnecting RIST client\n";
     
