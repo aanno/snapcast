@@ -21,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: print environment
         run: env
       - name: dependencies
@@ -29,6 +31,7 @@ jobs:
           sudo apt-get install -yq libasound2-dev libsoxr-dev libvorbisidec-dev libvorbis-dev libflac-dev \
           libopus-dev alsa-utils libpulse-dev libavahi-client-dev libssl-dev \
           avahi-daemon ccache expat cppcheck clang-tidy \
+          libcjson-dev libmbedtls-dev meson ninja-build pkgconf \
           libpipewire-0.3-dev
       - name: cache boost
         id: cache-boost
@@ -42,6 +45,11 @@ jobs:
         run: |
           wget https://archives.boost.io/release/${BOOST_VERSION//_/.}/source/boost_${BOOST_VERSION}.tar.bz2
           tar xjf boost_${BOOST_VERSION}.tar.bz2
+      - name: Build static libRIST
+        run: |
+          cd librist
+          meson setup build --default-library=static
+          meson compile -C build
       - name: configure
         run: |
           cmake -S . -B build \
@@ -50,6 +58,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE \
             -DBUILD_WITH_PIPEWIRE=ON \
+            -DBUILD_WITH_LIBRIST=ON \
             -DCMAKE_CXX_FLAGS="-DCMAKE_CXX_FLAGS=-DJSON_HAS_CPP_14"
       - name: analysis
         run: |
@@ -112,6 +121,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: print environment
         run: env
       - name: dependencies
@@ -120,6 +131,7 @@ jobs:
           sudo apt-get install -yq libasound2-dev libsoxr-dev libvorbisidec-dev libvorbis-dev libflac-dev \
           libopus-dev alsa-utils libpulse-dev libavahi-client-dev libssl-dev \
           avahi-daemon ccache expat catch2 \
+          libcjson-dev libmbedtls-dev meson ninja-build pkgconf \
           libpipewire-0.3-dev
       - name: cache boost
         id: cache-boost
@@ -141,6 +153,11 @@ jobs:
           path: /home/runner/.ccache
           key: ${{ matrix.sanitizer }}-ccache-${{ github.sha }}
           restore-keys: ${{ matrix.sanitizer }}-ccache-
+      - name: Build static libRIST
+        run: |
+          cd librist
+          meson setup build --default-library=static
+          meson compile -C build
       - name: configure
         run: |
           cmake -S . -B build \
@@ -152,6 +169,7 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE \
             -DBUILD_WITH_PIPEWIRE=ON \
+            -DBUILD_WITH_LIBRIST=ON \
             -DCMAKE_CXX_FLAGS="-DCMAKE_CXX_FLAGS=-DJSON_HAS_CPP_14"
       - name: build
         env:
@@ -237,6 +255,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: print environment
         run: env
       - name: dependencies
@@ -245,6 +265,7 @@ jobs:
           sudo apt-get install -yq libasound2-dev libsoxr-dev libvorbisidec-dev libvorbis-dev libflac-dev \
           libopus-dev alsa-utils libpulse-dev libjack-dev libavahi-client-dev libssl-dev \
           avahi-daemon ccache expat \
+          libcjson-dev libmbedtls-dev meson ninja-build pkgconf \
           libpipewire-0.3-dev
       - name: cache boost
         id: cache-boost
@@ -268,6 +289,11 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}-ccache-
       #- name: ccache dump config
       #  run: ccache -p
+      - name: Build static libRIST
+        run: |
+          cd librist
+          meson setup build --default-library=static
+          meson compile -C build
       - name: configure
         run: |
           cmake -S . -B build \
@@ -279,6 +305,7 @@ jobs:
             -DBUILD_WITH_PULSE=ON \
             -DBUILD_WITH_JACK=ON \
             -DBUILD_WITH_PIPEWIRE=ON \
+            -DBUILD_WITH_LIBRIST=ON \
             -DCMAKE_CXX_FLAGS="-DCMAKE_CXX_FLAGS=-DJSON_HAS_CPP_14"
         env:
           CC: ${{ matrix.cc }}
@@ -344,6 +371,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: print environment
         run: env
       - name: dependencies
@@ -369,6 +398,11 @@ jobs:
           path: /Users/runner/Library/Caches/ccache
           key: ${{ runner.os }}-${{ matrix.xcode }}-${{ matrix.build_type }}-ccache-${{ github.sha }}
           restore-keys: ${{ runner.os }}-${{ matrix.xcode }}-${{ matrix.build_type }}-ccache-
+      - name: Build static libRIST
+        run: |
+          cd librist
+          meson setup build --default-library=static
+          meson compile -C build
       - name: configure
         run: |
           cmake -S . -B build \
@@ -406,6 +440,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: cache dependencies
         id: cache-dependencies
         uses: actions/cache@v4
@@ -421,6 +457,11 @@ jobs:
           git pull
           vcpkg.exe update
           vcpkg.exe --triplet x64-windows install libflac libvorbis soxr opus openssl boost-asio boost-beast catch2
+      - name: Build static libRIST
+        run: |
+          cd librist
+          meson setup build --default-library=static
+          meson compile -C build
       - name: configure
         run: |
           echo vcpkg installation root: ${env:VCPKG_INSTALLATION_ROOT}
