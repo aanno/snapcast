@@ -102,7 +102,7 @@ std::string ClientConnectionRistBidirectional::getMacAddress()
 
 void ClientConnectionRistBidirectional::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
 {
-    LOG(DEBUG, LOG_TAG) << "getNextMessage called\n";
+    // LOG(TRACE, LOG_TAG) << "getNextMessage called\n";
     
     // Store the handler for when we receive the next message
     std::lock_guard<std::mutex> lock(next_message_mutex_);
@@ -169,7 +169,7 @@ void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, Wr
 void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
                                                             const char* payload_ptr, size_t payload_size, uint16_t vport)
 {
-    LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << " (id=" << baseMessage.id << "), vport=" << vport << "\n";
+    // LOG(TRACE, LOG_TAG) << "RIST message received: type=" << baseMessage.type << " (id=" << baseMessage.id << "), vport=" << vport << "\n";
     
     try
     {
@@ -182,11 +182,13 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
         // Create message from received data using the updated base_message_
         // For zero-copy optimization: use raw pointer if payload is empty (large audio data)
         const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+        /*
         if (payload.empty()) {
-            LOG(INFO, LOG_TAG) << "🎵 CLIENT ZERO-COPY: Using direct pointer for message type=" << baseMessage.type << " (" << payload_size << " bytes)\n";
+            LOG(TRACE, LOG_TAG) << "🎵 CLIENT ZERO-COPY: Using direct pointer for message type=" << baseMessage.type << " (" << payload_size << " bytes)\n";
         } else {
-            LOG(INFO, LOG_TAG) << "📝 CLIENT COPY: Using copied data for message type=" << baseMessage.type << " (" << payload.size() << " bytes)\n";
+            LOG(TRACE, LOG_TAG) << "📝 CLIENT COPY: Using copied data for message type=" << baseMessage.type << " (" << payload.size() << " bytes)\n";
         }
+        */
         auto message = msg::factory::createMessage(base_message_, const_cast<char*>(data_ptr));
         if (!message)
         {
@@ -204,7 +206,7 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
 
         if (handler)
         {
-            LOG(DEBUG, LOG_TAG) << "Processing message type " << message->type << " through normal pipeline\n";
+            // LOG(TRACE, LOG_TAG) << "Processing message type " << message->type << " through normal pipeline\n";
             messageReceived(std::move(message), handler);
         }
         else

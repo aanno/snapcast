@@ -353,8 +353,10 @@ bool RistTransport::sendMessage(uint16_t vport, const msg::BaseMessage& message)
         LOG(DEBUG, LOG_TAG) << "Failed to send message type " << message.type << " on vport " << vport << ", ret=" << ret << "\n";
         return false;
     }
+    /*
     if (message.type != message_type::kWireChunk) // avoid log spam for audio chunks
-        LOG(DEBUG, LOG_TAG) << "Sent message type " << message.type << " (" << serialized.size() << " bytes) on vport " << vport << "\n";
+        LOG(TRACE, LOG_TAG) << "Sent message type " << message.type << " (" << serialized.size() << " bytes) on vport " << vport << "\n";
+    */
     return true;
 }
 
@@ -402,7 +404,7 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
     if (!data_block || !data_block->payload || data_block->payload_len == 0)
         return 0;
 
-    LOG(DEBUG, LOG_TAG) << "Received " << data_block->payload_len << " bytes on vport " << data_block->virt_dst_port << "\n";
+    // LOG(TRACE, LOG_TAG) << "Received " << data_block->payload_len << " bytes on vport " << data_block->virt_dst_port << "\n";
 
     try {
         // Parse message header
@@ -414,7 +416,7 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
         msg::BaseMessage baseMessage;
         baseMessage.deserialize(const_cast<char*>(reinterpret_cast<const char*>(data_block->payload)));
         
-        LOG(DEBUG, LOG_TAG) << "Received message type: " << baseMessage.type << ", size: " << baseMessage.size << " on vport " << data_block->virt_dst_port << "\n";
+        // LOG(TRACE, LOG_TAG) << "Received message type: " << baseMessage.type << ", size: " << baseMessage.size << " on vport " << data_block->virt_dst_port << "\n";
 
         // Extract payload (everything after the base message header)
         // For audio messages, avoid copying large payloads
@@ -430,12 +432,12 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
             if (baseMessage.type == message_type::kWireChunk && payload_size > 100) {
                 // For audio chunks, pass pointer directly (zero-copy)
                 payload = ""; // Empty string, receiver will use payload_ptr
-                LOG(INFO, LOG_TAG) << "🚀 ZERO-COPY: Audio chunk (" << payload_size << " bytes) - using direct pointer (no memory copy)\n"; 
+                // LOG(TRACE, LOG_TAG) << "🚀 ZERO-COPY: Audio chunk (" << payload_size << " bytes) - using direct pointer (no memory copy)\n"; 
             } else {
                 // For control messages, copy to string for safety
                 payload.assign(payload_ptr, payload_size);
                 payload_ptr = payload.data(); // Update pointer to copied data
-                LOG(INFO, LOG_TAG) << "📋 COPY: Control message type=" << baseMessage.type << " (" << payload_size << " bytes) - copying to string for safety\n";
+                // LOG(TRACE, LOG_TAG) << "📋 COPY: Control message type=" << baseMessage.type << " (" << payload_size << " bytes) - copying to string for safety\n";
             }
         }
 

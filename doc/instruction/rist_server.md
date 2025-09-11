@@ -34,7 +34,7 @@ Your libRIST implementation for `StreamSessionRistBidirectional` is mostly corre
                LOG(ERROR, LOG_TAG) << "Invalid callback args or data block\n";
                return 0;
            }
-           LOG(DEBUG, LOG_TAG) << "Data callback triggered: " << data_block->payload_len 
+           LOG(TRACE, LOG_TAG) << "Data callback triggered: " << data_block->payload_len 
                               << " bytes on vport " << data_block->virt_dst_port << "\n";
            // Rest of your callback code
        }
@@ -51,7 +51,7 @@ Your libRIST implementation for `StreamSessionRistBidirectional` is mostly corre
              return 0;
          }
 
-         LOG(DEBUG, LOG_TAG) << "Data callback: " << data_block->payload_len 
+         LOG(TRACE, LOG_TAG) << "Data callback: " << data_block->payload_len 
                             << " bytes on vport " << data_block->virt_dst_port << "\n";
 
          // Handle all virtual ports
