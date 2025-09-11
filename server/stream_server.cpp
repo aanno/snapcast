@@ -446,7 +446,7 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
             if (rist_transport_)
             {
                 rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, *timeMsg);
-                LOG(TRACE, LOG_TAG) << "Sent Time response via RIST backchannel\n";
+                // LOG(TRACE, LOG_TAG) << "Sent Time response via RIST backchannel\n";
             }
         }
         else

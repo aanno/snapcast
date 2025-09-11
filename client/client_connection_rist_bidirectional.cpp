@@ -185,7 +185,7 @@ void ClientConnectionRistBidirectional::sendRequest(const msg::message_ptr& mess
         reqId_ = 1;
     message->id = reqId_;
     
-    LOG(DEBUG, LOG_TAG) << "🚀 RIST sendRequest: message type=" << message->type << " (id=" << message->id << ") via backchannel\n";
+    // LOG(TRACE, LOG_TAG) << "🚀 RIST sendRequest: message type=" << message->type << " (id=" << message->id << ") via backchannel\n";
     
     // Store the pending request for correlation with response
     auto request = std::make_shared<PendingRequest>(strand_, message->id, handler);
@@ -197,7 +197,7 @@ void ClientConnectionRistBidirectional::sendRequest(const msg::message_ptr& mess
     // Send message via RIST backchannel (vport 3000)
     if (rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, *message))
     {
-        LOG(DEBUG, LOG_TAG) << "✅ RIST sendRequest: sent message type=" << message->type << " (id=" << message->id << ")\n";
+        // LOG(TRACE, LOG_TAG) << "✅ RIST sendRequest: sent message type=" << message->type << " (id=" << message->id << ")\n";
         // Start timeout timer
         request->startTimer(timeout);
     }
@@ -247,7 +247,7 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
         // Check if this is a response to a pending request (has refersTo field)
         if (message->refersTo != 0)
         {
-            LOG(DEBUG, LOG_TAG) << "📨 RIST response received: type=" << message->type << " (id=" << message->id << ") refersTo=" << message->refersTo << "\n";
+            // LOG(TRACE, LOG_TAG) << "📨 RIST response received: type=" << message->type << " (id=" << message->id << ") refersTo=" << message->refersTo << "\n";
             
             // Find and handle pending request
             std::shared_ptr<PendingRequest> request;
@@ -263,7 +263,7 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
             
             if (request)
             {
-                LOG(DEBUG, LOG_TAG) << "✅ RIST response: delivering to pending request (id=" << message->refersTo << ")\n";
+                // LOG(TRACE, LOG_TAG) << "✅ RIST response: delivering to pending request (id=" << message->refersTo << ")\n";
                 request->setValue(std::move(message));
                 return; // Response handled, don't pass to normal message handler
             }
@@ -284,7 +284,7 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
 
         if (handler)
         {
-            LOG(DEBUG, LOG_TAG) << "📥 RIST message: processing type=" << message->type << " through normal pipeline\n";
+            // LOG(TRACE, LOG_TAG) << "📥 RIST message: processing type=" << message->type << " through normal pipeline\n";
             messageReceived(std::move(message), handler);
         }
         else
