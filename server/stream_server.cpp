@@ -334,6 +334,39 @@ void StreamServer::stop()
 }
 
 #ifdef HAS_LIBRIST
+// Helper function to get RIST parameters from active stream or fallback to config
+std::pair<uint32_t, uint32_t> StreamServer::getRistParameters() const
+{
+    // Try to get parameters from active stream first
+    if (active_pcm_stream_)
+    {
+        const auto& uri = active_pcm_stream_->getUri();
+        std::string min_str = uri.getQuery("recovery_length_min");
+        std::string max_str = uri.getQuery("recovery_length_max");
+        
+        if (!min_str.empty() && !max_str.empty())
+        {
+            try
+            {
+                uint32_t min_val = static_cast<uint32_t>(std::stoi(min_str));
+                uint32_t max_val = static_cast<uint32_t>(std::stoi(max_str));
+                LOG(DEBUG, LOG_TAG) << "Using RIST parameters from stream URL: recovery_length_min=" << min_val 
+                                   << ", recovery_length_max=" << max_val << "\n";
+                return {min_val, max_val};
+            }
+            catch (const std::exception& e)
+            {
+                LOG(WARNING, LOG_TAG) << "Failed to parse RIST parameters from stream URL: " << e.what() << "\n";
+            }
+        }
+    }
+    
+    // Fallback to config values
+    LOG(DEBUG, LOG_TAG) << "Using RIST parameters from config: recovery_length_min=" << settings_.rist.recovery_length_min 
+                       << ", recovery_length_max=" << settings_.rist.recovery_length_max << "\n";
+    return {settings_.rist.recovery_length_min, settings_.rist.recovery_length_max};
+}
+
 void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport)
 {
     LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << ", vport=" << vport << "\n";
@@ -355,9 +388,10 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
                 msg::ServerSettings serverSettings;
                 // Set refersTo field to correlate with Hello request
                 serverSettings.refersTo = baseMessage.id;
-                // Populate serverSettings from settings_
-                serverSettings.setRistRecoveryLengthMin(settings_.rist.recovery_length_min);
-                serverSettings.setRistRecoveryLengthMax(settings_.rist.recovery_length_max);
+                // Get RIST parameters from active stream or config
+                auto [min_recovery, max_recovery] = getRistParameters();
+                serverSettings.setRistRecoveryLengthMin(min_recovery);
+                serverSettings.setRistRecoveryLengthMax(max_recovery);
                 rist_transport_->sendMessage(RistTransport::VPORT_CONTROL, serverSettings);
                 LOG(INFO, LOG_TAG) << "Sent ServerSettings to RIST client via control channel\n";
                 
@@ -416,9 +450,12 @@ void StreamServer::onRistClientConnected(const std::string& clientId)
     {
         // Create and send ServerSettings
         msg::ServerSettings serverSettings;
-        // TODO: Populate serverSettings from settings_
+        // Get RIST parameters from active stream or config
+        auto [min_recovery, max_recovery] = getRistParameters();
+        serverSettings.setRistRecoveryLengthMin(min_recovery);
+        serverSettings.setRistRecoveryLengthMax(max_recovery);
         rist_transport_->sendMessage(RistTransport::VPORT_CONTROL, serverSettings);
-        LOG(INFO, LOG_TAG) << "Sent ServerSettings to RIST client: " << clientId << "\n";
+        LOG(INFO, LOG_TAG) << "Sent ServerSettings to RIST client: " << clientId << " with recovery_length_min=" << min_recovery << ", recovery_length_max=" << max_recovery << "\n";
         
         // Send CodecHeader from active stream if available
         if (active_pcm_stream_)

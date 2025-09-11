@@ -96,6 +96,9 @@ private:
     void onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport) override;
     void onRistClientConnected(const std::string& clientId) override;
     void onRistClientDisconnected(const std::string& clientId) override;
+    
+    /// Get RIST parameters from active stream or config fallback
+    std::pair<uint32_t, uint32_t> getRistParameters() const;
 #endif
 
     mutable std::recursive_mutex sessionsMutex_;
