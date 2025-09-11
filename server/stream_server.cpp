@@ -348,8 +348,8 @@ std::pair<uint32_t, uint32_t> StreamServer::getRistParameters() const
         {
             try
             {
-                uint32_t min_val = static_cast<uint32_t>(std::stoi(min_str));
-                uint32_t max_val = static_cast<uint32_t>(std::stoi(max_str));
+                auto min_val = static_cast<uint32_t>(std::stoi(min_str));
+                auto max_val = static_cast<uint32_t>(std::stoi(max_str));
                 LOG(DEBUG, LOG_TAG) << "Using RIST parameters from stream URL: recovery_length_min=" << min_val 
                                    << ", recovery_length_max=" << max_val << "\n";
                 return {min_val, max_val};

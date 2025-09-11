@@ -60,7 +60,7 @@ int rist_log_callback(void* arg, enum rist_log_level level, const char* msg);
 
 /// Forward declarations
 namespace msg {
-    class BaseMessage;
+    struct BaseMessage;
     class PcmChunk;
 }
 

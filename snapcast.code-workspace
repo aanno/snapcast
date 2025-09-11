@@ -8,7 +8,12 @@
 		"files.associations": {
 			"any": "cpp",
 			"complex": "cpp",
-			"format": "cpp"
+			"format": "cpp",
+			"array": "cpp",
+			"string": "cpp",
+			"string_view": "cpp",
+			"ranges": "cpp",
+			"span": "cpp"
 		}
 	},
 	"extensions": {
