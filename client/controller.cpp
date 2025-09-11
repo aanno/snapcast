@@ -531,14 +531,6 @@ void Controller::worker()
                                        << ", RIST recovery_length_min: " << serverSettings_->getRistRecoveryLengthMin()
                                        << ", RIST recovery_length_max: " << serverSettings_->getRistRecoveryLengthMax() << "\n";
 
-                    // Update RIST parameters if this is a RIST connection
-                    auto* rist_connection = dynamic_cast<ClientConnectionRistBidirectional*>(clientConnection_.get());
-                    if (rist_connection)
-                    {
-                        rist_connection->updateRistParameters(serverSettings_->getRistRecoveryLengthMin(), 
-                                                             serverSettings_->getRistRecoveryLengthMax());
-                    }
-
                     // Do initial time sync with the server
                     sendTimeSyncMessage(50);
                 }
