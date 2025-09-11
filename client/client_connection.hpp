@@ -128,7 +128,7 @@ public:
     /// @param message the message
     /// @param timeout the send timeout
     /// @param handler async result handler with the response message or error
-    void sendRequest(const msg::message_ptr& message, const chronos::usec& timeout, const MessageHandler<msg::BaseMessage>& handler);
+    virtual void sendRequest(const msg::message_ptr& message, const chronos::usec& timeout, const MessageHandler<msg::BaseMessage>& handler);
 
     /// @sa sendRequest with templated response message
     template <typename Message>

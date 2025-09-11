@@ -170,6 +170,49 @@ void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, Wr
     }
 }
 
+void ClientConnectionRistBidirectional::sendRequest(const msg::message_ptr& message, const chronos::usec& timeout, const MessageHandler<msg::BaseMessage>& handler)
+{
+    if (!rist_transport_)
+    {
+        LOG(ERROR, LOG_TAG) << "❌ RIST sendRequest failed: transport not available\n";
+        handler(boost::system::errc::make_error_code(boost::system::errc::not_connected), nullptr);
+        return;
+    }
+    
+    // Assign proper request ID (copied from base ClientConnection::sendRequest)
+    static constexpr uint16_t max_req_id = 10000;
+    if (++reqId_ >= max_req_id)
+        reqId_ = 1;
+    message->id = reqId_;
+    
+    LOG(DEBUG, LOG_TAG) << "🚀 RIST sendRequest: message type=" << message->type << " (id=" << message->id << ") via backchannel\n";
+    
+    // Store the pending request for correlation with response
+    auto request = std::make_shared<PendingRequest>(strand_, message->id, handler);
+    {
+        std::lock_guard<std::mutex> lock(pending_requests_mutex_);
+        pending_requests_[message->id] = request;
+    }
+    
+    // Send message via RIST backchannel (vport 3000)
+    if (rist_transport_->sendMessage(RistTransport::VPORT_BACKCHANNEL, *message))
+    {
+        LOG(DEBUG, LOG_TAG) << "✅ RIST sendRequest: sent message type=" << message->type << " (id=" << message->id << ")\n";
+        // Start timeout timer
+        request->startTimer(timeout);
+    }
+    else
+    {
+        LOG(ERROR, LOG_TAG) << "❌ RIST sendRequest: failed to send message type=" << message->type << " (id=" << message->id << ")\n";
+        // Remove from pending requests
+        {
+            std::lock_guard<std::mutex> lock(pending_requests_mutex_);
+            pending_requests_.erase(message->id);
+        }
+        handler(boost::system::errc::make_error_code(boost::system::errc::io_error), nullptr);
+    }
+}
+
 // RistTransportReceiver interface
 void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
                                                             const char* payload_ptr /*, size_t payload_size, uint16_t vport */)
@@ -201,7 +244,37 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
             return;
         }
         
-        // Use the normal handler mechanism for all messages
+        // Check if this is a response to a pending request (has refersTo field)
+        if (message->refersTo != 0)
+        {
+            LOG(DEBUG, LOG_TAG) << "📨 RIST response received: type=" << message->type << " (id=" << message->id << ") refersTo=" << message->refersTo << "\n";
+            
+            // Find and handle pending request
+            std::shared_ptr<PendingRequest> request;
+            {
+                std::lock_guard<std::mutex> lock(pending_requests_mutex_);
+                auto it = pending_requests_.find(message->refersTo);
+                if (it != pending_requests_.end())
+                {
+                    request = it->second;
+                    pending_requests_.erase(it);
+                }
+            }
+            
+            if (request)
+            {
+                LOG(DEBUG, LOG_TAG) << "✅ RIST response: delivering to pending request (id=" << message->refersTo << ")\n";
+                request->setValue(std::move(message));
+                return; // Response handled, don't pass to normal message handler
+            }
+            else
+            {
+                LOG(WARNING, LOG_TAG) << "⚠️ RIST response: no pending request found for refersTo=" << message->refersTo << "\n";
+                // Fall through to normal message handling
+            }
+        }
+        
+        // Use the normal handler mechanism for non-response messages
         MessageHandler<msg::BaseMessage> handler;
         {
             std::lock_guard<std::mutex> lock(next_message_mutex_);
@@ -211,7 +284,7 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
 
         if (handler)
         {
-            // LOG(TRACE, LOG_TAG) << "Processing message type " << message->type << " through normal pipeline\n";
+            LOG(DEBUG, LOG_TAG) << "📥 RIST message: processing type=" << message->type << " through normal pipeline\n";
             messageReceived(std::move(message), handler);
         }
         else

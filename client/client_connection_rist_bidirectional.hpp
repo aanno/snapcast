@@ -34,6 +34,7 @@
 #include <mutex>
 #include <queue>
 #include <condition_variable>
+#include <unordered_map>
 
 /// Simple RIST client connection using RistTransport
 /**
@@ -55,6 +56,24 @@ public:
     void disconnect() override;
     std::string getMacAddress() override;
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
+    
+    // Override sendRequest to route requests through RIST backchannel
+    void sendRequest(const msg::message_ptr& message, const chronos::usec& timeout, const MessageHandler<msg::BaseMessage>& handler) override;
+    
+    // Template version for typed responses
+    template <typename Message>
+    void sendRequest(const msg::message_ptr& message, const chronos::usec& timeout, const MessageHandler<Message>& handler)
+    {
+        sendRequest(message, timeout, [handler](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response)
+        {
+            if (ec)
+                handler(ec, nullptr);
+            else if (auto casted_response = msg::message_cast<Message>(std::move(response)))
+                handler(ec, std::move(casted_response));
+            else
+                handler(boost::system::errc::make_error_code(boost::system::errc::bad_message), nullptr);
+        });
+    }
 
     // RistTransportReceiver interface
     void onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
@@ -78,6 +97,10 @@ private:
     
     MessageHandler<msg::BaseMessage> next_message_handler_; ///< Handler for next message
     std::mutex next_message_mutex_;                        ///< Protect next message handler
+    
+    // Request/response correlation for sendRequest()
+    std::unordered_map<uint16_t, std::shared_ptr<PendingRequest>> pending_requests_; ///< Pending requests
+    std::mutex pending_requests_mutex_;                     ///< Protect pending requests
     
     std::atomic<bool> running_;                            ///< Running flag
 };
