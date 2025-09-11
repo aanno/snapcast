@@ -221,35 +221,57 @@ The major breakthrough was implementing `RistTransport::sendRawData()` to send p
 
 ## Configuration
 
+### Network Architecture
+
+**RIST Port Pair System**: RIST requires **2 ports per endpoint** for bidirectional communication:
+
+**Server (binds to both ports)**:
+- **Port N (1706)**: Audio/Control sender - sends data TO clients
+- **Port N+2 (1708)**: Backchannel receiver - receives data FROM clients
+
+**Client (connects to both ports)**:
+- **Port N (1706)**: Audio/Control receiver - receives data FROM server  
+- **Port N+2 (1708)**: Backchannel sender - sends data TO server
+
+**Same-host testing requires 4 ports total**: 1706, 1707, 1708, 1709
+- Server uses: 1706 (bind), 1708 (bind)
+- Client uses: 1706 (connect), 1708 (connect)
+- Additional ports needed if running multiple clients
+
 ### Server Configuration (`snapserver.conf`)
 
 ```ini
 [rist]
 enabled = true
-bind_to_address = 192.168.10.139
-port = 1706
+bind_to_address = 192.168.10.139  # Server binds to this address
+port = 1706                        # Base port (server uses 1706 and 1708)
 ```
 
 ### Client Configuration
 
-**Critical**: RIST introduces ~100ms transport latency compared to TCP. Clients must compensate with:
+**Critical**: RIST introduces ~100ms transport latency compared to TCP. Clients must compensate with the new `--rist-latency` flag:
 
 ```bash
-snapclient --host <server> --latency 100
+snapclient --rist-latency 100 rist://192.168.10.139:1706
 ```
+
+**Latency Parameters**:
+- `--latency X`: Reduces buffer tolerance by X ms (backward compatible)
+- `--rist-latency X`: Increases buffer tolerance by X ms (RIST-specific)
+- For RIST connections, use `--rist-latency 100` to compensate for transport delay
 
 **Why this is needed**:
 - RIST transport adds 60-120ms network latency vs TCP's near-zero latency
 - Snapcast's Stream buffer expects chunks to arrive "just in time"
-- `--latency 100` adjusts `outputBufferDacTime` to make chunks appear "younger" 
+- `--rist-latency 100` makes chunks appear 100ms "younger" to prevent dropping
 - Without this, all chunks are dropped as "too old" and only silence plays
 
-**Client URL**: 
+**Client URL Format**: 
 ```bash
-snapclient rist://server:1706 --latency 100
+snapclient rist://server:1706 --rist-latency 100
 ```
 
-Client connects to server's RIST ports automatically when RIST transport is detected.
+Client automatically connects to both server ports (1706 and 1708) when RIST protocol is detected.
 
 ## Debugging and Monitoring
 

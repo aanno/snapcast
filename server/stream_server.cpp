@@ -24,7 +24,7 @@
 #include "config.hpp"
 #include "stream_session_tcp.hpp"
 #ifdef HAS_LIBRIST
-#include "stream_session_rist_bidirectional.hpp"
+
 #include "common/message/server_settings.hpp"
 #include "common/message/codec_header.hpp"
 #include "common/message/time.hpp"

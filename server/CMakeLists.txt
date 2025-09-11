@@ -121,7 +121,6 @@ else()
   endif(PIPEWIRE_FOUND)
 
   if(LIBRIST_FOUND)
-    list(APPEND SERVER_SOURCES stream_session_rist_bidirectional.cpp)
     list(APPEND SERVER_LIBRARIES ${LIBRIST_LIBRARIES})
     include_directories(${LIBRIST_INCLUDE_DIRS})
     if(LIBRIST_LIBRARY_DIRS)
