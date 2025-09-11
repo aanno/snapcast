@@ -71,7 +71,9 @@ public:
     virtual ~RistTransportReceiver() = default;
     
     /// Called when a message is received via RIST
-    virtual void onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport) = 0;
+    /// For zero-copy optimization: if payload is empty, use payload_ptr + payload_size instead
+    virtual void onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
+                                      const char* payload_ptr, size_t payload_size, uint16_t vport) = 0;
     /// Called when a client connects (server side only)
     virtual void onRistClientConnected(const std::string& clientId) = 0;
     /// Called when a client disconnects (server side only)  

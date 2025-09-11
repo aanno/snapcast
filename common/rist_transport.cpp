@@ -426,9 +426,15 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
             payload_ptr = reinterpret_cast<const char*>(data_block->payload) + baseMessage.getSize();
             payload_size = data_block->payload_len - baseMessage.getSize();
             
-            // Copy all payload data for now (revert zero-copy optimization that broke audio)
-            payload.assign(payload_ptr, payload_size);
-            payload_ptr = payload.data(); // Update pointer to copied data
+            // Only copy payload for small control messages, use pointer for large audio data
+            if (baseMessage.type == message_type::kWireChunk && payload_size > 100) {
+                // For audio chunks, pass pointer directly (zero-copy)
+                payload = ""; // Empty string, receiver will use payload_ptr
+            } else {
+                // For control messages, copy to string for safety
+                payload.assign(payload_ptr, payload_size);
+                payload_ptr = payload.data(); // Update pointer to copied data
+            }
         }
 
         // Handle specific message types for server mode
@@ -451,7 +457,7 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
 
         // Forward all messages to receiver
         if (receiver_) {
-            receiver_->onRistMessageReceived(baseMessage, payload, data_block->virt_dst_port);
+            receiver_->onRistMessageReceived(baseMessage, payload, payload_ptr, payload_size, data_block->virt_dst_port);
         }
     }
     catch (const exception& e) {

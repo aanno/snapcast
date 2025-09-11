@@ -57,7 +57,8 @@ public:
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
 
     // RistTransportReceiver interface
-    void onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport) override;
+    void onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
+                              const char* payload_ptr, size_t payload_size, uint16_t vport) override;
     void onRistClientConnected(const std::string& clientId) override;
     void onRistClientDisconnected(const std::string& clientId) override;
     

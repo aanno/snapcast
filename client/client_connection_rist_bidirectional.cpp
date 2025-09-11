@@ -163,7 +163,8 @@ void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, Wr
 }
 
 // RistTransportReceiver interface
-void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport)
+void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
+                                                            const char* payload_ptr, size_t payload_size, uint16_t vport)
 {
     LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << " (id=" << baseMessage.id << "), vport=" << vport << "\n";
     
@@ -176,7 +177,9 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
         base_message_.received = now;
         
         // Create message from received data using the updated base_message_
-        auto message = msg::factory::createMessage(base_message_, const_cast<char*>(payload.data()));
+        // For zero-copy optimization: use raw pointer if payload is empty (large audio data)
+        const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+        auto message = msg::factory::createMessage(base_message_, const_cast<char*>(data_ptr));
         if (!message)
         {
             LOG(ERROR, LOG_TAG) << "Failed to create message from RIST data\n";

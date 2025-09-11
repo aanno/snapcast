@@ -367,18 +367,21 @@ std::pair<uint32_t, uint32_t> StreamServer::getRistParameters() const
     return {settings_.rist.recovery_length_min, settings_.rist.recovery_length_max};
 }
 
-void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport)
+void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
+                                        const char* payload_ptr, size_t payload_size, uint16_t vport)
 {
     LOG(DEBUG, LOG_TAG) << "RIST message received: type=" << baseMessage.type << ", vport=" << vport << "\n";
     
     // Handle RIST-specific messages directly (don't forward to session-based handler)
     try 
     {
-        if (baseMessage.type == message_type::kHello && !payload.empty())
+        if (baseMessage.type == message_type::kHello && (!payload.empty() || payload_ptr))
         {
             // Handle Hello messages from RIST clients
             auto helloMsg = std::make_shared<msg::Hello>();
-            helloMsg->deserialize(baseMessage, const_cast<char*>(payload.data()));
+            // For zero-copy optimization: use raw pointer if payload is empty (large audio data)
+            const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+            helloMsg->deserialize(baseMessage, const_cast<char*>(data_ptr));
             
             LOG(INFO, LOG_TAG) << "RIST Hello received from client: " << helloMsg->getMacAddress() << "\n";
             
@@ -415,11 +418,13 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
                 }
             }
         }
-        else if (baseMessage.type == message_type::kTime && !payload.empty())
+        else if (baseMessage.type == message_type::kTime && (!payload.empty() || payload_ptr))
         {
             // Handle Time messages for RIST clients
             auto timeMsg = std::make_shared<msg::Time>();
-            timeMsg->deserialize(baseMessage, const_cast<char*>(payload.data()));
+            // For zero-copy optimization: use raw pointer if payload is empty (large audio data)
+            const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+            timeMsg->deserialize(baseMessage, const_cast<char*>(data_ptr));
             timeMsg->refersTo = timeMsg->id;
             timeMsg->latency = timeMsg->received - timeMsg->sent;
             
