@@ -368,7 +368,7 @@ std::pair<uint32_t, uint32_t> StreamServer::getRistParameters() const
 }
 
 void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
-                                        const char* payload_ptr, size_t payload_size, uint16_t vport)
+                                        const char* payload_ptr /*, size_t payload_size, uint16_t vport */)
 {
     // LOG(TRACE, LOG_TAG) << "RIST message received: type=" << baseMessage.type << ", vport=" << vport << "\n";
     
@@ -431,11 +431,13 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
             auto timeMsg = std::make_shared<msg::Time>();
             // For zero-copy optimization: use raw pointer if payload is empty (large audio data)
             const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+            /*
             if (payload.empty()) {
                 LOG(TRACE, LOG_TAG) << "⏱️ SERVER ZERO-COPY: Processing Time with direct pointer (" << payload_size << " bytes)\n";
             } else {
                 LOG(TRACE, LOG_TAG) << "📋 SERVER COPY: Processing Time with copied data (" << payload.size() << " bytes)\n";
             }
+            */
             timeMsg->deserialize(baseMessage, const_cast<char*>(data_ptr));
             timeMsg->refersTo = timeMsg->id;
             timeMsg->latency = timeMsg->received - timeMsg->sent;

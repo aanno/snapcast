@@ -167,7 +167,7 @@ void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, Wr
 
 // RistTransportReceiver interface
 void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, 
-                                                            const char* payload_ptr, size_t payload_size, uint16_t vport)
+                                                            const char* payload_ptr /*, size_t payload_size, uint16_t vport */)
 {
     // LOG(TRACE, LOG_TAG) << "RIST message received: type=" << baseMessage.type << " (id=" << baseMessage.id << "), vport=" << vport << "\n";
     

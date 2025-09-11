@@ -337,8 +337,8 @@ snapclient rist://server:1706 --rist-latency 100
 ```cpp
 virtual void onRistMessageReceived(const msg::BaseMessage& baseMessage, 
                                   const std::string& payload,
-                                  const char* payload_ptr, size_t payload_size, 
-                                  uint16_t vport) = 0;
+                                  const char* payload_ptr, /* size_t payload_size, 
+                                  uint16_t vport */) = 0;
 ```
 
 **Zero-Copy Logic**: Large audio chunks bypass memory copying:

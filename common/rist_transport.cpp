@@ -461,7 +461,7 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
 
         // Forward all messages to receiver
         if (receiver_) {
-            receiver_->onRistMessageReceived(baseMessage, payload, payload_ptr, payload_size, data_block->virt_dst_port);
+            receiver_->onRistMessageReceived(baseMessage, payload, payload_ptr /* , payload_size, data_block->virt_dst_port */);
         }
     }
     catch (const exception& e) {
