@@ -534,6 +534,91 @@ These constants are defined in `common/rist_transport.hpp` and significantly red
 - **Zero-Copy Audio**: Eliminates memory copying for audio streams
 - **Optimized Logging**: Reduced spam from high-frequency audio chunks
 
+## Request/Response Correlation Fix ✅
+
+### Problem: Client Timeout/Reconnection Cycles
+
+**Symptom**: RIST clients experienced recurring 10-second timeout/reconnection cycles, even though audio streaming worked correctly.
+
+**Root Cause**: The RIST client's `sendRequest` implementation was not assigning proper message IDs, causing request/response correlation to fail.
+
+### Technical Details
+
+#### The Issue
+```cpp
+// RIST client sendRequest (before fix)
+void ClientConnectionRistBidirectional::sendRequest(const msg::message_ptr& message, ...)
+{
+    // ❌ Using original message ID (often 0 for Hello messages)
+    auto request = std::make_shared<PendingRequest>(strand_, message->id, handler);
+    // Client sends Hello with id=0 via VPORT_BACKCHANNEL
+}
+```
+
+**Correlation Failure Chain**:
+1. Client sends Hello request with `id=0` via VPORT_BACKCHANNEL
+2. Server receives Hello and sends ServerSettings response with `refersTo=0` via VPORT_CONTROL
+3. Client receives ServerSettings but correlation check fails: `if (message->refersTo != 0)`
+4. Client times out waiting for Hello response → disconnects → reconnects
+
+#### The Solution
+```cpp
+// RIST client sendRequest (after fix)
+void ClientConnectionRistBidirectional::sendRequest(const msg::message_ptr& message, ...)
+{
+    // ✅ Assign proper request ID (copied from base ClientConnection::sendRequest)
+    static constexpr uint16_t max_req_id = 10000;
+    if (++reqId_ >= max_req_id)
+        reqId_ = 1;
+    message->id = reqId_;
+    
+    auto request = std::make_shared<PendingRequest>(strand_, message->id, handler);
+    // Client now sends Hello with proper non-zero ID (1, 2, 3...)
+}
+```
+
+#### Why Virtual sendRequest Was Necessary
+
+The fix also required making the base `ClientConnection::sendRequest()` method virtual:
+
+```cpp
+// client_connection.hpp
+virtual void sendRequest(const msg::message_ptr& message, const chronos::usec& timeout, 
+                        const MessageHandler<msg::BaseMessage>& handler);
+
+// client_connection_rist_bidirectional.hpp  
+void sendRequest(const msg::message_ptr& message, const chronos::usec& timeout,
+                const MessageHandler<msg::BaseMessage>& handler) override;
+```
+
+Without the virtual override, RIST requests would attempt to use TCP transport instead of routing through the RIST backchannel.
+
+### Files Modified
+
+1. **`client/client_connection.hpp`**: Made `sendRequest` virtual (line 131)
+2. **`client/client_connection_rist_bidirectional.hpp`**: Added override and correlation members
+3. **`client/client_connection_rist_bidirectional.cpp`**: Implemented proper ID assignment and correlation logic
+4. **`server/stream_server.cpp`**: Uncommented Time response code (lines 446-450)
+
+### Result
+
+- **✅ Stable connections**: No more 10-second reconnection cycles
+- **✅ Perfect Time sync**: Regular Time responses every ~1 second via backchannel
+- **✅ Proper correlation**: Hello/Time requests get non-zero IDs and correlate correctly
+- **✅ Production ready**: RIST bidirectional communication working reliably
+
+### Key Insights
+
+1. **Message ID assignment is critical** for request/response correlation across all transports
+2. **Virtual method dispatch** is necessary for protocol-specific routing in polymorphic designs
+3. **RIST virtual ports are unidirectional**: 
+   - VPORT_BACKCHANNEL (3000): Client → Server
+   - VPORT_CONTROL (2000): Server → Client  
+   - VPORT_AUDIO (1000): Server → Client
+4. **Systematic debugging** through logs revealed the exact correlation failure point
+
+The lesson: Always ensure message ID management is consistent across all transport implementations, especially when implementing protocol-specific overrides.
+
 ## Future Enhancements
 
 ### Potential Improvements
