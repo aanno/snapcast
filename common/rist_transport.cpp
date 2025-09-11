@@ -430,10 +430,12 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
             if (baseMessage.type == message_type::kWireChunk && payload_size > 100) {
                 // For audio chunks, pass pointer directly (zero-copy)
                 payload = ""; // Empty string, receiver will use payload_ptr
+                LOG(INFO, LOG_TAG) << "🚀 ZERO-COPY: Audio chunk (" << payload_size << " bytes) - using direct pointer (no memory copy)\n"; 
             } else {
                 // For control messages, copy to string for safety
                 payload.assign(payload_ptr, payload_size);
                 payload_ptr = payload.data(); // Update pointer to copied data
+                LOG(INFO, LOG_TAG) << "📋 COPY: Control message type=" << baseMessage.type << " (" << payload_size << " bytes) - copying to string for safety\n";
             }
         }
 

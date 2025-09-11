@@ -179,6 +179,11 @@ void ClientConnectionRistBidirectional::onRistMessageReceived(const msg::BaseMes
         // Create message from received data using the updated base_message_
         // For zero-copy optimization: use raw pointer if payload is empty (large audio data)
         const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+        if (payload.empty()) {
+            LOG(INFO, LOG_TAG) << "🎵 CLIENT ZERO-COPY: Using direct pointer for message type=" << baseMessage.type << " (" << payload_size << " bytes)\n";
+        } else {
+            LOG(INFO, LOG_TAG) << "📝 CLIENT COPY: Using copied data for message type=" << baseMessage.type << " (" << payload.size() << " bytes)\n";
+        }
         auto message = msg::factory::createMessage(base_message_, const_cast<char*>(data_ptr));
         if (!message)
         {

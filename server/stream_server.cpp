@@ -381,6 +381,11 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
             auto helloMsg = std::make_shared<msg::Hello>();
             // For zero-copy optimization: use raw pointer if payload is empty (large audio data)
             const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+            if (payload.empty()) {
+                LOG(INFO, LOG_TAG) << "🔄 SERVER ZERO-COPY: Processing Hello with direct pointer (" << payload_size << " bytes)\n";
+            } else {
+                LOG(INFO, LOG_TAG) << "📋 SERVER COPY: Processing Hello with copied data (" << payload.size() << " bytes)\n";
+            }
             helloMsg->deserialize(baseMessage, const_cast<char*>(data_ptr));
             
             LOG(INFO, LOG_TAG) << "RIST Hello received from client: " << helloMsg->getMacAddress() << "\n";
@@ -424,6 +429,11 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
             auto timeMsg = std::make_shared<msg::Time>();
             // For zero-copy optimization: use raw pointer if payload is empty (large audio data)
             const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+            if (payload.empty()) {
+                LOG(INFO, LOG_TAG) << "⏱️ SERVER ZERO-COPY: Processing Time with direct pointer (" << payload_size << " bytes)\n";
+            } else {
+                LOG(INFO, LOG_TAG) << "📋 SERVER COPY: Processing Time with copied data (" << payload.size() << " bytes)\n";
+            }
             timeMsg->deserialize(baseMessage, const_cast<char*>(data_ptr));
             timeMsg->refersTo = timeMsg->id;
             timeMsg->latency = timeMsg->received - timeMsg->sent;

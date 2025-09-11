@@ -310,21 +310,87 @@ void messageReceived(std::unique_ptr<msg::BaseMessage> message, MessageHandler<m
 - Age calculation: `age = serverNow - chunk.start - buffer + outputBufferDacTime`
 - Without compensation, chunks appear 100ms "older" than expected
 
-**Solution**: Use snapclient `--latency` parameter to compensate for RIST transport latency:
+**Solution**: Use snapclient `--rist-latency` parameter to compensate for RIST transport latency:
 
 ```bash
-snapclient rist://server:1706 --latency 100
+snapclient rist://server:1706 --rist-latency 100
 ```
 
 **Why This Works**:
-- `--latency 100` increases `outputBufferDacTime` by 100ms
+- `--rist-latency 100` increases `outputBufferDacTime` by 100ms
 - This makes chunks appear "100ms younger" in age calculation
 - Chunks that were 36-348ms "old" become playable
 - Uses existing Snapcast architecture designed for exactly this purpose
 
 **Key Insight**: The solution wasn't changing buffer sizes or modifying age thresholds, but using the proper latency compensation mechanism already built into Snapcast.
 
-**Files Modified**: Client startup scripts to include `--latency 100` parameter
+**Files Modified**: Client startup scripts to include `--rist-latency 100` parameter
+
+## Zero-Copy Audio Optimization 🚀
+
+**Overview**: Snapcast implements zero-copy optimization for audio data to eliminate memory copying for >90% of transmitted data while maintaining safety for control messages.
+
+### Implementation Details
+
+**Interface Design**: The `RistTransportReceiver` interface passes both string payload and raw pointer:
+
+```cpp
+virtual void onRistMessageReceived(const msg::BaseMessage& baseMessage, 
+                                  const std::string& payload,
+                                  const char* payload_ptr, size_t payload_size, 
+                                  uint16_t vport) = 0;
+```
+
+**Zero-Copy Logic**: Large audio chunks bypass memory copying:
+
+```cpp
+// In RistTransport::handleDataCallback()
+if (baseMessage.type == message_type::kWireChunk && payload_size > 100) {
+    // For audio chunks, pass pointer directly (zero-copy)
+    payload = ""; // Empty string, receiver will use payload_ptr
+    LOG(INFO, LOG_TAG) << "🚀 ZERO-COPY: Audio chunk (" << payload_size << " bytes) - using direct pointer (no memory copy)\n"; 
+} else {
+    // For control messages, copy to string for safety
+    payload.assign(payload_ptr, payload_size);
+    payload_ptr = payload.data();
+    LOG(INFO, LOG_TAG) << "📋 COPY: Control message type=" << baseMessage.type << " (" << payload_size << " bytes) - copying to string for safety\n";
+}
+```
+
+**Message Processing**: Receivers handle both paths seamlessly:
+
+```cpp
+// Client/Server message processing
+const char* data_ptr = payload.empty() ? payload_ptr : payload.data();
+if (payload.empty()) {
+    LOG(INFO, LOG_TAG) << "🎵 CLIENT ZERO-COPY: Using direct pointer for message type=" << baseMessage.type << " (" << payload_size << " bytes)\n";
+} else {
+    LOG(INFO, LOG_TAG) << "📝 CLIENT COPY: Using copied data for message type=" << baseMessage.type << " (" << payload.size() << " bytes)\n";
+}
+auto message = msg::factory::createMessage(base_message_, const_cast<char*>(data_ptr));
+```
+
+### Performance Benefits
+
+- **Audio Chunks**: 2000+ byte messages use direct memory pointers (zero-copy)
+- **Control Messages**: Small messages (<100 bytes) use safe copying
+- **Memory Bandwidth**: Eliminates copying for >90% of data (audio streams)
+- **Stability**: Control messages maintain memory safety through copying
+
+### Verification Logging
+
+The implementation includes detailed logging to verify zero-copy operation:
+
+- 🚀 **ZERO-COPY**: Transport layer using direct pointers
+- 🎵 **CLIENT ZERO-COPY**: Client processing with direct pointers  
+- 📋 **COPY**: Safe copying for control messages
+- 📝 **CLIENT COPY**: Client processing copied data
+
+**Files Modified**:
+- `common/rist_transport.hpp` - Updated callback interface
+- `common/rist_transport.cpp` - Zero-copy logic and verification logging
+- `client/client_connection_rist_bidirectional.cpp` - Client zero-copy handling
+- `server/stream_server.cpp` - Server zero-copy processing
 
 ## References
 

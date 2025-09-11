@@ -219,6 +219,157 @@ The major breakthrough was implementing `RistTransport::sendRawData()` to send p
 - No session management complexity
 - Matches proven testrist pattern
 
+## End-User Guide: Using RIST Transport
+
+### Quick Start
+
+**1. Server Configuration** (`snapserver.conf`):
+```ini
+[rist]
+enabled = true
+bind_to_address = 192.168.1.100  # Your server IP
+port = 1706                      # Base port (uses 1706 and 1708)
+```
+
+**2. Start Server**:
+```bash
+snapserver -c snapserver.conf
+```
+
+**3. Connect Client**:
+```bash
+snapclient --rist-latency 100 rist://192.168.1.100:1706
+```
+
+### URL Format and Parameters
+
+#### Client Connection URL
+```
+rist://[server_address]:[port][?parameter=value&...]
+```
+
+**Examples**:
+```bash
+# Basic connection
+snapclient rist://192.168.1.100:1706
+
+# With RIST-specific latency compensation
+snapclient --rist-latency 100 rist://192.168.1.100:1706
+
+# With custom RIST recovery parameters
+snapclient rist://server:1706?recovery_length_min=40&recovery_length_max=60
+
+# Combined with audio player settings
+snapclient --rist-latency 100 --player pipewire -s 'alsa_output.pci-0000_01_00.1.hdmi-stereo' rist://192.168.1.100:1706
+```
+
+#### Stream Source URL Parameters
+
+For advanced users, stream sources can include RIST parameters:
+
+```bash
+# Example: PipeWire source with custom RIST recovery settings
+snapserver -s 'pipewire://?name=pw-sink&recovery_length_min=40&recovery_length_max=60'
+```
+
+**Available RIST URL Parameters**:
+- `recovery_length_min=N` - Minimum recovery window in ms (default: 20)
+- `recovery_length_max=N` - Maximum recovery window in ms (default: 50)  
+- Standard stream parameters (`name`, `codec`, `chunk_ms`, `sampleformat`)
+
+### Command Line Options
+
+#### snapclient RIST Options
+
+```bash
+snapclient [OPTIONS] rist://server:port
+```
+
+**RIST-Specific Options**:
+- `--rist-latency N` - Add N milliseconds latency compensation for RIST transport (recommended: 100)
+
+**Example**:
+```bash
+# Recommended RIST client command
+snapclient --rist-latency 100 --player pipewire rist://192.168.1.100:1706
+```
+
+**Why `--rist-latency 100`?**
+- RIST transport adds ~100ms network latency vs TCP
+- Without compensation, audio chunks arrive "too old" and get dropped
+- This flag makes chunks appear "younger" to Snapcast's timing system
+- Essential for proper RIST audio playback
+
+### Network Requirements
+
+**Firewall Configuration**:
+- Server needs **2 ports open**: base port (1706) and base+2 (1708)
+- Client connects to both server ports automatically
+- UDP protocol (RIST uses UDP with reliability layer)
+
+**Port Usage**:
+- **Port 1706**: Audio and control data (server → client)
+- **Port 1708**: Backchannel data (client → server)
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **No Audio / Silence**:
+   ```bash
+   # Solution: Add RIST latency compensation
+   snapclient --rist-latency 100 rist://server:1706
+   ```
+
+2. **Connection Timeout**:
+   - Check firewall allows UDP ports 1706 and 1708
+   - Verify server IP address and port
+   - Ensure RIST is enabled in server config
+
+3. **Audio Dropouts**:
+   - Increase recovery parameters in stream URL
+   - Check network stability and bandwidth
+   - Monitor server logs for buffer underruns
+
+#### Debugging Commands
+
+**Check RIST Status**:
+```bash
+# Server logs
+tail -f snapserver.log | grep -i rist
+
+# Client logs with full debug
+snapclient --rist-latency 100 --logsink stdout --logfilter *:debug rist://server:1706
+```
+
+**Test Connectivity**:
+```bash
+# Verify server is listening on RIST ports
+ss -ulnp | grep -E '1706|1708'
+
+# Test UDP connectivity to server
+nc -u server 1706
+```
+
+### Performance Tuning
+
+#### RIST Recovery Parameters
+
+```bash
+# Conservative (higher latency, more reliable)
+snapclient rist://server:1706?recovery_length_min=50&recovery_length_max=100
+
+# Aggressive (lower latency, less recovery)
+snapclient rist://server:1706?recovery_length_min=20&recovery_length_max=40
+```
+
+#### Zero-Copy Optimization
+
+Snapcast automatically uses zero-copy optimization for audio data:
+- **Audio chunks** (>90% of data): Direct memory access, no copying
+- **Control messages**: Safe memory copying for stability
+- **Verification**: Look for 🚀 **ZERO-COPY** messages in debug logs
+
 ## Configuration
 
 ### Network Architecture
@@ -249,15 +400,15 @@ port = 1706                        # Base port (server uses 1706 and 1708)
 
 ### Client Configuration
 
-**Critical**: RIST introduces ~100ms transport latency compared to TCP. Clients must compensate with the new `--rist-latency` flag:
+**Critical**: RIST introduces ~100ms transport latency compared to TCP. Clients must compensate with the `--rist-latency` flag:
 
 ```bash
 snapclient --rist-latency 100 rist://192.168.10.139:1706
 ```
 
 **Latency Parameters**:
-- `--latency X`: Reduces buffer tolerance by X ms (backward compatible)
-- `--rist-latency X`: Increases buffer tolerance by X ms (RIST-specific)
+- `--latency X`: Reduces buffer tolerance by X ms (backward compatible, for TCP)
+- `--rist-latency X`: Increases buffer tolerance by X ms (RIST-specific compensation)
 - For RIST connections, use `--rist-latency 100` to compensate for transport delay
 
 **Why this is needed**:
