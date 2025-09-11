@@ -390,7 +390,7 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
             */
             helloMsg->deserialize(baseMessage, const_cast<char*>(data_ptr));
             
-            LOG(INFO, LOG_TAG) << "RIST Hello received from client: " << helloMsg->getMacAddress() << "\n";
+            LOG(DEBUG, LOG_TAG) << "RIST Hello received from client: " << helloMsg->getMacAddress() << "\n";
             
             // Send ServerSettings response via RIST transport
             if (rist_transport_)
@@ -412,7 +412,7 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
                     if (codecHeader)
                     {
                         rist_transport_->sendMessage(RistTransport::VPORT_AUDIO, *codecHeader);
-                        LOG(INFO, LOG_TAG) << "Sent CodecHeader (" << codecHeader->payloadSize << " bytes) to RIST client via audio channel\n";
+                        LOG(DEBUG, LOG_TAG) << "Sent CodecHeader (" << codecHeader->payloadSize << " bytes) to RIST client via audio channel\n";
                     }
                     else
                     {
@@ -485,7 +485,7 @@ void StreamServer::onRistClientConnected(const std::string& clientId)
             if (codecHeader)
             {
                 rist_transport_->sendMessage(RistTransport::VPORT_AUDIO, *codecHeader);
-                LOG(INFO, LOG_TAG) << "Sent CodecHeader (" << codecHeader->payloadSize << " bytes) to RIST client: " << clientId << "\n";
+                LOG(DEBUG, LOG_TAG) << "Sent CodecHeader (" << codecHeader->payloadSize << " bytes) to RIST client: " << clientId << "\n";
             }
             else
             {

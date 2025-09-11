@@ -449,7 +449,7 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
                 hello.deserialize(baseMessage, const_cast<char*>(payload.data()));
                 string clientId = hello.getUniqueId();
                 
-                LOG(INFO, LOG_TAG) << "RIST Hello received from client: " << clientId << "\n";
+                LOG(DEBUG, LOG_TAG) << "RIST Hello received from client: " << clientId << "\n";
                 connected_clients_[clientId] = true;
                 
                 // Notify receiver about new client connection
