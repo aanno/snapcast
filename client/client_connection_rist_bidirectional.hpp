@@ -60,6 +60,9 @@ public:
     void onRistMessageReceived(const msg::BaseMessage& baseMessage, const std::string& payload, uint16_t vport) override;
     void onRistClientConnected(const std::string& clientId) override;
     void onRistClientDisconnected(const std::string& clientId) override;
+    
+    // RIST parameter management
+    void updateRistParameters(uint32_t recovery_length_min, uint32_t recovery_length_max);
 
 private:
     boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;

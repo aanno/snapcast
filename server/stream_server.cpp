@@ -355,7 +355,9 @@ void StreamServer::onRistMessageReceived(const msg::BaseMessage& baseMessage, co
                 msg::ServerSettings serverSettings;
                 // Set refersTo field to correlate with Hello request
                 serverSettings.refersTo = baseMessage.id;
-                // TODO: Populate serverSettings from settings_
+                // Populate serverSettings from settings_
+                serverSettings.setRistRecoveryLengthMin(settings_.rist.recovery_length_min);
+                serverSettings.setRistRecoveryLengthMax(settings_.rist.recovery_length_max);
                 rist_transport_->sendMessage(RistTransport::VPORT_CONTROL, serverSettings);
                 LOG(INFO, LOG_TAG) << "Sent ServerSettings to RIST client via control channel\n";
                 

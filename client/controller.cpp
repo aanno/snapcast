@@ -215,11 +215,21 @@ void Controller::getNextMessage()
         {
             serverSettings_ = msg::message_cast<msg::ServerSettings>(std::move(response));
             LOG(INFO, LOG_TAG) << "ServerSettings - buffer: " << serverSettings_->getBufferMs() << ", latency: " << serverSettings_->getLatency()
-                               << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() << "\n";
+                               << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() 
+                               << ", RIST recovery_length_min: " << serverSettings_->getRistRecoveryLengthMin()
+                               << ", RIST recovery_length_max: " << serverSettings_->getRistRecoveryLengthMax() << "\n";
             if (stream_ && player_)
             {
                 player_->setVolume({serverSettings_->getVolume() / 100., serverSettings_->isMuted()});
                 stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency + settings_.player.rist_latency));
+            }
+            
+            // Update RIST parameters if this is a RIST connection
+            auto* rist_connection = dynamic_cast<ClientConnectionRistBidirectional*>(clientConnection_.get());
+            if (rist_connection)
+            {
+                rist_connection->updateRistParameters(serverSettings_->getRistRecoveryLengthMin(), 
+                                                     serverSettings_->getRistRecoveryLengthMax());
             }
         }
         else if (response->type == message_type::kCodecHeader)
@@ -517,7 +527,17 @@ void Controller::worker()
 
                     serverSettings_ = msg::message_cast<msg::ServerSettings>(std::move(response));
                     LOG(INFO, LOG_TAG) << "ServerSettings - buffer: " << serverSettings_->getBufferMs() << ", latency: " << serverSettings_->getLatency()
-                                       << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() << "\n";
+                                       << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted()
+                                       << ", RIST recovery_length_min: " << serverSettings_->getRistRecoveryLengthMin()
+                                       << ", RIST recovery_length_max: " << serverSettings_->getRistRecoveryLengthMax() << "\n";
+
+                    // Update RIST parameters if this is a RIST connection
+                    auto* rist_connection = dynamic_cast<ClientConnectionRistBidirectional*>(clientConnection_.get());
+                    if (rist_connection)
+                    {
+                        rist_connection->updateRistParameters(serverSettings_->getRistRecoveryLengthMin(), 
+                                                             serverSettings_->getRistRecoveryLengthMax());
+                    }
 
                     // Do initial time sync with the server
                     sendTimeSyncMessage(50);

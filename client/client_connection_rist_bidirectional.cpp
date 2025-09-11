@@ -217,4 +217,18 @@ void ClientConnectionRistBidirectional::onRistClientDisconnected(const std::stri
     LOG(INFO, LOG_TAG) << "RIST connection lost: " << clientId << "\n";
 }
 
+void ClientConnectionRistBidirectional::updateRistParameters(uint32_t recovery_length_min, uint32_t recovery_length_max)
+{
+    if (rist_transport_)
+    {
+        LOG(INFO, LOG_TAG) << "Updating RIST parameters from server: recovery_length_min=" << recovery_length_min 
+                           << ", recovery_length_max=" << recovery_length_max << "\n";
+        rist_transport_->updateClientParameters(recovery_length_min, recovery_length_max);
+    }
+    else
+    {
+        LOG(WARNING, LOG_TAG) << "Cannot update RIST parameters - transport not available\n";
+    }
+}
+
 #endif // HAS_LIBRIST

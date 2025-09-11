@@ -103,6 +103,8 @@ public:
     bool configureServer(const std::string& bind_address, uint16_t port);
     /// Configure as client (connect to server address/port)  
     bool configureClient(const std::string& server_address, uint16_t port);
+    /// Configure as client with custom RIST parameters
+    bool configureClient(const std::string& server_address, uint16_t port, uint32_t recovery_length_min, uint32_t recovery_length_max);
 
     /// Start RIST transport
     bool start();
@@ -115,6 +117,9 @@ public:
     bool sendRawData(uint16_t vport, const void* data, size_t size);
     /// Send audio chunk (convenience method for VPORT_AUDIO)
     bool sendAudioChunk(const std::shared_ptr<msg::PcmChunk>& chunk);
+    
+    /// Update RIST parameters and restart transport (client mode only)
+    bool updateClientParameters(uint32_t recovery_length_min, uint32_t recovery_length_max);
 
 private:
     /// RIST data callback (static for C API)
@@ -132,6 +137,10 @@ private:
     
     std::string address_;
     uint16_t port_;
+    
+    /// Custom RIST parameters (0 = use defaults)
+    uint32_t custom_recovery_length_min_;
+    uint32_t custom_recovery_length_max_;
     
     /// Track connected clients by clientId (server mode only)
     std::unordered_map<std::string, bool> connected_clients_;

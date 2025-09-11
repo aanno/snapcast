@@ -23,6 +23,7 @@
 
 // local headers
 #include "aixlog.hpp"
+#include "stream_uri.hpp"
 #include "message/factory.hpp"
 #include "message/hello.hpp"
 #include "message/server_settings.hpp"
@@ -60,7 +61,8 @@ int rist_log_callback(void* arg, enum rist_log_level level, const char* msg) {
 
 
 RistTransport::RistTransport(Mode mode, RistTransportReceiver* receiver)
-    : mode_(mode), receiver_(receiver), sender_ctx_(nullptr), receiver_ctx_(nullptr), port_(0), running_(false)
+    : mode_(mode), receiver_(receiver), sender_ctx_(nullptr), receiver_ctx_(nullptr), port_(0), 
+      custom_recovery_length_min_(0), custom_recovery_length_max_(0), running_(false)
 {
 }
 
@@ -88,6 +90,23 @@ bool RistTransport::configureClient(const std::string& server_address, uint16_t 
     }
     address_ = server_address;
     port_ = port;
+    custom_recovery_length_min_ = 0;  // Use defaults
+    custom_recovery_length_max_ = 0;  // Use defaults
+    return true;
+}
+
+bool RistTransport::configureClient(const std::string& server_address, uint16_t port, uint32_t recovery_length_min, uint32_t recovery_length_max)
+{
+    if (mode_ != Mode::CLIENT) {
+        LOG(ERROR, LOG_TAG) << "Cannot configure client on server mode transport\n";
+        return false;
+    }
+    address_ = server_address;
+    port_ = port;
+    custom_recovery_length_min_ = recovery_length_min;
+    custom_recovery_length_max_ = recovery_length_max;
+    LOG(INFO, LOG_TAG) << "Client configured with custom RIST parameters: recovery_length_min=" << recovery_length_min 
+                       << ", recovery_length_max=" << recovery_length_max << "\n";
     return true;
 }
 
@@ -221,8 +240,32 @@ bool RistTransport::createPeer(struct rist_ctx* ctx, const std::string& url, con
     }
 
     // Apply optimized parameters like testrist
-    config->recovery_length_min = recovery_length_min;
-    config->recovery_length_max = recovery_length_max;
+    // Check for URL parameters to override defaults
+    StreamUri uri(url);
+    
+    // Priority order: URL parameters > custom parameters > global constants
+    std::string param_min = uri.getQuery("recovery_length_min");
+    std::string param_max = uri.getQuery("recovery_length_max");
+    
+    if (!param_min.empty()) {
+        config->recovery_length_min = std::stoi(param_min);
+        LOG(INFO, LOG_TAG) << "URL parameter recovery_length_min=" << param_min << " (overriding defaults)\n";
+    } else if (custom_recovery_length_min_ > 0) {
+        config->recovery_length_min = custom_recovery_length_min_;
+        LOG(INFO, LOG_TAG) << "Using custom recovery_length_min=" << custom_recovery_length_min_ << " (from server)\n";
+    } else {
+        config->recovery_length_min = recovery_length_min;
+    }
+    
+    if (!param_max.empty()) {
+        config->recovery_length_max = std::stoi(param_max);
+        LOG(INFO, LOG_TAG) << "URL parameter recovery_length_max=" << param_max << " (overriding defaults)\n";
+    } else if (custom_recovery_length_max_ > 0) {
+        config->recovery_length_max = custom_recovery_length_max_;
+        LOG(INFO, LOG_TAG) << "Using custom recovery_length_max=" << custom_recovery_length_max_ << " (from server)\n";
+    } else {
+        config->recovery_length_max = recovery_length_max;
+    }
     config->recovery_rtt_min = recovery_rtt_min;
     config->recovery_rtt_max = recovery_rtt_max;
     config->recovery_reorder_buffer = recovery_reorder_buffer;
@@ -248,6 +291,43 @@ bool RistTransport::createPeer(struct rist_ctx* ctx, const std::string& url, con
 bool RistTransport::sendAudioChunk(const std::shared_ptr<msg::PcmChunk>& chunk)
 {
     return sendMessage(VPORT_AUDIO, *chunk);
+}
+
+bool RistTransport::updateClientParameters(uint32_t recovery_length_min, uint32_t recovery_length_max)
+{
+    if (mode_ != Mode::CLIENT) {
+        LOG(ERROR, LOG_TAG) << "updateClientParameters only supported in client mode\n";
+        return false;
+    }
+    
+    // Check if the new parameters match what would currently be used
+    uint32_t current_min = custom_recovery_length_min_ > 0 ? custom_recovery_length_min_ : recovery_length_min;
+    uint32_t current_max = custom_recovery_length_max_ > 0 ? custom_recovery_length_max_ : recovery_length_max;
+    
+    if (current_min == recovery_length_min && current_max == recovery_length_max) {
+        LOG(DEBUG, LOG_TAG) << "RIST parameters unchanged (" << recovery_length_min << "/" << recovery_length_max << "), no restart needed\n";
+        return true;  // No change needed
+    }
+    
+    LOG(INFO, LOG_TAG) << "Updating RIST parameters: recovery_length_min=" << recovery_length_min 
+                       << ", recovery_length_max=" << recovery_length_max << "\n";
+    
+    // Stop current transport
+    bool was_running = running_;
+    if (was_running) {
+        stop();
+    }
+    
+    // Update parameters
+    custom_recovery_length_min_ = recovery_length_min;
+    custom_recovery_length_max_ = recovery_length_max;
+    
+    // Restart if it was running
+    if (was_running) {
+        return start();
+    }
+    
+    return true;
 }
 
 bool RistTransport::sendMessage(uint16_t vport, const msg::BaseMessage& message)
@@ -337,11 +417,18 @@ int RistTransport::handleDataCallback(struct rist_data_block* data_block)
         LOG(DEBUG, LOG_TAG) << "Received message type: " << baseMessage.type << ", size: " << baseMessage.size << " on vport " << data_block->virt_dst_port << "\n";
 
         // Extract payload (everything after the base message header)
+        // For audio messages, avoid copying large payloads
         string payload;
+        const char* payload_ptr = nullptr;
+        size_t payload_size = 0;
+        
         if (data_block->payload_len > baseMessage.getSize()) {
-            const char* payload_start = reinterpret_cast<const char*>(data_block->payload) + baseMessage.getSize();
-            size_t payload_size = data_block->payload_len - baseMessage.getSize();
-            payload.assign(payload_start, payload_size);
+            payload_ptr = reinterpret_cast<const char*>(data_block->payload) + baseMessage.getSize();
+            payload_size = data_block->payload_len - baseMessage.getSize();
+            
+            // Copy all payload data for now (revert zero-copy optimization that broke audio)
+            payload.assign(payload_ptr, payload_size);
+            payload_ptr = payload.data(); // Update pointer to copied data
         }
 
         // Handle specific message types for server mode
