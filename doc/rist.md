@@ -200,10 +200,9 @@ Snapcast automatically uses zero-copy optimization for audio data:
 - **Port N (1706)**: Audio/Control receiver - receives data FROM server  
 - **Port N+2 (1708)**: Backchannel sender - sends data TO server
 
-**Same-host testing requires 4 ports total**: 1706, 1707, 1708, 1709
+**Same-host testing requires 2 ports total**: 1706 and 1708
 - Server uses: 1706 (bind), 1708 (bind)
 - Client uses: 1706 (connect), 1708 (connect)
-- Additional ports needed if running multiple clients
 
 ### Server Configuration (`snapserver.conf`)
 
@@ -252,7 +251,7 @@ Compared to SRT (Secure Reliable Transport): Both use UDP for low-latency (video
 
 ### Design Philosophy
 
-Our RIST implementation follows the **testrist model** - a direct virtual port multiplexing approach that embraces RIST's message-oriented nature rather than forcing it into TCP's connection-oriented model.
+Our RIST implementation follows a simple PoC in C 'testrist' - a direct virtual port multiplexing approach that embraces RIST's message-oriented nature rather than forcing it into TCP's connection-oriented model.
 
 ### Core Components
 
@@ -658,10 +657,6 @@ The lesson: Always ensure message ID management is consistent across all transpo
 2. **Advanced RIST Features**: Implement encryption, authentication, and advanced recovery
 3. **Dynamic Configuration**: Runtime RIST parameter adjustment
 4. **Monitoring Integration**: RIST-specific metrics and health monitoring
-
-### Client Integration
-
-Future work should focus on creating a client-side `RistTransport` implementation that mirrors the server architecture for consistency and maintainability.
 
 ## Conclusion
 
