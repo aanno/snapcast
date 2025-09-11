@@ -68,7 +68,7 @@ boost::system::error_code ClientConnectionRistBidirectional::doConnect(boost::as
 
     running_ = true;
     LOG(INFO, LOG_TAG) << "RIST client connection established\n";
-    return boost::system::error_code();
+    return {};
 }
 
 void ClientConnectionRistBidirectional::disconnect()
@@ -126,8 +126,13 @@ void ClientConnectionRistBidirectional::write(boost::asio::streambuf& buffer, Wr
     }
 
     // Get data from streambuf
-    const auto* data_ptr = boost::asio::buffer_cast<const char*>(buffer.data());
-    size_t data_size = buffer.size();
+    // buffer.data() returns const_buffers_1 (a buffer sequence)
+    auto buffer_sequence = buffer.data();
+    // Get the first buffer from the buffer_sequence, which is a const_buffer
+    auto first_buffer = *buffer_sequence.begin();
+    // Get raw pointer to the underlying data
+    const char* data_ptr = static_cast<const char*>(first_buffer.data());
+    auto data_size = buffer.size();
 
     if (data_size == 0)
     {
