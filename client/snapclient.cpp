@@ -183,6 +183,7 @@ int main(int argc, char** argv)
         op.add<Value<string>>("s", "soundcard", "Index or name of the PCM device", pcm_device, &pcm_device);
 #endif
         op.add<Value<int>>("", "latency", "Latency of the PCM device", 0, &settings.player.latency);
+        op.add<Value<int>>("", "rist-latency", "Additional latency for RIST transport (increases buffer tolerance)", 0, &settings.player.rist_latency);
 #ifdef HAS_SOXR
         auto sample_format = op.add<Value<string>>("", "sampleformat", "Resample audio stream to <rate>:<bits>:<channels>", "");
 #endif

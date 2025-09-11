@@ -219,7 +219,7 @@ void Controller::getNextMessage()
             if (stream_ && player_)
             {
                 player_->setVolume({serverSettings_->getVolume() / 100., serverSettings_->isMuted()});
-                stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency));
+                stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency + settings_.player.rist_latency));
             }
         }
         else if (response->type == message_type::kCodecHeader)
@@ -252,7 +252,7 @@ void Controller::getNextMessage()
             LOG(INFO, LOG_TAG) << "Codec: " << headerChunk_->codec << ", sampleformat: " << sampleFormat_.toString() << "\n";
 
             stream_ = make_shared<Stream>(sampleFormat_, settings_.player.sample_format);
-            stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency));
+            stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency + settings_.player.rist_latency));
 
 #ifdef HAS_ALSA
             if (!player_)

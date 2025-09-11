@@ -129,6 +129,18 @@
                 "CMAKE_ANDROID_ARCH_ABI": "arm64-v8a",
                 "VCPKG_TARGET_TRIPLET": "arm64-android"
             }
+        },
+        {
+            "name": "gcc-ccache-debug",
+            "displayName": "gcc-ccache-debug",
+            "description": "GCC 15.2.1 x86_64-redhat-linux: C = /usr/lib64/ccache/gcc, CXX = /usr/lib64/ccache/g++",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "/usr/lib64/ccache/gcc",
+                "CMAKE_CXX_COMPILER": "/usr/lib64/ccache/g++",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         }
     ],
     "buildPresets": [
