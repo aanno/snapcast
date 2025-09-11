@@ -4,6 +4,14 @@
 
 Snapcast implements RIST (Reliable Internet Stream Transport) support using a clean, bidirectional transport architecture that aligns with RIST's native design principles. This document describes our implementation approach, architectural decisions, and the journey that led to the current design.
 
+### RIST and libRIST
+
+RIST (Reliable Internet Stream Transport) is an open protocol for low-latency, reliable (video) streaming over unreliable IP networks, developed by the Video Services Forum (VSF). It ensures packet recovery using ARQ (Automatic Repeat reQuest) and optional FEC (Forward Error Correction), ideal for live (video) contribution, broadcasting, and remote production. libRIST is its open-source C library implementation, enabling easy integration into applications like FFMPEG, VLC, and GStreamer for adding RIST support.
+
+Layers: Built on RTP (Real-time Transport Protocol) over UDP (User Datagram Protocol). UDP provides connectionless, low-overhead transmission for real-time efficiency but lacks reliability; RTP adds sequencing, timestamps, and payload typing for media synchronization. RIST enhances these with error correction, optional encryption (PSK/DTLS), and features like multipath bonding, contributing to robustness, low latency (programmable), and security. No RTC (assuming WebRTC) layer; RIST is distinct but compatible with RTP-based systems.
+
+Compared to SRT (Secure Reliable Transport): Both use UDP for low-latency (video), ARQ/FEC, encryption, and open-source libs. SRT employs UDT/UDP, focuses on simplicity, uni-directional streams; RIST uses RTP/UDP, adds multicast, bi-directional traffic, DTLS, IPv6, ST2110 support, and advanced multipath (single buffer, lower latency vs. SRT's 1+1). RIST pros: more features, standards-based (VSF); cons: complexity. SRT pros: easier for basic use; cons: fewer advanced options.
+
 ## Architecture
 
 ### Design Philosophy
