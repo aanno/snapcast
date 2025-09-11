@@ -457,11 +457,11 @@ jobs:
           git pull
           vcpkg.exe update
           vcpkg.exe --triplet x64-windows install libflac libvorbis soxr opus openssl boost-asio boost-beast catch2
-      - name: Install libRIST on Windows
+      - name: Install libRIST silently on Windows
         shell: pwsh
         run: |
-          git clone https://github.com/tsduck/rist-installer.git
-          pwsh rist-installer/win/install-librist.ps1
+          Invoke-WebRequest -Uri "https://github.com/tsduck/rist-installer/releases/download/v0.2.11-11/librist-0.2.11-11-11e0f15.exe" -OutFile "librist-installer.exe"
+          Start-Process -FilePath .\librist-installer.exe -ArgumentList '/S' -Wait -NoNewWindow
       - name: configure
         run: |
           echo vcpkg installation root: ${env:VCPKG_INSTALLATION_ROOT}

@@ -225,12 +225,14 @@ void Controller::getNextMessage()
             }
             
             // Update RIST parameters if this is a RIST connection
+#ifdef HAS_LIBRIST
             auto* rist_connection = dynamic_cast<ClientConnectionRistBidirectional*>(clientConnection_.get());
             if (rist_connection)
             {
                 rist_connection->updateRistParameters(serverSettings_->getRistRecoveryLengthMin(), 
                                                      serverSettings_->getRistRecoveryLengthMax());
             }
+#endif // HAS_LIBRIST
         }
         else if (response->type == message_type::kCodecHeader)
         {
