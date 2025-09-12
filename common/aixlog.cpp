@@ -126,7 +126,7 @@ bool Log::should_log_cached(SEVERITY severity, const char* tag)
     {
         return result;
     }
-    result = should_log_internal(static_cast<Severity>(severity), tag);
+    result = Log::should_log_internal(static_cast<Severity>(severity), tag);
     cache.putCache(static_cast<Severity>(severity), tag, result);
     return result;
 }
@@ -139,7 +139,7 @@ bool Log::should_log_cached(Severity severity, const char* tag)
     {
         return result;
     }
-    result = should_log_internal(severity, tag);
+    result = Log::should_log_internal(severity, tag);
     cache.putCache(severity, tag, result);
     return result;
 }
@@ -165,4 +165,3 @@ void Log::setShouldLogCacheMaxSize(size_t size)
 }
 
 } // namespace AixLog
-

@@ -258,10 +258,10 @@ private:
 
 struct Function
 {
+    Function() : line(0), is_null_(true) {}
     Function(const std::string& name, const std::string& file, size_t line) : name(name), file(file), line(line), is_null_(false) {}
     Function(std::string&& name, std::string&& file, size_t line) : name(std::move(name)), file(std::move(file)), line(line), is_null_(false) {}
     Function(std::nullptr_t) : line(0), is_null_(true) {}
-    Function() : Function(nullptr) {}
     virtual ~Function() = default;
 
     explicit operator bool() const { return !is_null_; }
@@ -406,7 +406,7 @@ protected:
     Log() noexcept : last_buffer_(nullptr), do_log_(true)
     {
         std::clog.rdbuf(this);
-        std::clog << Severity() << Tag() << Function() << Conditional() << Color::none << std::flush;
+        std::clog << Severity() << Tag() << Function(nullptr) << Conditional() << Color::none << std::flush;
     }
 
     virtual ~Log()
@@ -457,14 +457,15 @@ private:
     friend std::ostream& operator<<(std::ostream& os, const Function& function);
     friend std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
 
-    bool should_log_internal(Severity severity, const char* tag = nullptr)
+    static bool should_log_internal(Severity severity, const char* tag = nullptr)
     {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
-        if (log_sinks_.empty()) return true;
+        Log& log = instance();
+        std::lock_guard<std::recursive_mutex> lock(log.mutex_);
+        if (log.log_sinks_.empty()) return true;
         Metadata temp_metadata;
         temp_metadata.severity = severity;
         temp_metadata.tag = tag;
-        for (const auto& sink : log_sinks_)
+        for (const auto& sink : log.log_sinks_)
         {
             if (sink->filter.match(temp_metadata))
                 return true;
@@ -623,7 +624,7 @@ struct SinkLogcat : public Sink
             case Severity::trace: priority = ANDROID_LOG_VERBOSE; break;
             case Severity::debug: priority = ANDROID_LOG_DEBUG; break;
             case Severity::info:
-            case Severity::notice: priority = ANDROID_LOG_INFO; break;
+            case Severity::notice: type = ANDROID_LOG_INFO; break;
             case Severity::warning: priority = ANDROID_LOG_WARN; break;
             case Severity::error: priority = ANDROID_LOG_ERROR; break;
             case Severity::fatal: priority = ANDROID_LOG_FATAL; break;
