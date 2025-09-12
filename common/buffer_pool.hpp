@@ -22,7 +22,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <stack>
+#include <deque>
 #include <vector>
 #include <chrono>
 #include <map>
@@ -42,12 +42,12 @@ public:
     /// Individual buffer wrapper with metadata
     struct Buffer
     {
-        std::unique_ptr<std::vector<char>> data;
+        std::vector<char> data;
         size_t capacity;
         std::chrono::steady_clock::time_point last_used;
         
         explicit Buffer(size_t size) 
-            : data(std::make_unique<std::vector<char>>(size))
+            : data(size)
             , capacity(size)
             , last_used(std::chrono::steady_clock::now())
         {
@@ -57,12 +57,12 @@ public:
         {
             if (new_size > capacity)
             {
-                data->resize(new_size);
+                data.resize(new_size);
                 capacity = new_size;
             }
             else
             {
-                data->resize(new_size);
+                data.resize(new_size);
             }
             last_used = std::chrono::steady_clock::now();
         }
@@ -103,8 +103,8 @@ public:
             return *this;
         }
         
-        std::vector<char>& get() { return *buffer_->data; }
-        const std::vector<char>& get() const { return *buffer_->data; }
+        std::vector<char>& get() { return buffer_->data; }
+        const std::vector<char>& get() const { return buffer_->data; }
         
         void resize(size_t size) { buffer_->resize_if_needed(size); }
         
@@ -152,25 +152,31 @@ private:
     /// Size bucket determination
     static size_t get_size_bucket(size_t size);
     
+    /// Check and perform cleanup if needed
+    void check_cleanup();
+    
     // Configuration
     static constexpr size_t MAX_POOL_SIZE = 128;      // Maximum buffers per size bucket
     static constexpr size_t GROWTH_FACTOR = 2;       // Buffer size growth factor
     static constexpr size_t MIN_BUFFER_SIZE = 1024;  // Minimum buffer size
+    static constexpr auto CLEANUP_INTERVAL = std::chrono::seconds(30);
+    static constexpr auto DEFAULT_MAX_IDLE = std::chrono::seconds(300);
     
     // Thread safety
     mutable std::mutex mutex_;
     
     // Storage - map from size bucket to available buffers
-    std::map<size_t, std::stack<std::unique_ptr<Buffer>>> available_buffers_;
+    std::map<size_t, std::deque<std::unique_ptr<Buffer>>> available_buffers_;
     
-    // Statistics (atomic for thread safety)
-    mutable std::atomic<size_t> total_buffers_{0};
-    mutable std::atomic<size_t> bytes_allocated_{0};
-    mutable std::atomic<size_t> buffers_created_{0};
-    mutable std::atomic<size_t> buffers_reused_{0};
-    mutable std::atomic<size_t> cleanup_operations_{0};
+    // Statistics
+    size_t total_buffers_{0};
+    size_t bytes_allocated_{0};
+    size_t buffers_created_{0};
+    size_t buffers_reused_{0};
+    size_t cleanup_operations_{0};
     
     // Pool configuration
     size_t default_buffer_size_;
+    size_t initial_count_;
     std::chrono::steady_clock::time_point last_cleanup_;
-};
+}
