@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.5.1
+    version 1.5.2
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -15,6 +15,8 @@
 
 /// inspired by "eater":
 /// https://stackoverflow.com/questions/2638654/redirect-c-stdclog-to-syslog-on-unix
+
+#pragma once
 
 #ifndef AIX_LOG_HPP
 #define AIX_LOG_HPP
@@ -116,40 +118,19 @@ namespace AixLog {
     }
 }
 
-// LOG macro - optimization can be enabled by uncommenting the should_log check
-#ifndef WIN32
-// #define LOG(...) AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << FUNC
-/* Optimized version with caching */
-#define LOG(LEVEL, ...) \
-    (AixLog::Log::should_log_cached(LEVEL, ##__VA_ARGS__) ? \
-        (AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(LEVEL, ##__VA_ARGS__)(LEVEL, ##__VA_ARGS__) << TIMESTAMP << FUNC) : \
-        AixLog::get_null_stream())
-#endif
+// Unified LOG macro with caching for all platforms
+#define LOG(...) \
+    AIXLOG_INTERNAL__LOG_CACHED(__VA_ARGS__) << TIMESTAMP << FUNC
 
-// usage: COLOR(TEXT_COLOR, BACKGROUND_COLOR) or COLOR(TEXT_COLOR)
-// e.g.: COLOR(yellow, blue) or COLOR(red)
-#define COLOR(...) AIXLOG_INTERNAL__COLOR_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
+#define AIXLOG_INTERNAL__LOG_CACHED_1(SEVERITY) \
+    (AixLog::Log::should_log_cached(SEVERITY) ? (std::clog << static_cast<AixLog::Severity>(SEVERITY)) : AixLog::get_null_stream())
 
-#define FUNC AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
-#define TAG AixLog::Tag
-#define COND AixLog::Conditional
-#define TIMESTAMP AixLog::Timestamp(std::chrono::system_clock::now())
+#define AIXLOG_INTERNAL__LOG_CACHED_2(SEVERITY, TAG) \
+    (AixLog::Log::should_log_cached(SEVERITY, TAG) ? (std::clog << static_cast<AixLog::Severity>(SEVERITY) << AixLog::Tag(TAG)) : AixLog::get_null_stream())
 
-
-// stijnvdb: sorry! :) LOG(SEV, "tag") was not working for Windows and I couldn't figure out how to fix it for windows without potentially breaking everything
-// else...
-// https://stackoverflow.com/questions/3046889/optional-parameters-with-c-macros (Jason Deng)
-#ifdef WIN32
-#define LOG_2(severity, tag) AIXLOG_INTERNAL__LOG_SEVERITY_TAG(severity, tag)
-#define LOG_1(severity) AIXLOG_INTERNAL__LOG_SEVERITY(severity)
-#define LOG_0() LOG_1(0)
-
-#define FUNC_CHOOSER(_f1, _f2, _f3, ...) _f3
-#define FUNC_RECOMPOSER(argsWithParentheses) FUNC_CHOOSER argsWithParentheses
-#define CHOOSE_FROM_ARG_COUNT(...) FUNC_RECOMPOSER((__VA_ARGS__, LOG_2, LOG_1, FUNC_, ...))
-#define MACRO_CHOOSER(...) CHOOSE_FROM_ARG_COUNT(__VA_ARGS__())
-#define LOG(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << TIMESTAMP << FUNC
-#endif
+#define AIXLOG_INTERNAL__LOG_CACHED_CHOOSER(_f1, _f2, ...) _f2
+#define AIXLOG_INTERNAL__LOG_CACHED_RECOMPOSER(argsWithParentheses) AIXLOG_INTERNAL__LOG_CACHED_CHOOSER argsWithParentheses
+#define AIXLOG_INTERNAL__LOG_CACHED(...) AIXLOG_INTERNAL__LOG_CACHED_RECOMPOSER((__VA_ARGS__, AIXLOG_INTERNAL__LOG_CACHED_2, AIXLOG_INTERNAL__LOG_CACHED_1, ))(__VA_ARGS__)
 
 /**
  * @brief
@@ -701,6 +682,11 @@ public:
         log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
         clearShouldLogCache(); // Clear cache when sinks change
     }
+
+    static bool should_log_internal(Severity severity, const char* tag = nullptr);
+
+    // Set max cache size
+    static void setShouldLogCacheMaxSize(size_t size);
 
 protected:
     Log() noexcept : last_buffer_(nullptr), do_log_(true)
