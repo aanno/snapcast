@@ -339,6 +339,8 @@ public:
     static Log& instance()
     {
         static Log instance_;
+        static std::once_flag init_flag;  // Ensure setup_clog called once
+        std::call_once(init_flag, &Log::setup_clog, std::ref(instance_));
         return instance_;
     }
 
@@ -405,6 +407,12 @@ public:
 protected:
     Log() noexcept : last_buffer_(nullptr), do_log_(true)
     {
+        // Constructor: no clog setup to avoid recursion
+    }
+
+    void setup_clog()
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         std::clog.rdbuf(this);
         std::clog << Severity() << Tag() << Function(nullptr) << Conditional() << Color::none << std::flush;
     }
