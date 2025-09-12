@@ -179,4 +179,4 @@ private:
     size_t default_buffer_size_;
     size_t initial_count_;
     std::chrono::steady_clock::time_point last_cleanup_;
-}
+};

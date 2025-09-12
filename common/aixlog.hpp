@@ -3,7 +3,7 @@
      / _\ (  )( \/ )(  )   /  \  / __)
     /    \ )(  )  ( / (_/\(  O )( (_ \
     \_/\_/(__)(_/\_)\____/ \__/  \___/
-    version 1.5.2
+    version 1.5.3
     https://github.com/badaix/aixlog
 
     This file is part of aixlog
@@ -12,11 +12,6 @@
     This software may be modified and distributed under the terms
     of the MIT license.  See the LICENSE file for details.
 ***/
-
-/// inspired by "eater":
-/// https://stackoverflow.com/questions/2638654/redirect-c-stdclog-to-syslog-on-unix
-
-#pragma once
 
 #ifndef AIX_LOG_HPP
 #define AIX_LOG_HPP
@@ -54,9 +49,6 @@
 
 #ifdef _WIN32
 #include <Windows.h>
-// ERROR macro is defined in Windows header
-// To avoid conflict between these macro and declaration of ERROR / DEBUG in SEVERITY enum
-// We save macro and undef it
 #pragma push_macro("ERROR")
 #pragma push_macro("DEBUG")
 #undef ERROR
@@ -72,8 +64,6 @@
 #endif
 
 #ifdef __ANDROID__
-// fix for bug "Android NDK __func__ definition is inconsistent with glibc and C++99"
-// https://bugs.chromium.org/p/chromium/issues/detail?id=631489
 #ifdef __GNUC__
 #define AIXLOG_INTERNAL__FUNC __FUNCTION__
 #else
@@ -83,59 +73,30 @@
 #define AIXLOG_INTERNAL__FUNC __func__
 #endif
 
-/// Internal helper macros (exposed, but shouldn't be used directly)
-#define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG()
-#define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << TAG(TAG_)
+/// Internal helper macros
+#define AIXLOG_INTERNAL__LOG_SEVERITY(SEVERITY_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << AixLog::Tag()
+#define AIXLOG_INTERNAL__LOG_SEVERITY_TAG(SEVERITY_, TAG_) std::clog << static_cast<AixLog::Severity>(SEVERITY_) << AixLog::Tag(TAG_)
 
 #define AIXLOG_INTERNAL__ONE_COLOR(FG_) AixLog::Color::FG_
 #define AIXLOG_INTERNAL__TWO_COLOR(FG_, BG_) AixLog::TextColor(AixLog::Color::FG_, AixLog::Color::BG_)
 
-// https://stackoverflow.com/questions/3046889/optional-parameters-with-c-macros
 #define AIXLOG_INTERNAL__VAR_PARM(PARAM1_, PARAM2_, FUNC_, ...) FUNC_
 #define AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(...) AIXLOG_INTERNAL__VAR_PARM(__VA_ARGS__, AIXLOG_INTERNAL__LOG_SEVERITY_TAG, AIXLOG_INTERNAL__LOG_SEVERITY, )
 #define AIXLOG_INTERNAL__COLOR_MACRO_CHOOSER(...) AIXLOG_INTERNAL__VAR_PARM(__VA_ARGS__, AIXLOG_INTERNAL__TWO_COLOR, AIXLOG_INTERNAL__ONE_COLOR, )
 
 /// External logger macros
-// usage: LOG(SEVERITY) or LOG(SEVERITY, TAG)
-// e.g.: LOG(NOTICE) or LOG(NOTICE, "my tag")
-// Helper for filtered-out log messages - inherit from ostream to ensure compatibility
-namespace AixLog {
-    class NullBuffer : public std::streambuf {
-    public:
-        int overflow(int c) override { return c; }
-    };
-    
-    class NullStream : public std::ostream {
-    public:
-        NullStream() : std::ostream(&buffer) {}
-    private:
-        NullBuffer buffer;
-    };
-    // Function to get null stream instance
-    inline NullStream& get_null_stream() {
-        static NullStream instance;
-        return instance;
-    }
-}
-
-// Unified LOG macro with caching for all platforms
 #define LOG(...) \
-    AIXLOG_INTERNAL__LOG_CACHED(__VA_ARGS__) << TIMESTAMP << FUNC
+    (AixLog::Log::should_log_cached(__VA_ARGS__) ? \
+        (AIXLOG_INTERNAL__LOG_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__) << AixLog::Timestamp(std::chrono::system_clock::now()) << AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)) : \
+        AixLog::get_null_stream())
 
-#define AIXLOG_INTERNAL__LOG_CACHED_1(SEVERITY) \
-    (AixLog::Log::should_log_cached(SEVERITY) ? (std::clog << static_cast<AixLog::Severity>(SEVERITY)) : AixLog::get_null_stream())
+#define COLOR(...) AIXLOG_INTERNAL__COLOR_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-#define AIXLOG_INTERNAL__LOG_CACHED_2(SEVERITY, TAG) \
-    (AixLog::Log::should_log_cached(SEVERITY, TAG) ? (std::clog << static_cast<AixLog::Severity>(SEVERITY) << AixLog::Tag(TAG)) : AixLog::get_null_stream())
+#define FUNC AixLog::Function(AIXLOG_INTERNAL__FUNC, __FILE__, __LINE__)
+#define TAG AixLog::Tag
+#define COND AixLog::Conditional
+#define TIMESTAMP AixLog::Timestamp(std::chrono::system_clock::now())
 
-#define AIXLOG_INTERNAL__LOG_CACHED_CHOOSER(_f1, _f2, ...) _f2
-#define AIXLOG_INTERNAL__LOG_CACHED_RECOMPOSER(argsWithParentheses) AIXLOG_INTERNAL__LOG_CACHED_CHOOSER argsWithParentheses
-#define AIXLOG_INTERNAL__LOG_CACHED(...) AIXLOG_INTERNAL__LOG_CACHED_RECOMPOSER((__VA_ARGS__, AIXLOG_INTERNAL__LOG_CACHED_2, AIXLOG_INTERNAL__LOG_CACHED_1, ))(__VA_ARGS__)
-
-/**
- * @brief
- * Severity of the log message
- */
 enum SEVERITY
 {
     TRACE = 0,
@@ -150,29 +111,8 @@ enum SEVERITY
 namespace AixLog
 {
 
-/**
- * @brief
- * Severity of the log message
- *
- * Mandatory parameter for the LOG macro
- */
 enum class Severity : std::int8_t
 {
-    // Mapping table from AixLog to other loggers. Boost is just for information.
-    // https://chromium.googlesource.com/chromium/mini_chromium/+/master/base/logging.cc
-    //
-    // Aixlog      Boost       Syslog      Android     macOS       EventLog      Syslog Desc
-    //
-    // trace       trace       DEBUG       VERBOSE     DEBUG       INFORMATION
-    // debug       debug       DEBUG       DEBUG       DEBUG       INFORMATION   debug-level message
-    // info        info        INFO        INFO        INFO        SUCCESS       informational message
-    // notice                  NOTICE      INFO        INFO        SUCCESS       normal, but significant, condition
-    // warning     warning     WARNING     WARN        DEFAULT     WARNING       warning conditions
-    // error       error       ERROR       ERROR       ERROR       ERROR         error conditions
-    // fatal       fatal       CRIT        FATAL       FAULT       ERROR         critical conditions
-    //                         ALERT                                             action must be taken immediately
-    //                         EMERG                                             system is unusable
-
     trace = SEVERITY::TRACE,
     debug = SEVERITY::DEBUG,
     info = SEVERITY::INFO,
@@ -182,47 +122,30 @@ enum class Severity : std::int8_t
     fatal = SEVERITY::FATAL
 };
 
-
 static Severity to_severity(std::string severity, Severity def = Severity::info)
 {
     std::transform(severity.begin(), severity.end(), severity.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    if (severity == "trace")
-        return Severity::trace;
-    else if (severity == "debug")
-        return Severity::debug;
-    else if (severity == "info")
-        return Severity::info;
-    else if (severity == "notice")
-        return Severity::notice;
-    else if (severity == "warning")
-        return Severity::warning;
-    else if (severity == "error")
-        return Severity::error;
-    else if (severity == "fatal")
-        return Severity::fatal;
-    else
-        return def;
+    if (severity == "trace") return Severity::trace;
+    else if (severity == "debug") return Severity::debug;
+    else if (severity == "info") return Severity::info;
+    else if (severity == "notice") return Severity::notice;
+    else if (severity == "warning") return Severity::warning;
+    else if (severity == "error") return Severity::error;
+    else if (severity == "fatal") return Severity::fatal;
+    else return def;
 }
-
 
 static std::string to_string(Severity logSeverity)
 {
     switch (logSeverity)
     {
-        case Severity::trace:
-            return "Trace";
-        case Severity::debug:
-            return "Debug";
-        case Severity::info:
-            return "Info";
-        case Severity::notice:
-            return "Notice";
-        case Severity::warning:
-            return "Warn";
-        case Severity::error:
-            return "Error";
-        case Severity::fatal:
-            return "Fatal";
+        case Severity::trace: return "Trace";
+        case Severity::debug: return "Debug";
+        case Severity::info: return "Info";
+        case Severity::notice: return "Notice";
+        case Severity::warning: return "Warn";
+        case Severity::error: return "Error";
+        case Severity::fatal: return "Fatal";
         default:
             std::stringstream ss;
             ss << static_cast<int>(logSeverity);
@@ -230,111 +153,53 @@ static std::string to_string(Severity logSeverity)
     }
 }
 
-/**
- * @brief
- * Color constants used for console colors
- */
 enum class Color
 {
     none = 0,
-    NONE = 0,
     black = 1,
-    BLACK = 1,
     red = 2,
-    RED = 2,
     green = 3,
-    GREEN = 3,
     yellow = 4,
-    YELLOW = 4,
     blue = 5,
-    BLUE = 5,
     magenta = 6,
-    MAGENTA = 6,
     cyan = 7,
-    CYAN = 7,
-    white = 8,
-    WHITE = 8
+    white = 8
 };
 
-/**
- * @brief
- * Encapsulation of foreground and background color
- */
 struct TextColor
 {
-    TextColor(Color foreground = Color::none, Color background = Color::none) : foreground(foreground), background(background)
-    {
-    }
-
+    TextColor(Color foreground = Color::none, Color background = Color::none) : foreground(foreground), background(background) {}
     Color foreground;
     Color background;
 };
 
-/**
- * @brief
- * For Conditional logging of a log line
- */
 struct Conditional
 {
     using EvalFunc = std::function<bool()>;
 
-    Conditional() : func_([](void) { return true; })
-    {
-    }
-
-    Conditional(EvalFunc func) : func_(std::move(func))
-    {
-    }
-
-    Conditional(bool value) : func_([value](void) { return value; })
-    {
-    }
-
+    Conditional() : func_([](void) { return true; }) {}
+    Conditional(EvalFunc func) : func_(std::move(func)) {}
+    Conditional(bool value) : func_([value](void) { return value; }) {}
     virtual ~Conditional() = default;
 
-    virtual bool is_true() const
-    {
-        return func_();
-    }
+    virtual bool is_true() const { return func_(); }
 
 protected:
     EvalFunc func_;
 };
 
-/**
- * @brief
- * Timestamp of a log line
- *
- * to_string will convert the time stamp into a string, using the strftime syntax
- */
 struct Timestamp
 {
     using time_point_sys_clock = std::chrono::time_point<std::chrono::system_clock>;
 
-    Timestamp(std::nullptr_t) : is_null_(true)
-    {
-    }
-
-    Timestamp() : Timestamp(nullptr)
-    {
-    }
-
-    Timestamp(const time_point_sys_clock& time_point) : time_point(time_point), is_null_(false)
-    {
-    }
-
-    Timestamp(time_point_sys_clock&& time_point) : time_point(time_point), is_null_(false)
-    {
-    }
-
+    Timestamp(std::nullptr_t) : is_null_(true) {}
+    Timestamp() : Timestamp(nullptr) {}
+    Timestamp(const time_point_sys_clock& time_point) : time_point(time_point), is_null_(false) {}
+    Timestamp(time_point_sys_clock&& time_point) : time_point(time_point), is_null_(false) {}
     virtual ~Timestamp() = default;
 
-    explicit operator bool() const
-    {
-        return !is_null_;
-    }
+    explicit operator bool() const { return !is_null_; }
 
-    /// strftime format + proprietary "#ms" for milliseconds
     std::string to_string(const std::string& format = "%Y-%m-%d %H-%M-%S.#ms") const
     {
         std::time_t now_c = std::chrono::system_clock::to_time_t(time_point);
@@ -357,7 +222,6 @@ struct Timestamp
 
 private:
     bool is_null_;
-
     inline std::tm localtime_xp(std::time_t timer) const
     {
         std::tm bt;
@@ -374,43 +238,17 @@ private:
     }
 };
 
-/**
- * @brief
- * Tag (string) for log line
- */
 struct Tag
 {
-    Tag(std::nullptr_t) : is_null_(true)
-    {
-    }
-
-    Tag() : Tag(nullptr)
-    {
-    }
-
-    Tag(const char* text) : text(text ? text : ""), is_null_(text == nullptr)
-    {
-    }
-
-    Tag(const std::string& text) : text(text), is_null_(false)
-    {
-    }
-
-    Tag(std::string&& text) : text(std::move(text)), is_null_(false)
-    {
-    }
-
+    Tag(std::nullptr_t) : is_null_(true) {}
+    Tag() : Tag(nullptr) {}
+    Tag(const char* text) : text(text ? text : ""), is_null_(text == nullptr) {}
+    Tag(const std::string& text) : text(text), is_null_(false) {}
+    Tag(std::string&& text) : text(std::move(text)), is_null_(false) {}
     virtual ~Tag() = default;
 
-    explicit operator bool() const
-    {
-        return !is_null_;
-    }
-
-    bool operator<(const Tag& other) const
-    {
-        return (text < other.text);
-    }
+    explicit operator bool() const { return !is_null_; }
+    bool operator<(const Tag& other) const { return (text < other.text); }
 
     std::string text;
 
@@ -418,34 +256,15 @@ private:
     bool is_null_;
 };
 
-/**
- * @brief
- * Capture function, file and line number of the log line
- */
 struct Function
 {
-    Function(const std::string& name, const std::string& file, size_t line) : name(name), file(file), line(line), is_null_(false)
-    {
-    }
-
-    Function(std::string&& name, std::string&& file, size_t line) : name(std::move(name)), file(std::move(file)), line(line), is_null_(false)
-    {
-    }
-
-    Function(std::nullptr_t) : line(0), is_null_(true)
-    {
-    }
-
-    Function() : Function(nullptr)
-    {
-    }
-
+    Function(const std::string& name, const std::string& file, size_t line) : name(name), file(file), line(line), is_null_(false) {}
+    Function(std::string&& name, std::string&& file, size_t line) : name(std::move(name)), file(std::move(file)), line(line), is_null_(false) {}
+    Function(std::nullptr_t) : line(0), is_null_(true) {}
+    Function() : Function(nullptr) {}
     virtual ~Function() = default;
 
-    explicit operator bool() const
-    {
-        return !is_null_;
-    }
+    explicit operator bool() const { return !is_null_; }
 
     std::string name;
     std::string file;
@@ -455,61 +274,33 @@ private:
     bool is_null_;
 };
 
-/**
- * @brief
- * Collection of a log line's meta data
- */
 struct Metadata
 {
-    Metadata() : severity(Severity::trace), tag(nullptr), function(nullptr), timestamp(nullptr)
-    {
-    }
-
+    Metadata() : severity(Severity::trace), tag(nullptr), function(nullptr), timestamp(nullptr) {}
     Severity severity;
     Tag tag;
     Function function;
     Timestamp timestamp;
 };
 
-
 class Filter
 {
 public:
-    Filter()
-    {
-    }
-
-    Filter(Severity severity)
-    {
-        add_filter(severity);
-    }
+    Filter() {}
+    Filter(Severity severity) { add_filter(severity); }
 
     bool match(const Metadata& metadata) const
     {
-        if (tag_filter_.empty())
-            return true;
-
+        if (tag_filter_.empty()) return true;
         auto iter = tag_filter_.find(metadata.tag);
-        if (iter != tag_filter_.end())
-            return (metadata.severity >= iter->second);
-
+        if (iter != tag_filter_.end()) return (metadata.severity >= iter->second);
         iter = tag_filter_.find("*");
-        if (iter != tag_filter_.end())
-            return (metadata.severity >= iter->second);
-
+        if (iter != tag_filter_.end()) return (metadata.severity >= iter->second);
         return false;
     }
 
-    void add_filter(const Tag& tag, Severity severity)
-    {
-        tag_filter_[tag] = severity;
-    }
-
-    void add_filter(Severity severity)
-    {
-        tag_filter_["*"] = severity;
-    }
-
+    void add_filter(const Tag& tag, Severity severity) { tag_filter_[tag] = severity; }
+    void add_filter(Severity severity) { tag_filter_["*"] = severity; }
     void add_filter(const std::string& filter)
     {
         auto pos = filter.find(':');
@@ -523,27 +314,15 @@ private:
     std::map<Tag, Severity> tag_filter_;
 };
 
-
-/**
- * @brief
- * Abstract log sink
- *
- * All log sinks must inherit from this Sink
- */
 struct Sink
 {
-    Sink(Filter filter) : filter(std::move(filter))
-    {
-    }
-
+    Sink(Filter filter) : filter(std::move(filter)) {}
     virtual ~Sink() = default;
-
     virtual void log(const Metadata& metadata, const std::string& message) = 0;
 
     Filter filter;
 };
 
-/// ostream operators << for the meta data structs
 static std::ostream& operator<<(std::ostream& os, const Severity& log_severity);
 static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp);
 static std::ostream& operator<<(std::ostream& os, const Tag& tag);
@@ -554,14 +333,6 @@ static std::ostream& operator<<(std::ostream& os, const TextColor& text_color);
 
 using log_sink_ptr = std::shared_ptr<Sink>;
 
-/**
- * @brief
- * Main Logger class with "Log::init"
- *
- * Don't use it directly, but call once "Log::init" with your log sink instances.
- * The Log class will simply redirect clog to itself (as a streambuf) and
- * forward whatever went to clog to the log sink instances
- */
 class Log : public std::basic_streambuf<char, std::char_traits<char>>
 {
 public:
@@ -571,90 +342,38 @@ public:
         return instance_;
     }
 
-    /// Quick check if any sink would accept this log level/tag (optimization to avoid string construction)
     static bool should_log(SEVERITY severity, const char* tag = nullptr)
     {
-        Log& log = instance();
-        std::lock_guard<std::recursive_mutex> lock(log.mutex_);
-        
-        if (log.log_sinks_.empty()) return true; // If no sinks configured, default to logging
-        
-        // Convert old SEVERITY enum to new Severity enum
-        Severity new_severity = static_cast<Severity>(severity);
-        
-        Metadata temp_metadata;
-        temp_metadata.severity = new_severity;
-        temp_metadata.tag = tag;
-        
-        for (const auto& sink : log.log_sinks_)
-        {
-            if (sink->filter.match(temp_metadata))
-                return true;
-        }
-        return false;
+        return instance().should_log_internal(static_cast<Severity>(severity), tag);
     }
 
-    /// Overload for new Severity enum class
     static bool should_log(Severity severity, const char* tag = nullptr)
     {
-        Log& log = instance();
-        std::lock_guard<std::recursive_mutex> lock(log.mutex_);
-        
-        if (log.log_sinks_.empty()) return true; // If no sinks configured, default to logging
-        
-        Metadata temp_metadata;
-        temp_metadata.severity = severity;
-        temp_metadata.tag = tag;
-        
-        for (const auto& sink : log.log_sinks_)
-        {
-            if (sink->filter.match(temp_metadata))
-                return true;
-        }
-        return false;
+        return instance().should_log_internal(severity, tag);
     }
 
-    /// Cached version of should_log for better performance (implemented in aixlog.cpp)
     static bool should_log_cached(SEVERITY severity, const char* tag = nullptr);
-    
-    /// Cached version of should_log for new Severity enum class
     static bool should_log_cached(Severity severity, const char* tag = nullptr);
-    
-    /// Cached version of should_log for new Severity enum class with std::string tag
     static bool should_log_cached(Severity severity, const std::string& tag);
-    
-    /// Clear the should_log cache (call when log configuration changes)
+
     static void clearShouldLogCache();
-    
-    /// Get cache statistics for debugging
     static void getShouldLogCacheStats(size_t& hits, size_t& misses, size_t& size);
+    static void setShouldLogCacheMaxSize(size_t size);
 
-    /// Overload for old SEVERITY enum with std::string tag
-    static bool should_log(SEVERITY severity, const std::string& tag)
-    {
-        return should_log(severity, tag.c_str());
-    }
-
-    /// Overload for new Severity enum class with std::string tag
-    static bool should_log(Severity severity, const std::string& tag)
-    {
-        return should_log(severity, tag.c_str());
-    }
-
-    /// Without "init" every LOG(X) will simply go to clog
     static void init(const std::vector<log_sink_ptr>& log_sinks = {})
     {
-        Log::instance().log_sinks_.clear();
-        clearShouldLogCache(); // Clear cache when configuration changes
-
+        Log& log = instance();
+        std::lock_guard<std::recursive_mutex> lock(log.mutex_);
+        log.log_sinks_.clear();
+        clearShouldLogCache();
         for (const auto& sink : log_sinks)
-            Log::instance().add_logsink(sink);
+            log.add_logsink(sink);
     }
 
     template <typename T, typename... Ts>
     static std::shared_ptr<T> init(Ts&&... params)
     {
-        std::shared_ptr<T> sink = Log::instance().add_logsink<T>(std::forward<Ts>(params)...);
+        std::shared_ptr<T> sink = instance().add_logsink<T>(std::forward<Ts>(params)...);
         init({sink});
         return sink;
     }
@@ -673,26 +392,21 @@ public:
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         log_sinks_.push_back(sink);
-        clearShouldLogCache(); // Clear cache when sinks change
+        clearShouldLogCache();
     }
 
     void remove_logsink(const log_sink_ptr& sink)
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         log_sinks_.erase(std::remove(log_sinks_.begin(), log_sinks_.end(), sink), log_sinks_.end());
-        clearShouldLogCache(); // Clear cache when sinks change
+        clearShouldLogCache();
     }
-
-    static bool should_log_internal(Severity severity, const char* tag = nullptr);
-
-    // Set max cache size
-    static void setShouldLogCacheMaxSize(size_t size);
 
 protected:
     Log() noexcept : last_buffer_(nullptr), do_log_(true)
     {
         std::clog.rdbuf(this);
-        std::clog << Severity() << Tag() << Function() << Conditional() << AixLog::Color::NONE << std::flush;
+        std::clog << Severity() << Tag() << Function() << Conditional() << Color::none << std::flush;
     }
 
     virtual ~Log()
@@ -716,7 +430,6 @@ protected:
             get_stream().str("");
             get_stream().clear();
         }
-
         return 0;
     }
 
@@ -744,6 +457,21 @@ private:
     friend std::ostream& operator<<(std::ostream& os, const Function& function);
     friend std::ostream& operator<<(std::ostream& os, const Conditional& conditional);
 
+    bool should_log_internal(Severity severity, const char* tag = nullptr)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        if (log_sinks_.empty()) return true;
+        Metadata temp_metadata;
+        temp_metadata.severity = severity;
+        temp_metadata.tag = tag;
+        for (const auto& sink : log_sinks_)
+        {
+            if (sink->filter.match(temp_metadata))
+                return true;
+        }
+        return false;
+    }
+
     std::stringstream& get_stream()
     {
         auto id = std::this_thread::get_id();
@@ -755,61 +483,26 @@ private:
         return *last_buffer_;
     }
 
-    /// one buffer per thread to avoid mixed log lines
     std::map<std::thread::id, std::stringstream> buffer_;
-    /// the last thread id
     std::thread::id last_id_;
-    /// the last buffer
-    std::stringstream* last_buffer_ = nullptr;
+    std::stringstream* last_buffer_;
     Metadata metadata_;
     bool do_log_;
     std::vector<log_sink_ptr> log_sinks_;
     std::recursive_mutex mutex_;
 };
 
-/**
- * @brief
- * Null log sink
- *
- * Discards all log messages
- */
 struct SinkNull : public Sink
 {
-    SinkNull() : Sink(Filter())
-    {
-    }
-
-    void log(const Metadata& /*metadata*/, const std::string& /*message*/) override
-    {
-    }
+    SinkNull() : Sink(Filter()) {}
+    void log(const Metadata& /*metadata*/, const std::string& /*message*/) override {}
 };
 
-
-/**
- * @brief
- * Abstract log sink with support for formatting log message
- *
- * "format" in the c'tor defines a log pattern.
- * For every log message, these placeholders will be substituded:
- * - strftime syntax is used to format the logging time stamp (%Y, %m, %d, ...)
- * - #ms: milliseconds part of the logging time stamp with leading zeros
- * - #severity: log severity
- * - #tag_func: the log tag. If empty, the function
- * - #tag: the log tag
- * - #function: the function
- * - #message: the log message
- */
 struct SinkFormat : public Sink
 {
-    SinkFormat(const Filter& filter, const std::string& format) : Sink(filter), format_(format)
-    {
-    }
+    SinkFormat(const Filter& filter, const std::string& format) : Sink(filter), format_(format) {}
 
-    virtual void set_format(const std::string& format)
-    {
-        format_ = format;
-    }
-
+    virtual void set_format(const std::string& format) { format_ = format; }
     void log(const Metadata& metadata, const std::string& message) override = 0;
 
 protected:
@@ -827,7 +520,7 @@ protected:
         if (pos != std::string::npos)
         {
             std::stringstream ss;
-            ss << TextColor(Color::RED) << to_string(metadata.severity) << TextColor(Color::NONE);
+            ss << TextColor(Color::red) << to_string(metadata.severity) << TextColor(Color::none);
             result.replace(pos, 15, ss.str());
         }
 
@@ -861,477 +554,235 @@ protected:
     std::string format_;
 };
 
-/**
- * @brief
- * Formatted logging to cout
- */
 struct SinkCout : public SinkFormat
 {
-    SinkCout(const Filter& filter, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") : SinkFormat(filter, format)
-    {
-    }
-
-    void log(const Metadata& metadata, const std::string& message) override
-    {
-        do_log(std::cout, metadata, message);
-    }
+    SinkCout(const Filter& filter, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") : SinkFormat(filter, format) {}
+    void log(const Metadata& metadata, const std::string& message) override { do_log(std::cout, metadata, message); }
 };
 
-/**
- * @brief
- * Formatted logging to cerr
- */
 struct SinkCerr : public SinkFormat
 {
-    SinkCerr(const Filter& filter, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") : SinkFormat(filter, format)
-    {
-    }
-
-    void log(const Metadata& metadata, const std::string& message) override
-    {
-        do_log(std::cerr, metadata, message);
-    }
+    SinkCerr(const Filter& filter, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)") : SinkFormat(filter, format) {}
+    void log(const Metadata& metadata, const std::string& message) override { do_log(std::cerr, metadata, message); }
 };
 
-/**
- * @brief
- * Formatted logging to file
- */
 struct SinkFile : public SinkFormat
 {
-    SinkFile(const Filter& filter, const std::string& filename, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)")
-        : SinkFormat(filter, format)
-    {
-        ofs.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
-    }
+    SinkFile(const Filter& filter, const std::string& file_name, const std::string& format = "%Y-%m-%d %H-%M-%S.#ms [#severity] (#tag_func)")
+        : SinkFormat(filter, format), file_(file_name, std::ios_base::app) {}
+    void log(const Metadata& metadata, const std::string& message) override { do_log(file_, metadata, message); }
 
-    ~SinkFile() override
-    {
-        ofs.close();
-    }
-
-    void log(const Metadata& metadata, const std::string& message) override
-    {
-        do_log(ofs, metadata, message);
-    }
-
-protected:
-    mutable std::ofstream ofs;
+private:
+    std::ofstream file_;
 };
 
-#ifdef _WIN32
-/**
- * @brief
- * Windows: Logging to OutputDebugString
- *
- * Not tested due to unavailability of Windows
- */
-struct SinkOutputDebugString : public Sink
+#ifdef HAS_SYSLOG_
+struct SinkSyslog : public Sink
 {
-    SinkOutputDebugString(const Filter& filter) : Sink(filter)
-    {
-    }
-
-    void log(const Metadata& /*metadata*/, const std::string& message) override
-    {
-#ifdef UNICODE
-        std::wstring wide = std::wstring(message.begin(), message.end());
-        OutputDebugString(wide.c_str());
-#else
-        OutputDebugString(message.c_str());
-#endif
-    }
+    SinkSyslog(const std::string& ident, const Filter& filter) : Sink(filter) { openlog(ident.c_str(), LOG_PID, LOG_USER); }
+    ~SinkSyslog() override { closelog(); }
+    void log(const Metadata& metadata, const std::string& message) override { syslog(static_cast<int>(metadata.severity), "%s", message.c_str()); }
 };
 #endif
 
 #ifdef HAS_APPLE_UNIFIED_LOG_
-/**
- * @brief
- * macOS: Logging to Apples system logger
- */
-struct SinkUnifiedLogging : public Sink
+struct SinkAppleSystemLog : public Sink
 {
-    SinkUnifiedLogging(const Filter& filter) : Sink(filter)
-    {
-    }
-
-    os_log_type_t get_os_log_type(Severity severity) const
-    {
-        // https://developer.apple.com/documentation/os/os_log_type_t?language=objc
-        switch (severity)
-        {
-            case Severity::trace:
-            case Severity::debug:
-                return OS_LOG_TYPE_DEBUG;
-            case Severity::info:
-            case Severity::notice:
-                return OS_LOG_TYPE_INFO;
-            case Severity::warning:
-                return OS_LOG_TYPE_DEFAULT;
-            case Severity::error:
-                return OS_LOG_TYPE_ERROR;
-            case Severity::fatal:
-                return OS_LOG_TYPE_FAULT;
-            default:
-                return OS_LOG_TYPE_DEFAULT;
-        }
-    }
-
+    SinkAppleSystemLog(const std::string& ident, const Filter& filter) : Sink(filter), ident_(ident) {}
     void log(const Metadata& metadata, const std::string& message) override
     {
-        os_log_with_type(OS_LOG_DEFAULT, get_os_log_type(metadata.severity), "%{public}s", message.c_str());
-    }
-};
-#endif
-
-#ifdef HAS_SYSLOG_
-/**
- * @brief
- * UNIX: Logging to syslog
- */
-struct SinkSyslog : public Sink
-{
-    SinkSyslog(const char* ident, const Filter& filter) : Sink(filter)
-    {
-        openlog(ident, LOG_PID, LOG_USER);
-    }
-
-    ~SinkSyslog() override
-    {
-        closelog();
-    }
-
-    int get_syslog_priority(Severity severity) const
-    {
-        // http://unix.superglobalmegacorp.com/Net2/newsrc/sys/syslog.h.html
-        switch (severity)
+        os_log_type_t type;
+        switch (metadata.severity)
         {
             case Severity::trace:
-            case Severity::debug:
-                return LOG_DEBUG;
+            case Severity::debug: type = OS_LOG_TYPE_DEBUG; break;
             case Severity::info:
-                return LOG_INFO;
-            case Severity::notice:
-                return LOG_NOTICE;
-            case Severity::warning:
-                return LOG_WARNING;
+            case Severity::notice: type = OS_LOG_TYPE_INFO; break;
+            case Severity::warning: type = OS_LOG_TYPE_DEFAULT; break;
             case Severity::error:
-                return LOG_ERR;
-            case Severity::fatal:
-                return LOG_CRIT;
-            default:
-                return LOG_INFO;
+            case Severity::fatal: type = OS_LOG_TYPE_ERROR; break;
+            default: type = OS_LOG_TYPE_DEFAULT; break;
         }
+        os_log_with_type(os_log_create(ident_.c_str(), to_string(metadata.severity).c_str()), type, "%{public}s", message.c_str());
     }
 
-    void log(const Metadata& metadata, const std::string& message) override
-    {
-        syslog(get_syslog_priority(metadata.severity), "(%s) %s", metadata.tag.text.c_str(), message.c_str());
-    }
+private:
+    std::string ident_;
 };
 #endif
 
 #ifdef __ANDROID__
-/**
- * @brief
- * Android: Logging to android log
- *
- * Use logcat to read the logs
- */
-struct SinkAndroid : public Sink
+struct SinkLogcat : public Sink
 {
-    SinkAndroid(const std::string& ident, const Filter& filter) : Sink(filter), ident_(ident)
-    {
-    }
-
-    android_LogPriority get_android_prio(Severity severity) const
-    {
-        // https://developer.android.com/ndk/reference/log_8h.html
-        switch (severity)
-        {
-            case Severity::trace:
-                return ANDROID_LOG_VERBOSE;
-            case Severity::debug:
-                return ANDROID_LOG_DEBUG;
-            case Severity::info:
-            case Severity::notice:
-                return ANDROID_LOG_INFO;
-            case Severity::warning:
-                return ANDROID_LOG_WARN;
-            case Severity::error:
-                return ANDROID_LOG_ERROR;
-            case Severity::fatal:
-                return ANDROID_LOG_FATAL;
-            default:
-                return ANDROID_LOG_UNKNOWN;
-        }
-    }
-
+    SinkLogcat(const std::string& ident, const Filter& filter) : Sink(filter), ident_(ident) {}
     void log(const Metadata& metadata, const std::string& message) override
     {
-        std::string tag = metadata.tag ? metadata.tag.text : (metadata.function ? metadata.function.name : "");
-        std::string log_tag;
-        if (!ident_.empty() && !tag.empty())
-            log_tag = ident_ + "." + tag;
-        else if (!ident_.empty())
-            log_tag = ident_;
-        else if (!tag.empty())
-            log_tag = tag;
-        else
-            log_tag = "log";
-
-        __android_log_write(get_android_prio(metadata.severity), log_tag.c_str(), message.c_str());
+        android_LogPriority priority;
+        switch (metadata.severity)
+        {
+            case Severity::trace: priority = ANDROID_LOG_VERBOSE; break;
+            case Severity::debug: priority = ANDROID_LOG_DEBUG; break;
+            case Severity::info:
+            case Severity::notice: priority = ANDROID_LOG_INFO; break;
+            case Severity::warning: priority = ANDROID_LOG_WARN; break;
+            case Severity::error: priority = ANDROID_LOG_ERROR; break;
+            case Severity::fatal: priority = ANDROID_LOG_FATAL; break;
+            default: priority = ANDROID_LOG_DEFAULT; break;
+        }
+        __android_log_write(priority, ident_.c_str(), message.c_str());
     }
 
-protected:
+private:
     std::string ident_;
 };
 #endif
 
 #ifdef _WIN32
-/**
- * @brief
- * Windows: Logging to event logger
- *
- * Not tested due to unavailability of Windows
- */
 struct SinkEventLog : public Sink
 {
-    SinkEventLog(const std::string& ident, const Filter& filter) : Sink(filter)
+    SinkEventLog(const std::string& source, const Filter& filter) : Sink(filter), source_(source) { handle_ = RegisterEventSourceA(nullptr, source.c_str()); }
+    ~SinkEventLog() override { if (handle_) DeregisterEventSource(handle_); }
+    void log(const Metadata& metadata, const std::string& message) override
     {
-#ifdef UNICODE
-        std::wstring wide = std::wstring(ident.begin(), ident.end()); // stijnvdb: RegisterEventSource expands to RegisterEventSourceW which takes wchar_t
-        event_log = RegisterEventSource(NULL, wide.c_str());
-#else
-        event_log = RegisterEventSource(NULL, ident.c_str());
-#endif
-    }
-
-    WORD get_type(Severity severity) const
-    {
-        // https://msdn.microsoft.com/de-de/library/windows/desktop/aa363679(v=vs.85).aspx
-        switch (severity)
+        if (!handle_) return;
+        WORD type;
+        switch (metadata.severity)
         {
             case Severity::trace:
             case Severity::debug:
-                return EVENTLOG_INFORMATION_TYPE;
             case Severity::info:
-            case Severity::notice:
-                return EVENTLOG_SUCCESS;
-            case Severity::warning:
-                return EVENTLOG_WARNING_TYPE;
+            case Severity::notice: type = EVENTLOG_INFORMATION_TYPE; break;
+            case Severity::warning: type = EVENTLOG_WARNING_TYPE; break;
             case Severity::error:
-            case Severity::fatal:
-                return EVENTLOG_ERROR_TYPE;
-            default:
-                return EVENTLOG_INFORMATION_TYPE;
+            case Severity::fatal: type = EVENTLOG_ERROR_TYPE; break;
+            default: type = EVENTLOG_INFORMATION_TYPE; break;
         }
-    }
-
-    void log(const Metadata& metadata, const std::string& message) override
-    {
-#ifdef UNICODE
-        std::wstring wide = std::wstring(message.begin(), message.end());
-        // We need this temp variable because we cannot take address of rValue
-        const auto* c_str = wide.c_str();
-        ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &c_str, NULL);
-#else
-        const auto* c_str = message.c_str();
-        ReportEvent(event_log, get_type(metadata.severity), 0, 0, NULL, 1, 0, &c_str, NULL);
-#endif
-    }
-
-protected:
-    HANDLE event_log;
-};
-#endif
-
-/**
- * @brief
- * Log to the system's native sys logger
- *
- * - Android: Android log
- * - macOS:   unified log
- * - Windows: event log
- * - Unix:    syslog
- */
-struct SinkNative : public Sink
-{
-    SinkNative(const std::string& ident, const Filter& filter) : Sink(filter), log_sink_(nullptr), ident_(ident)
-    {
-#ifdef __ANDROID__
-        log_sink_ = std::make_shared<SinkAndroid>(ident_, filter);
-#elif HAS_APPLE_UNIFIED_LOG_
-        log_sink_ = std::make_shared<SinkUnifiedLogging>(filter);
-#elif _WIN32
-        log_sink_ = std::make_shared<SinkEventLog>(ident, filter);
-#elif HAS_SYSLOG_
-        log_sink_ = std::make_shared<SinkSyslog>(ident_.c_str(), filter);
-#else
-        /// will not throw or something. Use "get_logger()" to check for success
-        log_sink_ = nullptr;
-#endif
-    }
-
-    virtual log_sink_ptr get_logger()
-    {
-        return log_sink_;
-    }
-
-    void log(const Metadata& metadata, const std::string& message) override
-    {
-        if (log_sink_ != nullptr)
-            log_sink_->log(metadata, message);
-    }
-
-protected:
-    log_sink_ptr log_sink_;
-    std::string ident_;
-};
-
-/**
- * @brief
- * Forward log messages to a callback function
- *
- * Pass the callback function to the c'tor.
- * This can be any function that matches the signature of "callback_fun"
- * Might also be a lambda function
- */
-struct SinkCallback : public Sink
-{
-    using callback_fun = std::function<void(const Metadata& metadata, const std::string& message)>;
-
-    SinkCallback(const Filter& filter, callback_fun callback) : Sink(filter), callback_(std::move(callback))
-    {
-    }
-
-    void log(const Metadata& metadata, const std::string& message) override
-    {
-        if (callback_)
-            callback_(metadata, message);
+        const char* message_cstr = message.c_str();
+        ReportEventA(handle_, type, 0, 0, nullptr, 1, 0, &message_cstr, nullptr);
     }
 
 private:
-    callback_fun callback_;
+    std::string source_;
+    HANDLE handle_;
+};
+#endif
+
+struct SinkCallback : public Sink
+{
+    using Callback = std::function<void(const Metadata& metadata, const std::string& message)>;
+    SinkCallback(const Filter& filter, Callback callback) : Sink(filter), callback_(std::move(callback)) {}
+    void log(const Metadata& metadata, const std::string& message) override { callback_(metadata, message); }
+
+private:
+    Callback callback_;
 };
 
-/**
- * @brief
- * ostream << operator for "Severity"
- *
- * Severity must be the first thing that is logged into clog, since it will reset the loggers metadata.
- */
+class NullBuffer : public std::streambuf
+{
+public:
+    int overflow(int c) override { return c; }
+};
+
+class NullStream : public std::ostream
+{
+public:
+    NullStream() : std::ostream(&buffer) {}
+private:
+    NullBuffer buffer;
+};
+
+inline NullStream& get_null_stream()
+{
+    static NullStream instance;
+    return instance;
+}
+
 static std::ostream& operator<<(std::ostream& os, const Severity& log_severity)
 {
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        if (log->metadata_.severity != log_severity)
-        {
-            log->sync();
-            log->metadata_.severity = log_severity;
-            log->metadata_.timestamp = nullptr;
-            log->metadata_.tag = nullptr;
-            log->metadata_.function = nullptr;
-            log->do_log_ = true;
-        }
-    }
-    else
-    {
-        os << to_string(log_severity);
-    }
+    Log::instance().metadata_.severity = log_severity;
     return os;
 }
 
 static std::ostream& operator<<(std::ostream& os, const Timestamp& timestamp)
 {
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.timestamp = timestamp;
-    }
-    else if (timestamp)
-    {
-        os << timestamp.to_string();
-    }
+    Log::instance().metadata_.timestamp = timestamp;
     return os;
 }
 
 static std::ostream& operator<<(std::ostream& os, const Tag& tag)
 {
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.tag = tag;
-    }
-    else if (tag)
-    {
-        os << tag.text;
-    }
+    Log::instance().metadata_.tag = tag;
     return os;
 }
 
 static std::ostream& operator<<(std::ostream& os, const Function& function)
 {
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->metadata_.function = function;
-    }
-    else if (function)
-    {
-        os << function.name;
-    }
+    Log::instance().metadata_.function = function;
     return os;
 }
 
 static std::ostream& operator<<(std::ostream& os, const Conditional& conditional)
 {
-    Log* log = dynamic_cast<Log*>(os.rdbuf());
-    if (log != nullptr)
-    {
-        std::lock_guard<std::recursive_mutex> lock(log->mutex_);
-        log->do_log_ = conditional.is_true();
-    }
-    return os;
-}
-
-static std::ostream& operator<<(std::ostream& os, const TextColor& text_color)
-{
-    os << "\033[";
-    if ((text_color.foreground == Color::none) && (text_color.background == Color::none))
-        os << "0"; // reset colors if no params
-
-    if (text_color.foreground != Color::none)
-    {
-        os << 29 + static_cast<int>(text_color.foreground);
-        if (text_color.background != Color::none)
-            os << ";";
-    }
-    if (text_color.background != Color::none)
-        os << 39 + static_cast<int>(text_color.background);
-    os << "m";
-
+    Log::instance().do_log_ = conditional.is_true();
     return os;
 }
 
 static std::ostream& operator<<(std::ostream& os, const Color& color)
 {
-    os << TextColor(color);
-    return os;
+    return os << TextColor(color);
 }
 
+static std::ostream& operator<<(std::ostream& os, const TextColor& text_color)
+{
+#ifdef _WIN32
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hConsole, &csbi);
+    WORD current = csbi.wAttributes;
+    WORD fg = 0;
+    switch (text_color.foreground)
+    {
+        case Color::white: fg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
+        case Color::red: fg = FOREGROUND_RED | FOREGROUND_INTENSITY; break;
+        case Color::green: fg = FOREGROUND_GREEN | FOREGROUND_INTENSITY; break;
+        case Color::blue: fg = FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
+        case Color::yellow: fg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; break;
+        case Color::cyan: fg = FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
+        case Color::magenta: fg = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
+        case Color::black: fg = 0; break;
+        case Color::none: fg = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE; break;
+    }
+    WORD bg = 0;
+    switch (text_color.background)
+    {
+        case Color::white: bg = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY; break;
+        case Color::red: bg = BACKGROUND_RED | BACKGROUND_INTENSITY; break;
+        case Color::green: bg = BACKGROUND_GREEN | BACKGROUND_INTENSITY; break;
+        case Color::blue: bg = BACKGROUND_BLUE | BACKGROUND_INTENSITY; break;
+        case Color::yellow: bg = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_INTENSITY; break;
+        case Color::cyan: bg = BACKGROUND_GREEN | BACKGROUND_BLUE | BACKGROUND_INTENSITY; break;
+        case Color::magenta: bg = BACKGROUND_RED | BACKGROUND_BLUE | BACKGROUND_INTENSITY; break;
+        case Color::black: bg = 0; break;
+        case Color::none: bg = 0; break;
+    }
+    SetConsoleTextAttribute(hConsole, fg | bg);
+#else
+    const char* color_codes[] = {"", "30", "31", "32", "33", "34", "35", "36", "37"};
+    const char* bg_color_codes[] = {"", "40", "41", "42", "43", "44", "45", "46", "47"};
+    if (text_color.foreground == Color::none && text_color.background == Color::none)
+        os << "\033[0m";
+    else
+        os << "\033[" << color_codes[static_cast<int>(text_color.foreground)] << ";" << bg_color_codes[static_cast<int>(text_color.background)] << "m";
+#endif
+    return os;
+}
 
 } // namespace AixLog
 
 #ifdef _WIN32
-// We restore the ERROR Windows macro
 #pragma pop_macro("ERROR")
 #pragma pop_macro("DEBUG")
 #endif
 
 #endif // AIX_LOG_HPP
+
