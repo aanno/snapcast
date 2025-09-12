@@ -678,6 +678,35 @@ private:
     Callback callback_;
 };
 
+struct SinkNative : public Sink
+{
+    SinkNative(const std::string& ident, const Filter& filter) : Sink(filter), ident_(ident)
+    {
+#ifdef __ANDROID__
+        log_sink_ = std::make_shared<SinkLogcat>(ident, filter);
+#elif defined(HAS_APPLE_UNIFIED_LOG_)
+        log_sink_ = std::make_shared<SinkAppleSystemLog>(ident, filter);
+#elif defined(_WIN32)
+        log_sink_ = std::make_shared<SinkEventLog>(ident, filter);
+#elif defined(HAS_SYSLOG_)
+        log_sink_ = std::make_shared<SinkSyslog>(ident, filter);
+#else
+        log_sink_ = std::make_shared<SinkNull>();
+#endif
+    }
+
+    void log(const Metadata& metadata, const std::string& message) override
+    {
+        if (log_sink_) {
+            log_sink_->log(metadata, message);
+        }
+    }
+
+private:
+    log_sink_ptr log_sink_;
+    std::string ident_;
+};
+
 class NullBuffer : public std::streambuf
 {
 public:
