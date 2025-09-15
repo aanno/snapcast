@@ -453,3 +453,9 @@ The logging system (`common/aixlog.hpp/cpp`) has been enhanced with caching for 
 - **Memory Optimized**: Buffer pool and log caching reduce allocation overhead
 - **Comprehensive Diagnostics**: Real-time monitoring of zerocopy, buffer pool, and cache performance
 - **Zero Code Changes**: Existing client code unchanged, transparent enhancement
+
+## Acknowledgements
+
+Research for this implementation was done with perplexity AI. Most of the inital code was written by Claude Code AI, including this documentation.
+
+However, all tests, prompt directions, and the initial PR were done by [aanno](https://github.com/aanno).
