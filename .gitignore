@@ -8,8 +8,12 @@
 /tmp/
 /scripts2/
 /.claude/
-/snapserver.log
-/snapclient.log
+/snapserver*.log
+/snapclient*.log
+*.orig
+/*.hpp
+/*.cpp
+/cpu.json
 
 # Precompiled Headers
 *.gch
