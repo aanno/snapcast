@@ -1,0 +1,4647 @@
+{"sysstat": {
+	"hosts": [
+		{
+			"nodename": "blacksnapper",
+			"sysname": "Linux",
+			"release": "6.16.3-200.fc42.x86_64",
+			"machine": "x86_64",
+			"number-of-cpus": 12,
+			"date": "03.09.2025",
+			"statistics": [
+				{
+					"timestamp": "1756893498",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 0.99, "system": 1.98, "guest": 0.00, "wait": 0.00, "cpu": 2.97, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 146.53, "majflt/s": 0.00, "VSZ": 629360, "RSS": 18564, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 145.54, "nvcswch/s": 2.97, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 39, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893499",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 1.00, "system": 0.00, "guest": 0.00, "wait": 0.00, "cpu": 1.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 629360, "RSS": 18564, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 16.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 39, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893500",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 1.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 2.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 629360, "RSS": 18564, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 8.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 10.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 39, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893501",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 1.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 3.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 629360, "RSS": 18564, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 13.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 39, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893502",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 2.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 3.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 106.00, "majflt/s": 0.00, "VSZ": 695136, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 47.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893503",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 4.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893504",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893505",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 73.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893506",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 78.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893507",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893508",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 70.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893509",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 56.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893510",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893511",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 1.00, "cpu": 5.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 13.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893512",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893513",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893514",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 83.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893515",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 8.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893516",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 16.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893517",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 6.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893518",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 60.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893519",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 7.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893520",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 84.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893521",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893522",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893523",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893524",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893525",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893526",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 695252, "RSS": 18692, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893527",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 1.00, "cpu": 6.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 31.00, "majflt/s": 0.00, "VSZ": 711644, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 4.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 58.00, "nvcswch/s": 11.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 12, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893528",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 6.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 15.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893529",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893530",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 1, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893531",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 61.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893532",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 60.00, "nvcswch/s": 15.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893533",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893534",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 77.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893535",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 76.00, "nvcswch/s": 10.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893536",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 7.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893537",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893538",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893539",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 61.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893540",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 76.00, "nvcswch/s": 9.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893541",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893542",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893543",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 11.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893544",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 1.00, "cpu": 5.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893545",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 4.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893546",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893547",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893548",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893549",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 78.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893550",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 24.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893551",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893552",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893553",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893554",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893555",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 4.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 79.00, "nvcswch/s": 6.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893556",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 70.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893557",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 4.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 12, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893558",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893559",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 60.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893560",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893561",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893562",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893563",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893564",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 76.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893565",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893566",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 1.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 16.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893567",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 58.00, "nvcswch/s": 15.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893568",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893569",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893570",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893571",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893572",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 58.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893573",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 24.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893574",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893575",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893576",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893577",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 73.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893578",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 11.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893579",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893580",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893581",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 61.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893582",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893583",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893584",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 77.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893585",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893586",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893587",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 4.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 12, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893588",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893589",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 1.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893590",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 78.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893591",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 78.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893592",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 78.00, "nvcswch/s": 11.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893593",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 70.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893594",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893595",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893596",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893597",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893598",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893599",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 79.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893600",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893601",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893602",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 10.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893603",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893604",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893605",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893606",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893607",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 60.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893608",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 58.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893609",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893610",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 1.00, "cpu": 6.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 61.00, "nvcswch/s": 10.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893611",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 83.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893612",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893613",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 6.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893614",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 9.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893615",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 73.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893616",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893617",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 4.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 60.00, "nvcswch/s": 6.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 12, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893618",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893619",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 74.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893620",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893621",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 78.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893622",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893623",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893624",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 63.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893625",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 2.00, "system": 0.00, "guest": 0.00, "wait": 0.00, "cpu": 2.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893626",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 2.00, "system": 0.00, "guest": 0.00, "wait": 0.00, "cpu": 2.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893627",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.96, "system": 0.99, "guest": 0.00, "wait": 0.00, "cpu": 4.95, "cpu_nr": 1, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 73.27, "nvcswch/s": 0.99, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893628",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893629",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 1.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 70.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893630",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893631",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893632",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 2.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 3.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893633",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 80.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893634",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 77.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893635",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893636",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 9.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893637",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893638",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 58.00, "nvcswch/s": 10.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893639",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 10.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893640",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 76.00, "nvcswch/s": 6.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893641",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 2.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893642",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893643",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893644",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 16.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893645",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893646",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 1.00, "cpu": 7.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 73.00, "nvcswch/s": 13.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893647",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 1, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 12, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893648",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893649",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 70.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893650",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893651",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893652",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 8, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 76.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893653",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893654",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893655",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 6.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893656",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 79.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893657",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 1, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893658",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893659",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 61.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893660",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 84.00, "nvcswch/s": 14.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893661",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893662",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893663",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 66.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893664",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 59.00, "nvcswch/s": 16.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893665",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893666",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 76.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893667",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 1, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 70.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893668",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 1.00, "cpu": 6.00, "cpu_nr": 7, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 79.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893669",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 0.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893670",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 68.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893671",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 1.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 4.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 7.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893672",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 4, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 71.00, "nvcswch/s": 7.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893673",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 5.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893674",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 1, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893675",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 77.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893676",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 10, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 79.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893677",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 4.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 59.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 12, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893678",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 11, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 62.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893679",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 65.00, "nvcswch/s": 9.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893680",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 3, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 75.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893681",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 5, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 77.00, "nvcswch/s": 4.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893682",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 3.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 1, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 73.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893683",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 2.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893684",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 5.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 3.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893685",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 4.00, "guest": 0.00, "wait": 0.00, "cpu": 8.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 72.00, "nvcswch/s": 1.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893686",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 6, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 78.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893687",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 7.00, "cpu_nr": 0, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 74.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893688",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 4.00, "system": 2.00, "guest": 0.00, "wait": 0.00, "cpu": 6.00, "cpu_nr": 9, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 69.00, "nvcswch/s": 0.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893689",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 5.00, "system": 3.00, "guest": 0.00, "wait": 1.00, "cpu": 8.00, "cpu_nr": 2, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 64.00, "nvcswch/s": 25.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				},
+				{
+					"timestamp": "1756893690",
+					"task-cpu-load": [
+						{"UID": "1000", "PID": "73023", "usr": 3.00, "system": 1.00, "guest": 0.00, "wait": 0.00, "cpu": 4.00, "cpu_nr": 1, "cmd": "snapserver"}
+					],
+					"task-memory": [
+						{"UID": "1000", "PID": "73023", "minflt/s": 0.00, "majflt/s": 0.00, "VSZ": 777180, "RSS": 18948, "MEM": 0.06, "cmd": "snapserver"}
+					],
+					"stack": [
+						{"UID": "1000", "PID": "73023", "StkSize": 136, "StkRef": 48, "cmd": "snapserver"}
+					],
+					"io": [
+						{"UID": "1000", "PID": "73023", "kB_rd/s": 0.00, "kB_wr/s": 0.00, "kB_ccwr/s": 0.00, "iodelay": 0, "cmd": "snapserver"}
+					],
+					"context-switch": [
+						{"UID": "1000", "PID": "73023", "cswch/s": 67.00, "nvcswch/s": 11.00, "cmd": "snapserver"}
+					],
+					"kernel": [
+						{"UID": "1000", "PID": "73023", "threads": 10, "fd-nr": 42, "cmd": "snapserver"}
+					],
+					"realtime": [
+						{"UID": "1000", "PID": "73023", "prio": 0, "policy": "NORMAL", "cmd": "snapserver"}
+					]
+				}
+			]
+		}
+	]
+}
+}

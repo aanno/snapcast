@@ -4,6 +4,13 @@
 *.o
 *.obj
 
+# aanno
+/tmp/
+/scripts2/
+/.claude/
+/snapserver.log
+/snapclient.log
+
 # Precompiled Headers
 *.gch
 *.pch

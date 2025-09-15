@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch snapclient",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/snapclient",
+      "args": [
+        "--player", "pipewire", "tcp://localhost:1704",
+        "-s", "1",
+        "--logsink", "stdout", "--logfilter", "*:trace"],
+      "stopAtEntry": true,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "preLaunchTask": "cmake-build",
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+    },
+    {
+      "name": "Debug CMake Target",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb"
+    }
+  ]
+}
