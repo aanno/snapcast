@@ -219,7 +219,7 @@ public:
     std::string getMacAddress() override;
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
 
-private:
+protected:
     boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
     void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) override;
 

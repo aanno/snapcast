@@ -85,6 +85,8 @@ struct ClientSettings
         std::filesystem::path certificate_key;
         /// Password for encrypted key file
         std::string key_password;
+        /// Enable zero-copy networking for improved performance
+        bool zerocopy{false};
         /// Is ssl in use?
         bool isSsl() const
         {

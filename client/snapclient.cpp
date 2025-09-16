@@ -176,6 +176,7 @@ int main(int argc, char** argv)
 #if defined(HAS_ALSA) || defined(HAS_PULSE) || defined(HAS_WASAPI) || defined(HAS_PIPEWIRE)
         auto listSwitch = op.add<Switch>("l", "list", "List PCM devices");
         op.add<Value<string>>("s", "soundcard", "Index or name of the PCM device", pcm_device, &pcm_device);
+        auto zerocopySwitch = op.add<Switch>("z", "zerocopy", "Enable zero-copy networking for improved performance");
 #endif
         op.add<Value<int>>("", "latency", "Latency of the PCM device", 0, &settings.player.latency);
 #ifdef HAS_SOXR
@@ -284,6 +285,13 @@ int main(int argc, char** argv)
                 cout << "Failed to get device list: " << e.what() << "\n";
             }
             exit(EXIT_SUCCESS);
+        }
+        
+        // Handle zero-copy flag
+        if (zerocopySwitch->is_set())
+        {
+            settings.server.zerocopy = true;
+            LOG(INFO, LOG_TAG) << "Zero-copy networking enabled\n";
         }
 #endif
 
