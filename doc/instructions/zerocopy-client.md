@@ -253,3 +253,59 @@ int main() {
 
 [^4_17]: https://codemia.io/blog/path/Zero-Copy-IO-From-sendfile-to-iouring--Evolution-and-Impact-on-Latency-in-Distributed-Logs
 
+
+---
+
+# So for mmap-based TCP Zero-Copy Receive: What a the conditions? And what is the alignment requirement here?
+
+For **mmap-based TCP zero-copy receive**, strict conditions must be met for true zero-copy to occur:
+
+### Conditions and Alignment Requirements
+
+- **Page Alignment**: The user-supplied buffer's address (passed to the kernel for mapping) must be page-aligned. This requirement is automatically satisfied if the address comes from mmap with regular settings.[^5_2][^5_3]
+- **Page Size Multiples**: The requested buffer length must be a multiple of the system page size (typically 4096 bytes).[^5_3][^5_2]
+- **Packet Alignment**: The incoming TCP payload must be page-aligned and exactly fill one or more pages. This means the kernel can only zero-copy map the data if it arrives in units that match system page boundaries—otherwise, the call will fail, and the application should fall back to recv().[^5_3]
+- **MTU and Protocol Headers**: The network’s MTU and header overhead must be configured so that after headers, data fills a whole page. If TCP/IP headers and options result in less than the expected payload per page, true zero-copy may not be possible for every packet.[^5_5]
+- **No Urgent Data or Out-of-Band Data**: If there is urgent data queued, or TCP options/segment structure interfere, the mapping will not succeed and must fall back to normal copy.[^5_3]
+- **Single-threaded or High-Throughput Applications**: The mechanism is generally effective in applications with high, steady receive bandwidth, large payloads, and a single receiving socket.[^5_4]
+
+
+### Example Alignment Calculation
+
+If the system page size is 4096, then:
+
+- Buffer address for mmap must be page-aligned (e.g., 0x100000, 0x101000, ...).
+- Requested size should be a multiple of 4096 (4096, 8192, etc.).
+- The TCP stack and application should coordinate to send payloads that match these boundaries for maximal effectiveness.
+
+
+### Practical Notes
+
+- If alignment is not exact or if only part of a page is available, the zero-copy receive may not work; kernel returns EINVAL and the user must fall back to normal recv().[^5_2][^5_3]
+- Proper tuning of MTU, TCP_MAXSEG, and message sizes is necessary for optimal use.[^5_5]
+
+**In summary:** mmap-based TCP zero-copy receive requires both the user's buffer and the incoming data to be strictly page-aligned and sized, with buffer sizes in multiples of the system page size for the mapping to succeed without copy.[^5_2][^5_5][^5_3]
+<span style="display:none">[^5_1][^5_10][^5_6][^5_7][^5_8][^5_9]</span>
+
+<div style="text-align: center">⁂</div>
+
+[^5_1]: https://blogs.oracle.com/linux/post/zero-copy-networking-in-uek6
+
+[^5_2]: https://lwn.net/Articles/754681/
+
+[^5_3]: https://lwn.net/Articles/752188/
+
+[^5_4]: https://patchwork.ozlabs.org/patch/904003/
+
+[^5_5]: https://legacy.netdevconf.info/0x14/pub/slides/62/Implementing TCP RX zero copy.pdf
+
+[^5_6]: https://docs.kernel.org/networking/iou-zcrx.html
+
+[^5_7]: https://goperf.dev/01-common-patterns/zero-copy/
+
+[^5_8]: https://docs.kernel.org/networking/packet_mmap.html
+
+[^5_9]: https://stackoverflow.com/questions/77425204/how-do-zero-copy-networking-libraries-avoid-copies-when-they-read-write-packets
+
+[^5_10]: https://static.aminer.org/pdf/PDF/000/253/158/design_and_implementation_of_zero_copy_data_path_for_efficient.pdf
+
