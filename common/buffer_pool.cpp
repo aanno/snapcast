@@ -71,8 +71,8 @@ DynamicBufferPool::BufferGuard DynamicBufferPool::acquire(size_t min_size)
             buffer->resize_if_needed(target_size);
             ++buffers_reused_;
             
-            LOG(TRACE, LOG_TAG) << "Reused buffer from size bucket " << it->first 
-                                << " for requested size " << target_size << "\n";
+            // LOG(TRACE, LOG_TAG) << "Reused buffer from size bucket " << it->first 
+            //                     << " for requested size " << target_size << "\n";
             
             return { *this, std::move(buffer) };
         }
@@ -105,7 +105,7 @@ void DynamicBufferPool::release(std::unique_ptr<Buffer> buffer)
         buffer->last_used = std::chrono::steady_clock::now();
         available_buffers_[size_bucket].push_back(std::move(buffer));
         
-        LOG(TRACE, LOG_TAG) << "Returned buffer to pool, size bucket " << size_bucket << "\n";
+        // LOG(TRACE, LOG_TAG) << "Returned buffer to pool, size bucket " << size_bucket << "\n";
     }
     else
     {

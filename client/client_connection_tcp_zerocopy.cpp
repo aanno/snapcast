@@ -130,7 +130,7 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
         // Decide whether to use TRUE zero-copy for the message body
         if (zerocopy_available_ && base_message_.size >= ZEROCOPY_THRESHOLD)
         {
-            LOG(DEBUG, LOG_TAG) << "Attempting TRUE zero-copy receive for " << base_message_.size << " byte message\\n";
+            // LOG(DEBUG, LOG_TAG) << "Attempting TRUE zero-copy receive for " << base_message_.size << " byte message\\n";
             if (tryZeroCopyReceive(base_message_.size, handler))
             {
                 return; // Zero-copy receive initiated
@@ -193,7 +193,7 @@ bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t message_size, const 
     zerocopy_successful_++;
     zerocopy_bytes_ += message_size;
     
-    LOG(TRACE, LOG_TAG) << "TRUE zero-copy receive successful: " << message_size << " bytes directly into buffer pool (NO COPIES)\\n";
+    // LOG(TRACE, LOG_TAG) << "TRUE zero-copy receive successful: " << message_size << " bytes directly into buffer pool (NO COPIES)\\n";
     
     // Process the received message directly from buffer pool buffer (NO COPY)
     auto response = msg::factory::createMessage(base_message_, buffer_data.data());
