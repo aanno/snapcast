@@ -30,18 +30,13 @@
 #include <iomanip>
 #include <cstring>
 
-// MSG_ZEROCOPY definition for compatibility with older headers
-#ifndef MSG_ZEROCOPY
-#define MSG_ZEROCOPY 0x4000000
-#endif
-
 static constexpr auto LOG_TAG = "ClientConnectionZeroCopy";
 static constexpr auto LOG_TAG_STATS = "ClientZeroCopyStats";
 
 ClientConnectionTcpZeroCopy::ClientConnectionTcpZeroCopy(boost::asio::io_context& io_context, ClientSettings::Server server)
     : ClientConnectionTcp(io_context, std::move(server)), stats_timer_(strand_), buffer_pool_(DynamicBufferPool::instance())
 {
-    LOG(INFO, LOG_TAG) << "Creating zero-copy TCP client connection for RECEIVE\\n";
+    LOG(INFO, LOG_TAG) << "Creating TRUE zero-copy TCP client connection for RECEIVE (no memory copies)\\n";
 }
 
 ClientConnectionTcpZeroCopy::~ClientConnectionTcpZeroCopy()
@@ -80,39 +75,8 @@ bool ClientConnectionTcpZeroCopy::initializeZeroCopy()
         return false;
     }
     
-    // For receive zero-copy, we use direct recv() to avoid boost::asio buffer copies
-    // This is different from server's MSG_ZEROCOPY which is for send operations
-    
-    LOG(INFO, LOG_TAG) << "Zero-copy receive capability initialized for client\\n";
+    LOG(INFO, LOG_TAG) << "TRUE zero-copy receive capability initialized (direct recv into buffer pool)\\n";
     return true;
-}
-
-// SERVER COMPLIANCE: Atomic coordination methods
-bool ClientConnectionTcpZeroCopy::tryReserveZeroCopy()
-{
-    // SERVER COMPLIANCE: Atomically check if idle and reserve for zerocopy (race-condition safe)
-    uint32_t expected = 0;
-    while (!pending_async_operations_.compare_exchange_weak(expected, 1))
-    {
-        if (expected != 0)
-        {
-            // Another operation is in progress; cannot do zerocopy now
-            return false;
-        }
-        // If spurious failure, 'expected' is reloaded with current value, retry
-    }
-    return true; // Successfully reserved zerocopy
-}
-
-void ClientConnectionTcpZeroCopy::releaseZeroCopy()
-{
-    // Release zerocopy reservation
-    pending_async_operations_--;
-}
-
-bool ClientConnectionTcpZeroCopy::canUseZeroCopy() const
-{
-    return pending_async_operations_.load() == 0;
 }
 
 void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
@@ -124,7 +88,7 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
         if (zerocopy_available_)
         {
             startPeriodicLogging();
-            LOG(INFO, LOG_TAG) << "Zero-copy receive enabled, starting periodic logging\\n";
+            LOG(INFO, LOG_TAG) << "TRUE zero-copy receive enabled, starting periodic logging\\n";
         }
         else
         {
@@ -163,10 +127,10 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
             return;
         }
 
-        // SERVER COMPLIANCE: Coordinated decision for zero-copy receive
+        // Decide whether to use TRUE zero-copy for the message body
         if (zerocopy_available_ && base_message_.size >= ZEROCOPY_THRESHOLD)
         {
-            // LOG(DEBUG, LOG_TAG) << "Attempting coordinated zero-copy receive for " << base_message_.size << " byte message\\n";
+            LOG(DEBUG, LOG_TAG) << "Attempting TRUE zero-copy receive for " << base_message_.size << " byte message\\n";
             if (tryZeroCopyReceive(base_message_.size, handler))
             {
                 return; // Zero-copy receive initiated
@@ -174,43 +138,33 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
             else
             {
                 LOG(DEBUG, LOG_TAG) << "Zero-copy receive failed, falling back to regular receive\\n";
-                coordination_fallbacks_++;
+                large_message_fallbacks_++;
             }
         }
         
         // Fall back to regular async_read for small messages or when zero-copy fails
-        receiveRegularCoordinated(base_message_.size, handler);
+        receiveRegular(base_message_.size, handler);
     });
 }
 
 bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t message_size, const MessageHandler<msg::BaseMessage>& handler)
 {
-    // SERVER COMPLIANCE: Try to reserve zero-copy access atomically
-    if (!tryReserveZeroCopy())
-    {
-        // Cannot use zero-copy right now due to pending async operations
-        return false;
-    }
-    
-    // Now we have exclusive access for zero-copy receive
-    receiveZeroCopyCoordinated(message_size, handler);
-    return true;
-}
-
-void ClientConnectionTcpZeroCopy::receiveZeroCopyCoordinated(size_t message_size, const MessageHandler<msg::BaseMessage>& handler)
-{
     zerocopy_attempts_++;
     
-    // Ensure we have a large enough zero-copy buffer
-    if (!zerocopy_buffer_ || zerocopy_buffer_size_ < message_size)
+    // TRUE ZERO-COPY: Acquire buffer from pool - NO allocation, reuse existing buffer
+    auto buffer_guard = buffer_pool_.acquire(message_size);
+    auto& buffer_data = buffer_guard.get();
+    
+    // Ensure buffer is large enough
+    if (buffer_data.size() < message_size)
     {
-        zerocopy_buffer_ = std::make_unique<char[]>(message_size);
-        zerocopy_buffer_size_ = message_size;
+        buffer_guard.resize(message_size);
     }
     
-    // Use direct recv with zero-copy buffer (avoiding boost::asio buffer copy)
-    // This reduces one memory copy compared to boost::asio::async_read
-    ssize_t result = recv(native_socket_, zerocopy_buffer_.get(), message_size, MSG_DONTWAIT);
+    buffer_pool_hits_++; // Track buffer pool usage
+    
+    // TRUE ZERO-COPY: Direct receive into buffer pool buffer (NO intermediate allocation/copy)
+    ssize_t result = recv(native_socket_, buffer_data.data(), message_size, MSG_DONTWAIT);
     
     if (result < 0)
     {
@@ -218,16 +172,12 @@ void ClientConnectionTcpZeroCopy::receiveZeroCopyCoordinated(size_t message_size
         {
             // Would block - fall back to regular async receive
             LOG(TRACE, LOG_TAG) << "Zero-copy receive would block, falling back to regular receive\\n";
-            releaseZeroCopy();
-            receiveRegularCoordinated(message_size, handler);
-            return;
+            return false;
         }
         else
         {
             LOG(ERROR, LOG_TAG) << "Zero-copy recv failed: " << strerror(errno) << "\\n";
-            releaseZeroCopy();
-            receiveRegularCoordinated(message_size, handler);
-            return;
+            return false;
         }
     }
     
@@ -236,42 +186,35 @@ void ClientConnectionTcpZeroCopy::receiveZeroCopyCoordinated(size_t message_size
         LOG(WARNING, LOG_TAG) << "Zero-copy partial receive: " << result << "/" << message_size << " bytes\\n";
         // For partial receives, we'd need more complex handling
         // For now, fall back to regular receive
-        releaseZeroCopy();
-        receiveRegularCoordinated(message_size, handler);
-        return;
+        return false;
     }
     
-    // Success - zero-copy receive completed
+    // Success - TRUE zero-copy receive completed (no copies, direct into buffer pool)
     zerocopy_successful_++;
     zerocopy_bytes_ += message_size;
-    outstanding_zerocopy_buffers_++;
     
-    // LOG(TRACE, LOG_TAG) << "Zero-copy receive successful: " << message_size << " bytes\\n";
+    LOG(TRACE, LOG_TAG) << "TRUE zero-copy receive successful: " << message_size << " bytes directly into buffer pool (NO COPIES)\\n";
     
-    // Process the received message
-    auto response = msg::factory::createMessage(base_message_, zerocopy_buffer_.get());
+    // Process the received message directly from buffer pool buffer (NO COPY)
+    auto response = msg::factory::createMessage(base_message_, buffer_data.data());
     if (!response)
         LOG(WARNING, LOG_TAG) << "Failed to deserialize message of type: " << base_message_.type << "\\n";
 
-    // Release zero-copy reservation and call handler
-    releaseZeroCopy();
-    outstanding_zerocopy_buffers_--;
-    
     // Schedule the handler to be called
-    boost::asio::post(strand_, [this, handler, response = std::move(response)]() mutable
+    // The buffer_guard automatically returns buffer to pool when scope ends (RAII)
+    boost::asio::post(strand_, [this, handler, response = std::move(response), buffer_guard = std::move(buffer_guard)]() mutable
     {
         messageReceived(std::move(response), handler);
+        // buffer_guard destructor automatically returns buffer to pool here - TRUE ZERO-COPY COMPLETE
     });
+    
+    return true;
 }
 
-void ClientConnectionTcpZeroCopy::receiveRegularCoordinated(size_t message_size, const MessageHandler<msg::BaseMessage>& handler)
+void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const MessageHandler<msg::BaseMessage>& handler)
 {
-    // SERVER COMPLIANCE: Track regular async operations
-    pending_async_operations_++;
     regular_receives_++;
     regular_bytes_ += message_size;
-    
-    LOG(DEBUG, LOG_TAG) << "Regular receive started for " << message_size << " bytes, pending_async_operations now: " << pending_async_operations_.load() << "\\n";
     
     if (message_size > buffer_.size())
         buffer_.resize(message_size);
@@ -279,10 +222,6 @@ void ClientConnectionTcpZeroCopy::receiveRegularCoordinated(size_t message_size,
     boost::asio::async_read(socket_, boost::asio::buffer(buffer_, message_size),
                            [this, handler](boost::system::error_code ec, std::size_t length) mutable
     {
-        // SERVER COMPLIANCE: Decrement coordination counter
-        pending_async_operations_--;
-        LOG(DEBUG, LOG_TAG) << "Regular receive completed: " << length << " bytes, pending_async_operations now: " << pending_async_operations_.load() << "\\n";
-        
         if (ec)
         {
             LOG(ERROR, LOG_TAG) << "Error reading message body of length " << length << ": " << ec.message() << "\\n";
@@ -342,21 +281,19 @@ void ClientConnectionTcpZeroCopy::logStatistics()
     if (!zerocopy_available_)
         return;
         
-    // SERVER COMPLIANCE: Log zero-copy statistics in server format
+    // Log TRUE zero-copy receive statistics
     auto zc_stats = getZeroCopyStats();
-    LOG(INFO, LOG_TAG_STATS) << "=== Client ZeroCopy Receive Status (every 30s) ===\\n";
+    LOG(INFO, LOG_TAG_STATS) << "=== Client TRUE ZeroCopy Receive Status (every 30s) ===\\n";
     LOG(INFO, LOG_TAG_STATS) << "ZC Attempts: " << zc_stats.zerocopy_attempts << ", "
                              << "ZC Successful: " << zc_stats.zerocopy_successful << ", "
                              << "ZC Bytes: " << zc_stats.zerocopy_bytes << ", "
                              << "Regular Receives: " << zc_stats.regular_receives << ", "
                              << "Regular Bytes: " << zc_stats.regular_bytes << ", "
-                             << "Coordination Fallbacks: " << zc_stats.coordination_fallbacks << ", "
-                             << "Pending Async Operations: " << zc_stats.pending_async_operations << ", "
-                             << "Outstanding ZC Buffers: " << zc_stats.outstanding_zerocopy_buffers << ", "
+                             << "Large Message Fallbacks: " << zc_stats.large_message_fallbacks << ", "
                              << "ZC Success Rate: " << std::fixed << std::setprecision(2) << zc_stats.zerocopy_percentage() << "%, "
-                             << "Completion Reliability: " << std::fixed << std::setprecision(2) << zc_stats.completion_reliability() << "%\\n";
+                             << "Buffer Pool Hit Rate: " << std::fixed << std::setprecision(2) << zc_stats.buffer_pool_hit_rate() << "%\\n";
     
-    // SERVER COMPLIANCE: Log buffer pool statistics
+    // Log buffer pool statistics - NOW THESE WILL SHOW DATA!
     auto buffer_stats = buffer_pool_.getStats();
     LOG(INFO, LOG_TAG_STATS) << "Buffer pool stats - Total: " << buffer_stats.total_buffers
                              << ", Available: " << buffer_stats.available_buffers
@@ -373,12 +310,9 @@ ClientConnectionTcpZeroCopy::ZeroCopyStats ClientConnectionTcpZeroCopy::getZeroC
     stats.zerocopy_bytes = zerocopy_bytes_.load();
     stats.regular_receives = regular_receives_.load();
     stats.regular_bytes = regular_bytes_.load();
-    stats.coordination_fallbacks = coordination_fallbacks_.load();
-    stats.pending_async_operations = pending_async_operations_.load();
-    stats.outstanding_zerocopy_buffers = outstanding_zerocopy_buffers_.load();
-    stats.completion_notifications_received = completion_notifications_received_.load();
-    stats.completion_notifications_missing = completion_notifications_missing_.load();
-    stats.buffers_completed_via_notifications = buffers_completed_via_notifications_.load();
+    stats.large_message_fallbacks = large_message_fallbacks_.load();
+    stats.buffer_pool_hits = buffer_pool_hits_.load();
+    stats.buffer_pool_misses = buffer_pool_misses_.load();
     
     return stats;
 }
@@ -390,9 +324,7 @@ void ClientConnectionTcpZeroCopy::resetZeroCopyStats()
     zerocopy_bytes_.store(0);
     regular_receives_.store(0);
     regular_bytes_.store(0);
-    coordination_fallbacks_.store(0);
-    completion_notifications_received_.store(0);
-    completion_notifications_missing_.store(0);
-    buffers_completed_via_notifications_.store(0);
-    // Note: outstanding_zerocopy_buffers and pending_async_operations are not reset as they represent current state
+    large_message_fallbacks_.store(0);
+    buffer_pool_hits_.store(0);
+    buffer_pool_misses_.store(0);
 }

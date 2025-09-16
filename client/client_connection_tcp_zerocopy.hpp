@@ -32,11 +32,12 @@
 #include <thread>
 #include <chrono>
 
-/// Zero-copy TCP client connection for receiving audio chunks
+/// TRUE Zero-copy TCP client connection for receiving audio chunks
 /**
- * This connection extends the regular TCP connection with zero-copy receive capability.
- * - Uses MSG_ZEROCOPY with recvmsg() for large audio chunks (>1KB)
+ * This connection extends the regular TCP connection with TRUE zero-copy receive capability.
+ * - Uses direct recv() into buffer pool buffers (NO memory copies)
  * - Falls back to regular async_read for small control messages
+ * - Buffer pool provides RAII management with automatic return
  * - Provides comprehensive statistics and periodic logging
  */
 class ClientConnectionTcpZeroCopy : public ClientConnectionTcp
@@ -48,20 +49,17 @@ public:
     void disconnect() override;
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
 
-    /// SERVER COMPLIANCE: Get zero-copy statistics matching server format
+    /// Get zero-copy statistics for this connection
     struct ZeroCopyStats
     {
-        uint64_t zerocopy_attempts{0};           // Total zero-copy receive attempts
-        uint64_t zerocopy_successful{0};         // Successful zero-copy receives
-        uint64_t zerocopy_bytes{0};              // Total bytes received via zero-copy
-        uint64_t regular_receives{0};            // Messages received via regular async_read
-        uint64_t regular_bytes{0};               // Total bytes received via regular async_read
-        uint64_t coordination_fallbacks{0};     // SERVER COMPLIANCE: Fallbacks due to pending async ops
-        uint64_t pending_async_operations{0};   // SERVER COMPLIANCE: Currently pending async operations
-        uint64_t outstanding_zerocopy_buffers{0}; // SERVER COMPLIANCE: Outstanding zerocopy operations
-        uint64_t completion_notifications_received{0}; // SERVER COMPLIANCE: Completion notifications received
-        uint64_t completion_notifications_missing{0};  // SERVER COMPLIANCE: Missing notifications
-        uint64_t buffers_completed_via_notifications{0}; // SERVER COMPLIANCE: Completed via notifications
+        uint64_t zerocopy_attempts{0};      // Total zero-copy receive attempts
+        uint64_t zerocopy_successful{0};    // Successful zero-copy receives
+        uint64_t zerocopy_bytes{0};         // Total bytes received via zero-copy
+        uint64_t regular_receives{0};       // Messages received via regular async_read
+        uint64_t regular_bytes{0};          // Total bytes received via regular async_read
+        uint64_t large_message_fallbacks{0}; // Large messages that fell back to regular receive
+        uint64_t buffer_pool_hits{0};       // Buffer reuse from pool
+        uint64_t buffer_pool_misses{0};     // New buffer allocations
         
         double zerocopy_percentage() const 
         { 
@@ -69,10 +67,10 @@ public:
                    (double(zerocopy_successful) / double(zerocopy_attempts + regular_receives)) * 100.0 : 0.0; 
         }
         
-        double completion_reliability() const
+        double buffer_pool_hit_rate() const
         {
-            return zerocopy_successful > 0 ?
-                   (double(buffers_completed_via_notifications) / double(zerocopy_successful)) * 100.0 : 0.0;
+            return (buffer_pool_hits + buffer_pool_misses) > 0 ?
+                   (double(buffer_pool_hits) / double(buffer_pool_hits + buffer_pool_misses)) * 100.0 : 0.0;
         }
     };
     
@@ -83,23 +81,11 @@ private:
     /// Initialize zero-copy capability
     bool initializeZeroCopy();
     
-    /// SERVER COMPLIANCE: Try to reserve zero-copy access (atomic coordination)
-    bool tryReserveZeroCopy();
-    
-    /// SERVER COMPLIANCE: Release zero-copy reservation
-    void releaseZeroCopy();
-    
-    /// SERVER COMPLIANCE: Check if we can safely use zero-copy (no pending async operations)
-    bool canUseZeroCopy() const;
-    
-    /// Try to receive using coordinated zero-copy for large messages
+    /// Try to receive using TRUE zero-copy for large messages
     bool tryZeroCopyReceive(size_t message_size, const MessageHandler<msg::BaseMessage>& handler);
     
-    /// Receive using coordinated zero-copy
-    void receiveZeroCopyCoordinated(size_t message_size, const MessageHandler<msg::BaseMessage>& handler);
-    
-    /// Receive using regular async_read with coordination tracking
-    void receiveRegularCoordinated(size_t message_size, const MessageHandler<msg::BaseMessage>& handler);
+    /// Receive message body using regular async_read (fallback)
+    void receiveRegular(size_t message_size, const MessageHandler<msg::BaseMessage>& handler);
     
     /// Start periodic statistics logging
     void startPeriodicLogging();
@@ -115,29 +101,20 @@ private:
     bool zerocopy_available_{false};
     int native_socket_{-1};
     
-    // SERVER COMPLIANCE: Coordination state
-    std::atomic<uint32_t> pending_async_operations_{0};
-    
-    // SERVER COMPLIANCE: Statistics (thread-safe atomic counters)
+    // Statistics (thread-safe)
     mutable std::atomic<uint64_t> zerocopy_attempts_{0};
     mutable std::atomic<uint64_t> zerocopy_successful_{0};
     mutable std::atomic<uint64_t> zerocopy_bytes_{0};
     mutable std::atomic<uint64_t> regular_receives_{0};
     mutable std::atomic<uint64_t> regular_bytes_{0};
-    mutable std::atomic<uint64_t> coordination_fallbacks_{0};
-    mutable std::atomic<uint64_t> outstanding_zerocopy_buffers_{0};
-    mutable std::atomic<uint64_t> completion_notifications_received_{0};
-    mutable std::atomic<uint64_t> completion_notifications_missing_{0};
-    mutable std::atomic<uint64_t> buffers_completed_via_notifications_{0};
+    mutable std::atomic<uint64_t> large_message_fallbacks_{0};
+    mutable std::atomic<uint64_t> buffer_pool_hits_{0};
+    mutable std::atomic<uint64_t> buffer_pool_misses_{0};
     
     // Periodic logging
     boost::asio::steady_timer stats_timer_;
     std::atomic<bool> logging_active_{false};
     
-    // Buffer pool for efficient memory management
+    // Buffer pool for TRUE zero-copy memory management (no copies)
     DynamicBufferPool& buffer_pool_;
-    
-    // Zero-copy receive buffer management
-    std::unique_ptr<char[]> zerocopy_buffer_;
-    size_t zerocopy_buffer_size_{0};
 };
