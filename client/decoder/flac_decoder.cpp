@@ -26,6 +26,7 @@
 
 // standard headers
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 
 
@@ -70,6 +71,7 @@ FlacDecoder::~FlacDecoder()
 bool FlacDecoder::decode(msg::PcmChunk* chunk)
 {
     std::lock_guard<std::mutex> lock(mutex_);
+    decode_operations_++;
     cacheInfo_.reset();
     pcm_chunk_ = chunk;
     
@@ -129,6 +131,9 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
         pcm_chunk_->payloadSize = static_cast<uint32_t>(output_bytes_used_);
     }
 
+    // Log growth statistics periodically
+    logGrowthStatistics();
+
     return true;
 }
 
@@ -152,6 +157,27 @@ SampleFormat FlacDecoder::setHeader(msg::CodecHeader* chunk)
         throw SnapException("Sample format not found");
 
     return sample_format_;
+}
+
+void FlacDecoder::logGrowthStatistics() const
+{
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_stats_log_);
+
+    if (elapsed.count() >= 30) { // Log every 30 seconds
+        uint64_t expansions = buffer_expansions_.load();
+        uint64_t operations = decode_operations_.load();
+
+        double expansion_rate = operations > 0 ? (double(expansions) / double(operations)) * 100.0 : 0.0;
+
+        LOG(INFO, LOG_TAG) << "=== FLAC Decoder Buffer Growth Stats (every 30s) ===\\n"
+                          << "Decode Operations: " << operations << ", "
+                          << "Buffer Expansions: " << expansions << ", "
+                          << "Expansion Rate: " << std::fixed << std::setprecision(2) << expansion_rate << "%, "
+                          << "Current Capacity: " << output_capacity_ << " bytes\\n";
+
+        last_stats_log_ = now;
+    }
 }
 
 namespace callback
@@ -212,6 +238,7 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
             size_t new_capacity = required_size + (required_size / 2); // 1.5x growth
             flacDecoder->output_buffer_guard_.resize(new_capacity);
             flacDecoder->output_capacity_ = flacDecoder->output_buffer_guard_.get().size();
+            flacDecoder->buffer_expansions_++;
         }
 
         for (size_t channel = 0; channel < flacDecoder->sample_format_.channels(); ++channel)

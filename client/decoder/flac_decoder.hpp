@@ -26,6 +26,8 @@
 #include <FLAC/stream_decoder.h>
 
 // standard headers
+#include <atomic>
+#include <chrono>
 #include <memory>
 #include <mutex>
 
@@ -62,6 +64,14 @@ public:
     bool decode(msg::PcmChunk* chunk) override;
     SampleFormat setHeader(msg::CodecHeader* chunk) override;
 
+    /// Get FLAC decoder buffer growth statistics
+    std::pair<uint64_t, uint64_t> getGrowthStats() const {
+        return {buffer_expansions_.load(), decode_operations_.load()};
+    }
+
+    /// Log growth statistics periodically (every 30 seconds)
+    void logGrowthStatistics() const;
+
     /// Flac internal cache info
     CacheInfo cacheInfo_;
     /// Last decoder error
@@ -79,6 +89,11 @@ public:
     // Output buffer capacity tracking for buffer pool growth
     size_t output_capacity_{0};
     size_t output_bytes_used_{0};
+
+    // Growth strategy statistics
+    mutable std::atomic<uint64_t> buffer_expansions_{0};
+    mutable std::atomic<uint64_t> decode_operations_{0};
+    mutable std::chrono::steady_clock::time_point last_stats_log_{std::chrono::steady_clock::now()};
 
     // Buffer pool for zero-copy memory management
     DynamicBufferPool& buffer_pool_;
