@@ -22,6 +22,7 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "common/str_compat.hpp"
+#include "common/buffer_pool.hpp"
 
 // 3rd party headers
 #include <boost/asio/buffer.hpp>
@@ -292,9 +293,8 @@ void ClientConnection::cancelRequests()
 ///////////////////////////////////// TCP /////////////////////////////////////
 
 ClientConnectionTcp::ClientConnectionTcp(boost::asio::io_context& io_context, ClientSettings::Server server)
-    : ClientConnection(io_context, std::move(server)), socket_(strand_)
+    : ClientConnection(io_context, std::move(server)), socket_(strand_), buffer_pool_(DynamicBufferPool::instance())
 {
-    buffer_.resize(base_msg_size_);
 }
 
 ClientConnectionTcp::~ClientConnectionTcp()
@@ -341,7 +341,12 @@ std::string ClientConnectionTcp::getMacAddress()
 
 void ClientConnectionTcp::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
 {
-    boost::asio::async_read(socket_, boost::asio::buffer(buffer_, base_msg_size_), [this, handler](boost::system::error_code ec, std::size_t length) mutable
+    // Use buffer pool for header - acquire small buffer for message header
+    auto header_buffer_guard = buffer_pool_.acquire(base_msg_size_);
+    auto& header_buffer = header_buffer_guard.get();
+    
+    boost::asio::async_read(socket_, boost::asio::buffer(header_buffer.data(), base_msg_size_), 
+                           [this, handler, header_buffer_guard = std::move(header_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
     {
         if (ec)
         {
@@ -351,11 +356,10 @@ void ClientConnectionTcp::getNextMessage(const MessageHandler<msg::BaseMessage>&
             return;
         }
 
-        base_message_.deserialize(buffer_.data());
+        base_message_.deserialize(header_buffer_guard.get().data());
         tv t;
         base_message_.received = t;
-        // LOG(TRACE, LOG_TAG) << "getNextMessage: " << base_message_.type << ", size: " << base_message_.size << ", id: " <<
-        // base_message_.id << ", refers: " << base_message_.refersTo << "\n";
+        
         if (base_message_.type > message_type::kLast)
         {
             LOG(ERROR, LOG_TAG) << "unknown message type received: " << base_message_.type << ", size: " << base_message_.size << "\n";
@@ -365,17 +369,18 @@ void ClientConnectionTcp::getNextMessage(const MessageHandler<msg::BaseMessage>&
         }
         else if (base_message_.size > msg::max_size)
         {
-            LOG(ERROR, LOG_TAG) << "received message of type " << base_message_.type << " to large: " << base_message_.size << "\n";
+            LOG(ERROR, LOG_TAG) << "received message of type " << base_message_.type << " too large: " << base_message_.size << "\n";
             if (handler)
                 handler(boost::asio::error::invalid_argument, nullptr);
             return;
         }
 
-        if (base_message_.size > buffer_.size())
-            buffer_.resize(base_message_.size);
-
-        boost::asio::async_read(socket_, boost::asio::buffer(buffer_, base_message_.size),
-                                [this, handler](boost::system::error_code ec, std::size_t length) mutable
+        // Use buffer pool for message body - acquire buffer sized for the message
+        auto body_buffer_guard = buffer_pool_.acquire(base_message_.size);
+        auto& body_buffer = body_buffer_guard.get();
+        
+        boost::asio::async_read(socket_, boost::asio::buffer(body_buffer.data(), base_message_.size),
+                               [this, handler, body_buffer_guard = std::move(body_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
         {
             if (ec)
             {
@@ -385,12 +390,14 @@ void ClientConnectionTcp::getNextMessage(const MessageHandler<msg::BaseMessage>&
                 return;
             }
 
-            auto response = msg::factory::createMessage(base_message_, buffer_.data());
+            auto response = msg::factory::createMessage(base_message_, body_buffer_guard.get().data());
             if (!response)
                 LOG(WARNING, LOG_TAG) << "Failed to deserialize message of type: " << base_message_.type << "\n";
 
             messageReceived(std::move(response), handler);
+            // body_buffer_guard automatically returns buffer to pool when it goes out of scope
         });
+        // header_buffer_guard automatically returns buffer to pool when it goes out of scope
     });
 }
 

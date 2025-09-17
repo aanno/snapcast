@@ -23,6 +23,7 @@
 #include "common/message/factory.hpp"
 #include "common/message/message.hpp"
 #include "common/time_defs.hpp"
+#include "common/buffer_pool.hpp"
 
 // 3rd party headers
 #include <boost/asio/any_io_executor.hpp>
@@ -225,8 +226,8 @@ protected:
 
     /// TCP socket
     tcp_socket socket_;
-    /// Receive buffer
-    std::vector<char> buffer_;
+    /// Buffer pool for efficient memory management
+    DynamicBufferPool& buffer_pool_;
 };
 
 

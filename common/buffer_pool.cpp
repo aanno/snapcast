@@ -71,8 +71,8 @@ DynamicBufferPool::BufferGuard DynamicBufferPool::acquire(size_t min_size)
             buffer->resize_if_needed(target_size);
             ++buffers_reused_;
             
-            // LOG(TRACE, LOG_TAG) << "Reused buffer from size bucket " << it->first 
-            //                     << " for requested size " << target_size << "\n";
+            // LOG(DEBUG, LOG_TAG) << "Reused buffer from size bucket " << it->first 
+            //                     << " for requested size " << target_size << ", reused: " << buffers_reused_ << "\n";
             
             return { *this, std::move(buffer) };
         }
@@ -83,7 +83,7 @@ DynamicBufferPool::BufferGuard DynamicBufferPool::acquire(size_t min_size)
     auto buffer = create_buffer(target_size);
     ++buffers_created_;
     
-    LOG(TRACE, LOG_TAG) << "Created new buffer of size " << target_size << "\n";
+    LOG(DEBUG, LOG_TAG) << "Created new buffer of size " << target_size << ", total buffers: " << total_buffers_ << ", created: " << buffers_created_ << "\n";
     
     return { *this, std::move(buffer) };
 }
@@ -151,6 +151,12 @@ DynamicBufferPool::Stats DynamicBufferPool::getStats() const
     {
         stats.available_buffers += bucket.second.size();
     }
+    
+    LOG(INFO, LOG_TAG) << "Buffer Pool Stats - Total: " << stats.total_buffers 
+                       << ", Created: " << stats.buffers_created 
+                       << ", Reused: " << stats.buffers_reused 
+                       << ", Available: " << stats.available_buffers 
+                       << ", Bytes: " << stats.bytes_allocated << "\n";
     
     return stats;
 }

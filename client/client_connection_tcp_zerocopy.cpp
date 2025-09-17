@@ -34,7 +34,7 @@ static constexpr auto LOG_TAG = "ClientConnectionZeroCopy";
 static constexpr auto LOG_TAG_STATS = "ClientZeroCopyStats";
 
 ClientConnectionTcpZeroCopy::ClientConnectionTcpZeroCopy(boost::asio::io_context& io_context, ClientSettings::Server server)
-    : ClientConnectionTcp(io_context, std::move(server)), stats_timer_(strand_), buffer_pool_(DynamicBufferPool::instance())
+    : ClientConnectionTcp(io_context, std::move(server)), stats_timer_(strand_), buffer_pool_(DynamicBufferPool::instance()), header_buffer_(base_msg_size_)
 {
     LOG(INFO, LOG_TAG) << "Creating TRUE zero-copy TCP client connection for RECEIVE (no memory copies)\\n";
 }
@@ -97,7 +97,7 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
     }
     
     // First, read the message header using regular async_read (headers are small)
-    boost::asio::async_read(socket_, boost::asio::buffer(buffer_, base_msg_size_), 
+    boost::asio::async_read(socket_, boost::asio::buffer(header_buffer_, base_msg_size_), 
                            [this, handler](boost::system::error_code ec, std::size_t length) mutable
     {
         if (ec)
@@ -108,7 +108,7 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
             return;
         }
 
-        base_message_.deserialize(buffer_.data());
+        base_message_.deserialize(header_buffer_.data());
         tv t;
         base_message_.received = t;
         
@@ -161,7 +161,7 @@ bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t message_size, const 
         buffer_guard.resize(message_size);
     }
     
-    buffer_pool_hits_++; // Track buffer pool usage
+    // Buffer pool usage is tracked automatically by the pool itself
     
     // TRUE ZERO-COPY: Direct receive into buffer pool buffer (NO intermediate allocation/copy)
     ssize_t result = recv(native_socket_, buffer_data.data(), message_size, MSG_DONTWAIT);
@@ -216,11 +216,12 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
     regular_receives_++;
     regular_bytes_ += message_size;
     
-    if (message_size > buffer_.size())
-        buffer_.resize(message_size);
-
-    boost::asio::async_read(socket_, boost::asio::buffer(buffer_, message_size),
-                           [this, handler](boost::system::error_code ec, std::size_t length) mutable
+    // Use buffer pool for regular receives too
+    auto buffer_guard = buffer_pool_.acquire(message_size);
+    auto& buffer_data = buffer_guard.get();
+    
+    boost::asio::async_read(socket_, boost::asio::buffer(buffer_data.data(), message_size),
+                           [this, handler, buffer_guard = std::move(buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
     {
         if (ec)
         {
@@ -230,11 +231,12 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
             return;
         }
 
-        auto response = msg::factory::createMessage(base_message_, buffer_.data());
+        auto response = msg::factory::createMessage(base_message_, buffer_guard.get().data());
         if (!response)
             LOG(WARNING, LOG_TAG) << "Failed to deserialize message of type: " << base_message_.type << "\\n";
 
         messageReceived(std::move(response), handler);
+        // buffer_guard automatically returns buffer to pool when it goes out of scope
     });
 }
 
@@ -290,16 +292,19 @@ void ClientConnectionTcpZeroCopy::logStatistics()
                              << "Regular Receives: " << zc_stats.regular_receives << ", "
                              << "Regular Bytes: " << zc_stats.regular_bytes << ", "
                              << "Large Message Fallbacks: " << zc_stats.large_message_fallbacks << ", "
-                             << "ZC Success Rate: " << std::fixed << std::setprecision(2) << zc_stats.zerocopy_percentage() << "%, "
-                             << "Buffer Pool Hit Rate: " << std::fixed << std::setprecision(2) << zc_stats.buffer_pool_hit_rate() << "%\\n";
+                             << "ZC Success Rate: " << std::fixed << std::setprecision(2) << zc_stats.zerocopy_percentage() << "%\\n";
     
-    // Log buffer pool statistics - NOW THESE WILL SHOW DATA!
+    // Log REAL buffer pool statistics from the actual pool
     auto buffer_stats = buffer_pool_.getStats();
     LOG(INFO, LOG_TAG_STATS) << "Buffer pool stats - Total: " << buffer_stats.total_buffers
                              << ", Available: " << buffer_stats.available_buffers
                              << ", Reused: " << buffer_stats.buffers_reused
                              << ", Created: " << buffer_stats.buffers_created
-                             << ", Bytes allocated: " << buffer_stats.bytes_allocated << "\\n";
+                             << ", Bytes allocated: " << buffer_stats.bytes_allocated
+                             << ", Hit Rate: " << std::fixed << std::setprecision(2) 
+                             << ((buffer_stats.buffers_created + buffer_stats.buffers_reused) > 0 ? 
+                                (double(buffer_stats.buffers_reused) / double(buffer_stats.buffers_created + buffer_stats.buffers_reused)) * 100.0 : 0.0) 
+                             << "%\\n";
 }
 
 ClientConnectionTcpZeroCopy::ZeroCopyStats ClientConnectionTcpZeroCopy::getZeroCopyStats() const
@@ -311,8 +316,6 @@ ClientConnectionTcpZeroCopy::ZeroCopyStats ClientConnectionTcpZeroCopy::getZeroC
     stats.regular_receives = regular_receives_.load();
     stats.regular_bytes = regular_bytes_.load();
     stats.large_message_fallbacks = large_message_fallbacks_.load();
-    stats.buffer_pool_hits = buffer_pool_hits_.load();
-    stats.buffer_pool_misses = buffer_pool_misses_.load();
     
     return stats;
 }
@@ -325,6 +328,4 @@ void ClientConnectionTcpZeroCopy::resetZeroCopyStats()
     regular_receives_.store(0);
     regular_bytes_.store(0);
     large_message_fallbacks_.store(0);
-    buffer_pool_hits_.store(0);
-    buffer_pool_misses_.store(0);
 }

@@ -58,19 +58,11 @@ public:
         uint64_t regular_receives{0};       // Messages received via regular async_read
         uint64_t regular_bytes{0};          // Total bytes received via regular async_read
         uint64_t large_message_fallbacks{0}; // Large messages that fell back to regular receive
-        uint64_t buffer_pool_hits{0};       // Buffer reuse from pool
-        uint64_t buffer_pool_misses{0};     // New buffer allocations
         
         double zerocopy_percentage() const 
         { 
             return (zerocopy_attempts + regular_receives) > 0 ? 
                    (double(zerocopy_successful) / double(zerocopy_attempts + regular_receives)) * 100.0 : 0.0; 
-        }
-        
-        double buffer_pool_hit_rate() const
-        {
-            return (buffer_pool_hits + buffer_pool_misses) > 0 ?
-                   (double(buffer_pool_hits) / double(buffer_pool_hits + buffer_pool_misses)) * 100.0 : 0.0;
         }
     };
     
@@ -108,8 +100,6 @@ private:
     mutable std::atomic<uint64_t> regular_receives_{0};
     mutable std::atomic<uint64_t> regular_bytes_{0};
     mutable std::atomic<uint64_t> large_message_fallbacks_{0};
-    mutable std::atomic<uint64_t> buffer_pool_hits_{0};
-    mutable std::atomic<uint64_t> buffer_pool_misses_{0};
     
     // Periodic logging
     boost::asio::steady_timer stats_timer_;
@@ -117,4 +107,7 @@ private:
     
     // Buffer pool for TRUE zero-copy memory management (no copies)
     DynamicBufferPool& buffer_pool_;
+    
+    // Header buffer for async_read (small fixed size)
+    std::vector<char> header_buffer_;
 };
