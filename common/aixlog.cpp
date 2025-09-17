@@ -163,6 +163,9 @@ bool Log::should_log_cached(SEVERITY severity, const char* tag)
     return result;
 }
 
+// doxygen don't understand the following
+/// \cond
+
 // Overload for new Severity enum class
 bool Log::should_log_cached(Severity severity, const char* tag)
 {
@@ -186,5 +189,7 @@ void Log::getShouldLogCacheStats(size_t& hits, size_t& misses, size_t& size)
 {
     getShouldLogCache().getStats(hits, misses, size);
 }
+
+/// \endcond
 
 } // namespace AixLog
