@@ -20,7 +20,10 @@
 
 // local headers
 #include "client_connection.hpp"
-#include "common/buffer_pool.hpp"
+#include "common/mmap_buffer_pool.hpp"
+
+// system headers
+#include <netinet/tcp.h>
 
 // 3rd party headers
 #include <boost/asio/steady_timer.hpp>
@@ -29,17 +32,23 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <thread>
 #include <chrono>
 
-/// TRUE Zero-copy TCP client connection using mmap-based receive
+/// TRUE Zero-copy TCP client connection using TCP_ZEROCOPY_RECEIVE
 /**
- * This connection provides TRUE zero-copy receive using TCP_ZEROCOPY_RECEIVE.
- * - Uses mmap page-aligned buffers for direct kernel mapping
- * - Leverages TCP_ZEROCOPY_RECEIVE getsockopt for zero-copy
+ * This connection provides TRUE zero-copy receive using mmap and TCP_ZEROCOPY_RECEIVE.
+ *
+ * Key features:
+ * - Uses TCP_ZEROCOPY_RECEIVE getsockopt for direct kernel data mapping
+ * - MmapBufferPool provides page-aligned buffers required for zero-copy
  * - Falls back to regular recv() when zero-copy conditions not met
- * - MmapBufferPool provides page-aligned RAII buffer management
+ * - No MSG_ZEROCOPY or MSG_ERRQUEUE (those are for send-side only)
  * - Comprehensive statistics for zero-copy success/failure analysis
+ *
+ * Zero-copy requirements:
+ * - Buffer must be page-aligned (handled by MmapBufferPool)
+ * - Buffer size must be multiple of page size
+ * - Incoming data must align on page boundaries for optimal performance
  */
 class ClientConnectionTcpZeroCopy : public ClientConnectionTcp
 {
@@ -50,65 +59,76 @@ public:
     void disconnect() override;
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
 
-    /// Get zero-copy statistics for this connection
+    /// Zero-copy receive statistics
     struct ZeroCopyStats
     {
-        uint64_t zerocopy_attempts{0};      // Total zero-copy receive attempts
-        uint64_t zerocopy_successful{0};    // Successful zero-copy receives
-        uint64_t zerocopy_bytes{0};         // Total bytes received via zero-copy
-        uint64_t regular_receives{0};       // Messages received via regular async_read
-        uint64_t regular_bytes{0};          // Total bytes received via regular async_read
-        uint64_t large_message_fallbacks{0}; // Large messages that fell back to regular receive
-        
-        double zerocopy_percentage() const 
-        { 
-            return (zerocopy_attempts + regular_receives) > 0 ? 
-                   (double(zerocopy_successful) / double(zerocopy_attempts + regular_receives)) * 100.0 : 0.0; 
+        std::atomic<uint64_t> zerocopy_attempts{0};      ///< TCP_ZEROCOPY_RECEIVE attempts
+        std::atomic<uint64_t> zerocopy_successful{0};    ///< Successful zero-copy receives
+        std::atomic<uint64_t> zerocopy_bytes{0};         ///< Bytes received via zero-copy
+        std::atomic<uint64_t> regular_receives{0};       ///< Fallback to regular recv()
+        std::atomic<uint64_t> regular_bytes{0};          ///< Bytes via regular recv()
+        std::atomic<uint64_t> fallback_page_misalign{0}; ///< Fallbacks due to page misalignment
+        std::atomic<uint64_t> fallback_size_mismatch{0}; ///< Fallbacks due to size issues
+        std::atomic<uint64_t> mmap_buffer_hits{0};       ///< Buffer pool hits
+        std::atomic<uint64_t> mmap_buffer_misses{0};     ///< Buffer pool misses
+
+        /// Calculate zero-copy success rate as percentage
+        double getSuccessRate() const {
+            uint64_t attempts = zerocopy_attempts.load();
+            return attempts > 0 ? (100.0 * zerocopy_successful.load() / attempts) : 0.0;
+        }
+
+        /// Calculate buffer pool hit rate as percentage
+        double getBufferHitRate() const {
+            uint64_t total = mmap_buffer_hits.load() + mmap_buffer_misses.load();
+            return total > 0 ? (100.0 * mmap_buffer_hits.load() / total) : 0.0;
         }
     };
-    
-    ZeroCopyStats getZeroCopyStats() const;
-    void resetZeroCopyStats();
+
+    /// Get current zero-copy statistics
+    const ZeroCopyStats& getStats() const { return stats_; }
+
+    /// Log zero-copy statistics (called periodically)
+    void logZeroCopyStats() const;
 
 private:
-    /// Initialize zero-copy capability
-    bool initializeZeroCopy();
-    
-    /// Try to receive using TRUE zero-copy for large messages
-    bool tryZeroCopyReceive(size_t message_size, const MessageHandler<msg::BaseMessage>& handler);
-    
-    /// Receive message body using regular async_read (fallback)
+    /// Try to receive message using TCP_ZEROCOPY_RECEIVE
+    bool tryZeroCopyReceive(size_t expected_size, const MessageHandler<msg::BaseMessage>& handler);
+
+    /// Fallback to regular async receive
     void receiveRegular(size_t message_size, const MessageHandler<msg::BaseMessage>& handler);
-    
-    /// Start periodic statistics logging
-    void startPeriodicLogging();
-    void stopPeriodicLogging();
-    void scheduleNextStatisticsLog();
-    void logStatistics();
-    
-    // Configuration
-    static constexpr size_t ZEROCOPY_THRESHOLD = 1024;  // Use zero-copy for messages >1KB
-    static constexpr std::chrono::seconds STATS_LOG_INTERVAL{30}; // Log statistics every 30s
-    
-    // Zero-copy state
-    bool zerocopy_available_{false};
-    int native_socket_{-1};
-    
-    // Statistics (thread-safe)
-    mutable std::atomic<uint64_t> zerocopy_attempts_{0};
-    mutable std::atomic<uint64_t> zerocopy_successful_{0};
-    mutable std::atomic<uint64_t> zerocopy_bytes_{0};
-    mutable std::atomic<uint64_t> regular_receives_{0};
-    mutable std::atomic<uint64_t> regular_bytes_{0};
-    mutable std::atomic<uint64_t> large_message_fallbacks_{0};
-    
-    // Periodic logging
+
+    /// Check if size is suitable for zero-copy (must be multiple of page size)
+    bool isSuitableForZeroCopy(size_t size) const;
+
+    /// Get native socket handle for getsockopt
+    int getNativeSocket() const;
+
+    /// Process zero-copy received data
+    void processZeroCopyData(void* mapped_data, size_t data_size, const MessageHandler<msg::BaseMessage>& handler);
+
+    /// Initialize periodic statistics logging
+    void initStatsLogging();
+
+    /// Periodic statistics logging callback
+    void onStatsTimer(const boost::system::error_code& error);
+
+private:
+    /// Page-aligned mmap buffer pool for zero-copy
+    MmapBufferPool mmap_buffer_pool_;
+
+    /// Zero-copy statistics
+    mutable ZeroCopyStats stats_;
+
+    /// Statistics logging timer (every 30 seconds)
     boost::asio::steady_timer stats_timer_;
-    std::atomic<bool> logging_active_{false};
-    
-    // Buffer pool for TRUE zero-copy memory management (no copies)
-    DynamicBufferPool& buffer_pool_;
-    
-    // Header buffer for async_read (small fixed size)
-    std::vector<char> header_buffer_;
+
+    /// Page size for alignment calculations
+    static const size_t PAGE_SIZE;
+
+    /// Minimum message size to attempt zero-copy (avoid overhead for small messages)
+    static constexpr size_t MIN_ZEROCOPY_SIZE = 1024;
+
+    /// Thread safety for statistics access
+    mutable std::mutex stats_mutex_;
 };

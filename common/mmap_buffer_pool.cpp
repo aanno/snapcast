@@ -19,11 +19,15 @@
 // header include
 #include "mmap_buffer_pool.hpp"
 
+// local headers
+#include "common/aixlog.hpp"
+
 // system headers
 #include <sys/mman.h>
 #include <unistd.h>
 #include <algorithm>
 #include <stdexcept>
+#include <vector>
 
 // Available buffer sizes (multiples of page size)
 const std::vector<size_t> MmapBufferPool::SIZE_BUCKETS = {

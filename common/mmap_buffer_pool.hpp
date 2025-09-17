@@ -28,6 +28,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 /// Page-aligned mmap buffer pool for true zero-copy TCP receive
 /**
