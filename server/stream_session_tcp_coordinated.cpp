@@ -58,7 +58,7 @@ StreamSessionTcpCoordinated::StreamSessionTcpCoordinated(StreamMessageReceiver* 
 
 StreamSessionTcpCoordinated::~StreamSessionTcpCoordinated()
 {
-    stop();
+    stopInternal();
     
     // Log final statistics
     if (zerocopy_available_)
@@ -81,6 +81,11 @@ void StreamSessionTcpCoordinated::start()
 }
 
 void StreamSessionTcpCoordinated::stop()
+{
+    stopInternal();
+}
+
+void StreamSessionTcpCoordinated::stopInternal()
 {
     if (zerocopy_available_)
     {
@@ -206,7 +211,7 @@ void StreamSessionTcpCoordinated::sendRegularCoordinated(const std::shared_ptr<s
     });
 }
 
-void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler)
+void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_const_buffer>& buffer, WriteHandler&& handler)
 {
     zerocopy_attempts_++;
     
@@ -221,7 +226,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_cons
     // Create iovec from the shared_const_buffer - no copying needed!
     // Get the first boost::asio::const_buffer from the shared_const_buffer
     auto const_buf = *buffer->begin();
-    const auto* data = static_cast<const void*>(const_buf.data());
+    const auto* data = const_buf.data();
     struct iovec iov = {const_cast<void*>(data), buffer_size};
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;

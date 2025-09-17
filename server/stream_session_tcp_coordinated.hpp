@@ -107,7 +107,11 @@ public:
     void resetZeroCopyStats();
 
 protected:
+    /// Send message @p buffer and pass result to @p handler
     void sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler) override;
+
+    // Internal stop without virtual call
+    void stopInternal();
 
 private:
     /// Initialize zerocopy capability
@@ -117,7 +121,7 @@ private:
     bool canUseZeroCopy() const;
     
     /// Send using zerocopy (only when socket is idle)
-    void sendZeroCopy(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler);
+    void sendZeroCopy(const std::shared_ptr<shared_const_buffer>& buffer, WriteHandler&& handler);
     
     /// Send using regular async_write (coordinated with async operations)
     void sendRegularCoordinated(const std::shared_ptr<shared_const_buffer>& buffer, WriteHandler&& handler);

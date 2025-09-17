@@ -110,14 +110,14 @@ private:
     size_t cache_misses_{0};
 };
 
-/// Global cache instance
+// Global cache instance
 static ShouldLogCache& getShouldLogCache()
 {
     static ShouldLogCache instance;
     return instance;
 }
 
-/// Cached version of should_log
+// Cached version of should_log
 bool Log::should_log_cached(SEVERITY severity, const char* tag)
 {
     auto& cache = getShouldLogCache();
@@ -163,25 +163,25 @@ bool Log::should_log_cached(SEVERITY severity, const char* tag)
     return result;
 }
 
-/// Overload for new Severity enum class
+// Overload for new Severity enum class
 bool Log::should_log_cached(Severity severity, const char* tag)
 {
     return should_log_cached(static_cast<SEVERITY>(severity), tag);
 }
 
-/// Overload for new Severity enum class with std::string tag
+// Overload for new Severity enum class with std::string tag
 bool Log::should_log_cached(Severity severity, const std::string& tag)
 {
     return should_log_cached(static_cast<SEVERITY>(severity), tag.c_str());
 }
 
-/// Clear cache when log configuration changes
+// Clear cache when log configuration changes
 void Log::clearShouldLogCache()
 {
     getShouldLogCache().clearCache();
 }
 
-/// Get cache statistics (for debugging)
+// Get cache statistics (for debugging)
 void Log::getShouldLogCacheStats(size_t& hits, size_t& misses, size_t& size)
 {
     getShouldLogCache().getStats(hits, misses, size);
