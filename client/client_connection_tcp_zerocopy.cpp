@@ -107,7 +107,7 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
             // Wait for socket to have data ready before attempting zero-copy
             waitForDataAndTryZeroCopy(base_message_.size, handler);
         } else {
-            LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes not suitable for zero-copy (min=" << MIN_ZEROCOPY_SIZE << ", page=" << PAGE_SIZE << ")\n";
+            // LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes not suitable for zero-copy (min=" << MIN_ZEROCOPY_SIZE << ", page=" << PAGE_SIZE << ")\n";
             // Step 3: Fallback to regular async_read for message body
             receiveRegular(base_message_.size, handler);
         }

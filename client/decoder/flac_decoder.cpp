@@ -163,7 +163,7 @@ std::unique_ptr<msg::ZeroCopyPcmChunk> FlacDecoder::decodeZeroCopy(msg::PcmChunk
     zero_copy_chunk_ = msg::createZeroCopyPcmChunk(estimated_output_size, sample_format_);
 
     // LOG(DEBUG, LOG_TAG) << "Phase 4 TRUE Zero-Copy decode started - input: " << chunk->payloadSize
-    //                    << " bytes, estimated output: " << estimated_output_size << " bytes\\n";
+    //                    << " bytes, estimated output: " << estimated_output_size << " bytes\n";
 
     // Set up for zero-copy callbacks to write directly to the ZeroCopyPcmChunk
     pcm_chunk_ = zero_copy_chunk_.get();  // Callbacks will write to this
@@ -191,7 +191,7 @@ std::unique_ptr<msg::ZeroCopyPcmChunk> FlacDecoder::decodeZeroCopy(msg::PcmChunk
         double diffMs = static_cast<double>(cacheInfo_.cachedBlocks_) / (static_cast<double>(cacheInfo_.sampleRate_) / 1000.);
         auto us = static_cast<uint64_t>(diffMs * 1000.);
         tv diff(static_cast<int32_t>(us / 1000000), static_cast<int32_t>(us % 1000000));
-        LOG(TRACE, LOG_TAG) << "Cached: " << cacheInfo_.cachedBlocks_ << ", " << diffMs << "ms, " << diff.sec << "s, " << diff.usec << "us\\n";
+        LOG(TRACE, LOG_TAG) << "Cached: " << cacheInfo_.cachedBlocks_ << ", " << diffMs << "ms, " << diff.sec << "s, " << diff.usec << "us\n";
         zero_copy_chunk_->timestamp = chunk->timestamp - diff;
     } else {
         zero_copy_chunk_->timestamp = chunk->timestamp;
@@ -244,14 +244,14 @@ void FlacDecoder::logGrowthStatistics() const
         double expansion_rate = operations > 0 ? (double(expansions) / double(operations)) * 100.0 : 0.0;
         double zero_copy_rate = operations > 0 ? (double(zero_copy_ops) / double(operations)) * 100.0 : 0.0;
 
-        LOG(INFO, LOG_TAG) << "=== FLAC Decoder Buffer Growth Stats (every 30s) ===\\n"
+        LOG(INFO, LOG_TAG) << "=== FLAC Decoder Buffer Growth Stats (every 30s) ===\n"
                           << "Decode Operations: " << operations << ", "
                           << "Buffer Expansions: " << expansions << ", "
-                          << "Expansion Rate: " << std::fixed << std::setprecision(2) << expansion_rate << "%\\n"
+                          << "Expansion Rate: " << std::fixed << std::setprecision(2) << expansion_rate << "%\n"
                           << "Zero-Copy Operations: " << zero_copy_ops << ", "
                           << "Regular Operations: " << regular_ops << ", "
-                          << "Zero-Copy Rate: " << std::fixed << std::setprecision(2) << zero_copy_rate << "%\\n"
-                          << "Current Capacity: " << output_capacity_ << " bytes\\n";
+                          << "Zero-Copy Rate: " << std::fixed << std::setprecision(2) << zero_copy_rate << "%\n"
+                          << "Current Capacity: " << output_capacity_ << " bytes\n";
 
         last_stats_log_ = now;
     }

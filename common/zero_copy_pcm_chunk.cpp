@@ -57,7 +57,7 @@ void ZeroCopyPcmChunk::initializeWithBufferPool()
     payload = buffer_guard_.get().data();
     payloadSize = 0; // Start empty, will grow during decode
 
-    LOG(DEBUG, LOG_TAG) << "Created zero-copy PcmChunk with capacity: " << buffer_guard_.get().size() << " bytes\\n";
+    // LOG(DEBUG, LOG_TAG) << "Created zero-copy PcmChunk with capacity: " << buffer_guard_.get().size() << " bytes\n";
 }
 
 bool ZeroCopyPcmChunk::ensureCapacity(size_t required_size)
