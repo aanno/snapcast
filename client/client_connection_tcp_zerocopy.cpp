@@ -22,6 +22,10 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "common/message/codec_header.hpp"
+#include "common/message/factory.hpp"
+
+// 3rd party headers
+#include <boost/asio/read.hpp>
 
 // system headers
 #include <sys/socket.h>
@@ -61,9 +65,53 @@ void ClientConnectionTcpZeroCopy::disconnect()
 
 void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
 {
-    // Use regular ClientConnectionTcp approach - for now we'll enhance it later with zero-copy
-    // The TCP_ZEROCOPY_RECEIVE approach needs to be integrated at a lower level
-    ClientConnectionTcp::getNextMessage(handler);
+    // Step 1: Read message header normally (small, not worth zero-copy)
+    auto header_buffer_guard = buffer_pool_.acquire(base_msg_size_);
+    auto& header_buffer = header_buffer_guard.get();
+
+    boost::asio::async_read(socket_, boost::asio::buffer(header_buffer.data(), base_msg_size_),
+                           [this, handler, header_buffer_guard = std::move(header_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
+    {
+        if (ec)
+        {
+            LOG(ERROR, LOG_TAG) << "Error reading message header of length " << length << ": " << ec.message() << "\n";
+            if (handler)
+                handler(ec, nullptr);
+            return;
+        }
+
+        // Parse header
+        base_message_.deserialize(header_buffer_guard.get().data());
+        tv t;
+        base_message_.received = t;
+
+        if (base_message_.type > message_type::kLast)
+        {
+            LOG(ERROR, LOG_TAG) << "unknown message type received: " << base_message_.type << ", size: " << base_message_.size << "\n";
+            if (handler)
+                handler(boost::asio::error::invalid_argument, nullptr);
+            return;
+        }
+        else if (base_message_.size > msg::max_size)
+        {
+            LOG(ERROR, LOG_TAG) << "received message of type " << base_message_.type << " too large: " << base_message_.size << "\n";
+            if (handler)
+                handler(boost::asio::error::invalid_argument, nullptr);
+            return;
+        }
+
+        // Step 2: For message body, try TCP_ZEROCOPY_RECEIVE if suitable
+        if (isSuitableForZeroCopy(base_message_.size)) {
+            LOG(DEBUG, LOG_TAG) << "Attempting TCP_ZEROCOPY_RECEIVE for " << base_message_.size << " byte message body\n";
+            if (tryZeroCopyReceive(base_message_.size, handler)) {
+                return; // Zero-copy successful
+            }
+            LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE failed, falling back to regular receive\n";
+        }
+
+        // Step 3: Fallback to regular async_read for message body
+        receiveRegular(base_message_.size, handler);
+    });
 }
 
 
@@ -137,8 +185,28 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
     stats_.regular_receives++;
     stats_.regular_bytes += message_size;
 
-    // Use parent class regular async receive
-    ClientConnectionTcp::getNextMessage(handler);
+    // Use buffer pool for regular message body receive
+    auto body_buffer_guard = buffer_pool_.acquire(message_size);
+    auto& body_buffer = body_buffer_guard.get();
+
+    boost::asio::async_read(socket_, boost::asio::buffer(body_buffer.data(), message_size),
+                           [this, handler, body_buffer_guard = std::move(body_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
+    {
+        if (ec)
+        {
+            LOG(ERROR, LOG_TAG) << "Error reading message body of length " << length << ": " << ec.message() << "\n";
+            if (handler)
+                handler(ec, nullptr);
+            return;
+        }
+
+        auto response = msg::factory::createMessage(base_message_, body_buffer_guard.get().data());
+        if (!response)
+            LOG(WARNING, LOG_TAG) << "Failed to deserialize message of type: " << base_message_.type << "\n";
+
+        messageReceived(std::move(response), handler);
+        // body_buffer_guard automatically returns buffer to pool when it goes out of scope
+    });
 }
 
 bool ClientConnectionTcpZeroCopy::isSuitableForZeroCopy(size_t size) const
@@ -161,20 +229,17 @@ int ClientConnectionTcpZeroCopy::getNativeSocket() const
 void ClientConnectionTcpZeroCopy::processZeroCopyData(void* mapped_data, size_t data_size, const MessageHandler<msg::BaseMessage>& handler)
 {
     try {
-        // Create a message from the zero-copy mapped data
-        // Note: This is a simplified example - actual message parsing would depend on the protocol
+        // Create message from zero-copy mapped data using the actual protocol
+        auto response = msg::factory::createMessage(base_message_, static_cast<char*>(mapped_data));
+        if (!response) {
+            LOG(WARNING, LOG_TAG) << "Failed to deserialize zero-copy message of type: " << base_message_.type << "\n";
+            handler(boost::asio::error::invalid_argument, nullptr);
+            return;
+        }
 
-        // For now, we'll create a PcmChunk from the zero-copy data
-        auto chunk = std::make_unique<msg::PcmChunk>();
+        LOG(DEBUG, LOG_TAG) << "Processed zero-copy data: " << data_size << " bytes for message type " << base_message_.type << "\n";
 
-        // Copy data pointer (note: this is still zero-copy as we're not copying the data itself)
-        chunk->payload = static_cast<char*>(mapped_data);
-        chunk->payloadSize = data_size;
-
-        LOG(DEBUG, LOG_TAG) << "Processed zero-copy data: " << data_size << " bytes\n";
-
-        // Pass to handler with no error
-        handler(boost::system::error_code{}, std::move(chunk));
+        messageReceived(std::move(response), handler);
 
     } catch (const std::exception& e) {
         LOG(ERROR, LOG_TAG) << "Error processing zero-copy data: " << e.what() << "\n";
