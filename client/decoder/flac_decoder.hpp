@@ -76,16 +76,20 @@ public:
     // Read position tracking to eliminate memmove
     size_t input_read_pos_{0};
 
+    // Output buffer capacity tracking for buffer pool growth
+    size_t output_capacity_{0};
+    size_t output_bytes_used_{0};
+
+    // Buffer pool for zero-copy memory management
+    DynamicBufferPool& buffer_pool_;
+
+    // Buffer guards for RAII buffer management (accessible to callbacks)
+    DynamicBufferPool::BufferGuard input_buffer_guard_;
+    DynamicBufferPool::BufferGuard output_buffer_guard_;
+
 private:
     std::mutex mutex_;
     FLAC__StreamDecoder* decoder_{nullptr};
-    
-    // Buffer pool for zero-copy memory management
-    DynamicBufferPool& buffer_pool_;
-    
-    // Buffer guards for RAII buffer management
-    DynamicBufferPool::BufferGuard input_buffer_guard_;
-    DynamicBufferPool::BufferGuard output_buffer_guard_;
 };
 
 } // namespace decoder

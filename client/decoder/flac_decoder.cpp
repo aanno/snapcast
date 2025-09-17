@@ -87,9 +87,17 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
     flac_chunk_->payloadSize = chunk->payloadSize;
     input_read_pos_ = 0;  // Reset read position for new decode
 
-    // Reset output buffer size to 0 (but keep capacity for reuse)
+    // Reset output buffer to 0 size (this will use realloc to 0, essentially freeing it)
     pcm_chunk_->payload = static_cast<char*>(realloc(pcm_chunk_->payload, 0)); // NOLINT
     pcm_chunk_->payloadSize = 0;
+
+    // Prepare our buffer pool for output data collection
+    size_t estimated_output_size = chunk->payloadSize * 2; // Estimate 2x expansion for typical FLAC
+    if (output_buffer_guard_.get().size() < estimated_output_size) {
+        output_buffer_guard_.resize(estimated_output_size);
+    }
+    output_capacity_ = output_buffer_guard_.get().size();
+    output_bytes_used_ = 0; // Track how much of our buffer we've used
     while (flac_chunk_->payloadSize > 0)
     {
         if (FLAC__stream_decoder_process_single(decoder_) == 0)
@@ -113,6 +121,14 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
         LOG(TRACE, LOG_TAG) << "Cached: " << cacheInfo_.cachedBlocks_ << ", " << diffMs << "ms, " << diff.sec << "s, " << diff.usec << "us\n";
         chunk->timestamp = chunk->timestamp - diff;
     }
+
+    // Copy accumulated data from buffer pool to PcmChunk
+    if (output_bytes_used_ > 0) {
+        pcm_chunk_->payload = static_cast<char*>(realloc(pcm_chunk_->payload, output_bytes_used_));
+        memcpy(pcm_chunk_->payload, output_buffer_guard_.get().data(), output_bytes_used_);
+        pcm_chunk_->payloadSize = static_cast<uint32_t>(output_bytes_used_);
+    }
+
     return true;
 }
 
@@ -189,7 +205,14 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
         if (flacDecoder->cacheInfo_.isCachedChunk_)
             flacDecoder->cacheInfo_.cachedBlocks_ += frame->header.blocksize;
 
-        flacDecoder->pcm_chunk_->payload = static_cast<char*>(realloc(flacDecoder->pcm_chunk_->payload, flacDecoder->pcm_chunk_->payloadSize + bytes));
+        // Check if we need to grow our buffer pool output buffer
+        size_t required_size = flacDecoder->output_bytes_used_ + bytes;
+        if (required_size > flacDecoder->output_capacity_) {
+            // Grow buffer with some headroom to avoid frequent reallocations
+            size_t new_capacity = required_size + (required_size / 2); // 1.5x growth
+            flacDecoder->output_buffer_guard_.resize(new_capacity);
+            flacDecoder->output_capacity_ = flacDecoder->output_buffer_guard_.get().size();
+        }
 
         for (size_t channel = 0; channel < flacDecoder->sample_format_.channels(); ++channel)
         {
@@ -201,24 +224,24 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
 
             if (flacDecoder->sample_format_.sampleSize() == 1)
             {
-                auto* chunkBuffer = reinterpret_cast<int8_t*>(flacDecoder->pcm_chunk_->payload + flacDecoder->pcm_chunk_->payloadSize);
+                auto* chunkBuffer = reinterpret_cast<int8_t*>(flacDecoder->output_buffer_guard_.get().data() + flacDecoder->output_bytes_used_);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
                     chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = static_cast<int8_t>(buffer[channel][i]);
             }
             else if (flacDecoder->sample_format_.sampleSize() == 2)
             {
-                auto* chunkBuffer = reinterpret_cast<int16_t*>(flacDecoder->pcm_chunk_->payload + flacDecoder->pcm_chunk_->payloadSize);
+                auto* chunkBuffer = reinterpret_cast<int16_t*>(flacDecoder->output_buffer_guard_.get().data() + flacDecoder->output_bytes_used_);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
                     chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = SWAP_16((int16_t)(buffer[channel][i]));
             }
             else if (flacDecoder->sample_format_.sampleSize() == 4)
             {
-                auto* chunkBuffer = reinterpret_cast<int32_t*>(flacDecoder->pcm_chunk_->payload + flacDecoder->pcm_chunk_->payloadSize);
+                auto* chunkBuffer = reinterpret_cast<int32_t*>(flacDecoder->output_buffer_guard_.get().data() + flacDecoder->output_bytes_used_);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
                     chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = SWAP_32((int32_t)(buffer[channel][i]));
             }
         }
-        flacDecoder->pcm_chunk_->payloadSize += static_cast<uint32_t>(bytes);
+        flacDecoder->output_bytes_used_ += bytes;
     }
 
     return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
