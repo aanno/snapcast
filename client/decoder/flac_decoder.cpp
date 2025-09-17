@@ -47,27 +47,20 @@ void error_callback(const FLAC__StreamDecoder* decoder, FLAC__StreamDecoderError
 // NOLINTEND
 } // namespace callback
 
-namespace
-{
-msg::CodecHeader* flacHeader = nullptr;
-msg::PcmChunk* flacChunk = nullptr;
-msg::PcmChunk* pcmChunk = nullptr;
-SampleFormat sampleFormat;
-FLAC__StreamDecoder* decoder = nullptr;
-} // namespace
+// Global variables removed - now using instance members in FlacDecoder class
 
 
-FlacDecoder::FlacDecoder() : Decoder(), lastError_(nullptr)
+FlacDecoder::FlacDecoder() : Decoder(), lastError_(nullptr), flac_chunk_(std::make_unique<msg::PcmChunk>())
 {
-    flacChunk = new msg::PcmChunk();
 }
 
 
 FlacDecoder::~FlacDecoder()
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    FLAC__stream_decoder_delete(decoder);
-    delete flacChunk;
+    if (decoder_)
+        FLAC__stream_decoder_delete(decoder_);
+    // flac_chunk_ is automatically cleaned up by unique_ptr
 }
 
 
@@ -75,16 +68,16 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     cacheInfo_.reset();
-    pcmChunk = chunk;
-    flacChunk->payload = static_cast<char*>(realloc(flacChunk->payload, chunk->payloadSize));
-    memcpy(flacChunk->payload, chunk->payload, chunk->payloadSize);
-    flacChunk->payloadSize = chunk->payloadSize;
+    pcm_chunk_ = chunk;
+    flac_chunk_->payload = static_cast<char*>(realloc(flac_chunk_->payload, chunk->payloadSize));
+    memcpy(flac_chunk_->payload, chunk->payload, chunk->payloadSize);
+    flac_chunk_->payloadSize = chunk->payloadSize;
 
-    pcmChunk->payload = static_cast<char*>(realloc(pcmChunk->payload, 0)); // NOLINT
-    pcmChunk->payloadSize = 0;
-    while (flacChunk->payloadSize > 0)
+    pcm_chunk_->payload = static_cast<char*>(realloc(pcm_chunk_->payload, 0)); // NOLINT
+    pcm_chunk_->payloadSize = 0;
+    while (flac_chunk_->payloadSize > 0)
     {
-        if (FLAC__stream_decoder_process_single(decoder) == 0)
+        if (FLAC__stream_decoder_process_single(decoder_) == 0)
         {
             return false;
         }
@@ -111,23 +104,23 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
 
 SampleFormat FlacDecoder::setHeader(msg::CodecHeader* chunk)
 {
-    flacHeader = chunk;
+    flac_header_ = chunk;
     FLAC__StreamDecoderInitStatus init_status;
 
-    if ((decoder = FLAC__stream_decoder_new()) == nullptr)
+    if ((decoder_ = FLAC__stream_decoder_new()) == nullptr)
         throw SnapException("ERROR: allocating decoder");
 
-    //	(void)FLAC__stream_decoder_set_md5_checking(decoder, true);
-    init_status = FLAC__stream_decoder_init_stream(decoder, callback::read_callback, nullptr, nullptr, nullptr, nullptr, callback::write_callback,
+    //	(void)FLAC__stream_decoder_set_md5_checking(decoder_, true);
+    init_status = FLAC__stream_decoder_init_stream(decoder_, callback::read_callback, nullptr, nullptr, nullptr, nullptr, callback::write_callback,
                                                    callback::metadata_callback, callback::error_callback, this);
     if (init_status != FLAC__STREAM_DECODER_INIT_STATUS_OK)
         throw SnapException("ERROR: initializing decoder: " + string(FLAC__StreamDecoderInitStatusString[init_status]));
 
-    FLAC__stream_decoder_process_until_end_of_metadata(decoder);
-    if (sampleFormat.rate() == 0)
+    FLAC__stream_decoder_process_until_end_of_metadata(decoder_);
+    if (sample_format_.rate() == 0)
         throw SnapException("Sample format not found");
 
-    return sampleFormat;
+    return sample_format_;
 }
 
 namespace callback
@@ -135,26 +128,28 @@ namespace callback
 // NOLINTNEXTLINE
 FLAC__StreamDecoderReadStatus read_callback(const FLAC__StreamDecoder* /*decoder*/, FLAC__byte buffer[], size_t* bytes, void* client_data)
 {
-    if (flacHeader != nullptr)
+    auto* flac_decoder = static_cast<FlacDecoder*>(client_data);
+    
+    if (flac_decoder->flac_header_ != nullptr)
     {
-        *bytes = flacHeader->payloadSize;
-        memcpy(buffer, flacHeader->payload, *bytes);
-        flacHeader = nullptr;
+        *bytes = flac_decoder->flac_header_->payloadSize;
+        memcpy(buffer, flac_decoder->flac_header_->payload, *bytes);
+        flac_decoder->flac_header_ = nullptr;
     }
-    else if (flacChunk != nullptr)
+    else if (flac_decoder->flac_chunk_ != nullptr)
     {
-        //		cerr << "read_callback: " << *bytes << ", avail: " << flacChunk->payloadSize << "\n";
-        static_cast<FlacDecoder*>(client_data)->cacheInfo_.isCachedChunk_ = false;
-        if (*bytes > flacChunk->payloadSize)
-            *bytes = flacChunk->payloadSize;
+        //		cerr << "read_callback: " << *bytes << ", avail: " << flac_decoder->flac_chunk_->payloadSize << "\n";
+        flac_decoder->cacheInfo_.isCachedChunk_ = false;
+        if (*bytes > flac_decoder->flac_chunk_->payloadSize)
+            *bytes = flac_decoder->flac_chunk_->payloadSize;
 
         //		if (*bytes == 0)
         //			return FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM;
 
-        memcpy(buffer, flacChunk->payload, *bytes);
-        memmove(flacChunk->payload, flacChunk->payload + *bytes, flacChunk->payloadSize - *bytes);
-        flacChunk->payloadSize = flacChunk->payloadSize - static_cast<uint32_t>(*bytes);
-        flacChunk->payload = static_cast<char*>(realloc(flacChunk->payload, flacChunk->payloadSize)); // NOLINT
+        memcpy(buffer, flac_decoder->flac_chunk_->payload, *bytes);
+        memmove(flac_decoder->flac_chunk_->payload, flac_decoder->flac_chunk_->payload + *bytes, flac_decoder->flac_chunk_->payloadSize - *bytes);
+        flac_decoder->flac_chunk_->payloadSize = flac_decoder->flac_chunk_->payloadSize - static_cast<uint32_t>(*bytes);
+        flac_decoder->flac_chunk_->payload = static_cast<char*>(realloc(flac_decoder->flac_chunk_->payload, flac_decoder->flac_chunk_->payloadSize)); // NOLINT
     }
     return FLAC__STREAM_DECODER_READ_STATUS_CONTINUE;
 }
@@ -163,17 +158,18 @@ FLAC__StreamDecoderReadStatus read_callback(const FLAC__StreamDecoder* /*decoder
 FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decoder*/, const FLAC__Frame* frame, const FLAC__int32* const buffer[],
                                               void* client_data)
 {
-    if (pcmChunk != nullptr)
+    auto* flacDecoder = static_cast<FlacDecoder*>(client_data);
+    
+    if (flacDecoder->pcm_chunk_ != nullptr)
     {
-        size_t bytes = frame->header.blocksize * sampleFormat.frameSize();
+        size_t bytes = frame->header.blocksize * flacDecoder->sample_format_.frameSize();
 
-        auto* flacDecoder = static_cast<FlacDecoder*>(client_data);
         if (flacDecoder->cacheInfo_.isCachedChunk_)
             flacDecoder->cacheInfo_.cachedBlocks_ += frame->header.blocksize;
 
-        pcmChunk->payload = static_cast<char*>(realloc(pcmChunk->payload, pcmChunk->payloadSize + bytes));
+        flacDecoder->pcm_chunk_->payload = static_cast<char*>(realloc(flacDecoder->pcm_chunk_->payload, flacDecoder->pcm_chunk_->payloadSize + bytes));
 
-        for (size_t channel = 0; channel < sampleFormat.channels(); ++channel)
+        for (size_t channel = 0; channel < flacDecoder->sample_format_.channels(); ++channel)
         {
             if (buffer[channel] == nullptr)
             {
@@ -181,26 +177,26 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
                 return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
             }
 
-            if (sampleFormat.sampleSize() == 1)
+            if (flacDecoder->sample_format_.sampleSize() == 1)
             {
-                auto* chunkBuffer = reinterpret_cast<int8_t*>(pcmChunk->payload + pcmChunk->payloadSize);
+                auto* chunkBuffer = reinterpret_cast<int8_t*>(flacDecoder->pcm_chunk_->payload + flacDecoder->pcm_chunk_->payloadSize);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
-                    chunkBuffer[sampleFormat.channels() * i + channel] = static_cast<int8_t>(buffer[channel][i]);
+                    chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = static_cast<int8_t>(buffer[channel][i]);
             }
-            else if (sampleFormat.sampleSize() == 2)
+            else if (flacDecoder->sample_format_.sampleSize() == 2)
             {
-                auto* chunkBuffer = reinterpret_cast<int16_t*>(pcmChunk->payload + pcmChunk->payloadSize);
+                auto* chunkBuffer = reinterpret_cast<int16_t*>(flacDecoder->pcm_chunk_->payload + flacDecoder->pcm_chunk_->payloadSize);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
-                    chunkBuffer[sampleFormat.channels() * i + channel] = SWAP_16((int16_t)(buffer[channel][i]));
+                    chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = SWAP_16((int16_t)(buffer[channel][i]));
             }
-            else if (sampleFormat.sampleSize() == 4)
+            else if (flacDecoder->sample_format_.sampleSize() == 4)
             {
-                auto* chunkBuffer = reinterpret_cast<int32_t*>(pcmChunk->payload + pcmChunk->payloadSize);
+                auto* chunkBuffer = reinterpret_cast<int32_t*>(flacDecoder->pcm_chunk_->payload + flacDecoder->pcm_chunk_->payloadSize);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
-                    chunkBuffer[sampleFormat.channels() * i + channel] = SWAP_32((int32_t)(buffer[channel][i]));
+                    chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = SWAP_32((int32_t)(buffer[channel][i]));
             }
         }
-        pcmChunk->payloadSize += static_cast<uint32_t>(bytes);
+        flacDecoder->pcm_chunk_->payloadSize += static_cast<uint32_t>(bytes);
     }
 
     return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
@@ -209,11 +205,13 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
 
 void metadata_callback(const FLAC__StreamDecoder* /*decoder*/, const FLAC__StreamMetadata* metadata, void* client_data)
 {
+    auto* flacDecoder = static_cast<FlacDecoder*>(client_data);
+    
     /* print some stats */
     if (metadata->type == FLAC__METADATA_TYPE_STREAMINFO)
     {
-        static_cast<FlacDecoder*>(client_data)->cacheInfo_.sampleRate_ = metadata->data.stream_info.sample_rate;
-        sampleFormat.setFormat(metadata->data.stream_info.sample_rate, static_cast<uint16_t>(metadata->data.stream_info.bits_per_sample),
+        flacDecoder->cacheInfo_.sampleRate_ = metadata->data.stream_info.sample_rate;
+        flacDecoder->sample_format_.setFormat(metadata->data.stream_info.sample_rate, static_cast<uint16_t>(metadata->data.stream_info.bits_per_sample),
                                static_cast<uint16_t>(metadata->data.stream_info.channels));
     }
 }

@@ -65,9 +65,16 @@ public:
     CacheInfo cacheInfo_;
     /// Last decoder error
     std::unique_ptr<FLAC__StreamDecoderErrorStatus> lastError_;
+    
+    // FLAC decoder state (moved from global namespace, accessible to callbacks)
+    msg::CodecHeader* flac_header_{nullptr};
+    std::unique_ptr<msg::PcmChunk> flac_chunk_;
+    msg::PcmChunk* pcm_chunk_{nullptr};
+    SampleFormat sample_format_;
 
 private:
     std::mutex mutex_;
+    FLAC__StreamDecoder* decoder_{nullptr};
 };
 
 } // namespace decoder
