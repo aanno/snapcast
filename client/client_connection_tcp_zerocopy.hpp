@@ -119,7 +119,7 @@ private:
 
 private:
     /// Page-aligned mmap buffer pool for zero-copy
-    MmapBufferPool mmap_buffer_pool_;
+    MmapBufferPool* mmap_buffer_pool_ = nullptr;
 
     /// Zero-copy statistics
     mutable ZeroCopyStats stats_;

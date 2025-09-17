@@ -45,7 +45,6 @@ const size_t ClientConnectionTcpZeroCopy::PAGE_SIZE = MmapBufferPool::getPageSiz
 
 ClientConnectionTcpZeroCopy::ClientConnectionTcpZeroCopy(boost::asio::io_context& io_context, ClientSettings::Server server)
     : ClientConnectionTcp(io_context, std::move(server))
-    , mmap_buffer_pool_(4) // 4 initial buffers per size bucket
     , stats_timer_(io_context)
 {
     LOG(INFO, LOG_TAG) << "TRUE Zero-Copy TCP connection initialized with page size: " << PAGE_SIZE << " bytes\n";
@@ -324,5 +323,6 @@ void ClientConnectionTcpZeroCopy::logZeroCopyStats() const
     LOG(INFO, LOG_TAG) << "\tBuffer Hit Rate: " << std::fixed << std::setprecision(2) << stats_.getBufferHitRate() << "%\n";
 
     // Log mmap buffer pool stats
-    mmap_buffer_pool_.logStats();
+    if (mmap_buffer_pool_)
+        mmap_buffer_pool_->logStats();
 }

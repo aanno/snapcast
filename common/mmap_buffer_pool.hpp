@@ -85,7 +85,7 @@ public:
 
 public:
     /// Constructor
-    explicit MmapBufferPool(size_t initial_buffers_per_size = 4, int socket_fd = -1);
+    MmapBufferPool(size_t initial_buffers_per_size, int socket_fd);
 
     /// Destructor
     ~MmapBufferPool() override;
