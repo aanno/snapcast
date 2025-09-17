@@ -21,6 +21,7 @@
 // local headers
 #include "decoder.hpp"
 #include "common/buffer_pool.hpp"
+#include "common/zero_copy_pcm_chunk.hpp"
 
 // 3rd party headers
 #include <FLAC/stream_decoder.h>
@@ -64,6 +65,9 @@ public:
     bool decode(msg::PcmChunk* chunk) override;
     SampleFormat setHeader(msg::CodecHeader* chunk) override;
 
+    /// Zero-copy decode that creates and returns a ZeroCopyPcmChunk
+    std::unique_ptr<msg::ZeroCopyPcmChunk> decodeZeroCopy(msg::PcmChunk* chunk);
+
     /// Get FLAC decoder buffer growth statistics
     std::pair<uint64_t, uint64_t> getGrowthStats() const {
         return {buffer_expansions_.load(), decode_operations_.load()};
@@ -81,6 +85,7 @@ public:
     msg::CodecHeader* flac_header_{nullptr};
     std::unique_ptr<msg::PcmChunk> flac_chunk_;
     msg::PcmChunk* pcm_chunk_{nullptr};
+    std::unique_ptr<msg::ZeroCopyPcmChunk> zero_copy_chunk_{nullptr}; // For true zero-copy output
     SampleFormat sample_format_;
     
     // Read position tracking to eliminate memmove
@@ -93,6 +98,7 @@ public:
     // Growth strategy statistics
     mutable std::atomic<uint64_t> buffer_expansions_{0};
     mutable std::atomic<uint64_t> decode_operations_{0};
+    mutable std::atomic<uint64_t> zero_copy_operations_{0};
     mutable std::chrono::steady_clock::time_point last_stats_log_{std::chrono::steady_clock::now()};
 
     // Buffer pool for zero-copy memory management

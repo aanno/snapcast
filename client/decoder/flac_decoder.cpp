@@ -137,6 +137,77 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
     return true;
 }
 
+std::unique_ptr<msg::ZeroCopyPcmChunk> FlacDecoder::decodeZeroCopy(msg::PcmChunk* chunk)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    decode_operations_++;
+    zero_copy_operations_++;
+    cacheInfo_.reset();
+
+    // Use buffer pool for input buffer (same as regular decode)
+    if (input_buffer_guard_.get().size() < chunk->payloadSize) {
+        input_buffer_guard_.resize(chunk->payloadSize);
+    }
+    auto& input_buffer = input_buffer_guard_.get();
+
+    // Copy input data to buffer pool buffer (still needed because FLAC modifies it)
+    memcpy(input_buffer.data(), chunk->payload, chunk->payloadSize);
+
+    // Point flac_chunk to our buffer pool buffer and reset read position
+    flac_chunk_->payload = input_buffer.data();
+    flac_chunk_->payloadSize = chunk->payloadSize;
+    input_read_pos_ = 0;  // Reset read position for new decode
+
+    // Create zero-copy output chunk with estimated size (4x expansion for safety)
+    size_t estimated_output_size = chunk->payloadSize * 4;
+    zero_copy_chunk_ = msg::createZeroCopyPcmChunk(estimated_output_size, sample_format_);
+
+    // LOG(DEBUG, LOG_TAG) << "Phase 4 TRUE Zero-Copy decode started - input: " << chunk->payloadSize
+    //                    << " bytes, estimated output: " << estimated_output_size << " bytes\\n";
+
+    // Set up for zero-copy callbacks to write directly to the ZeroCopyPcmChunk
+    pcm_chunk_ = zero_copy_chunk_.get();  // Callbacks will write to this
+    output_bytes_used_ = 0; // Reset for new decode
+
+    // Process FLAC data (callbacks will write directly to zero_copy_chunk_)
+    while (flac_chunk_->payloadSize > 0)
+    {
+        if (FLAC__stream_decoder_process_single(decoder_) == 0)
+        {
+            return nullptr; // Decode failed
+        }
+
+        if (lastError_)
+        {
+            LOG(ERROR, LOG_TAG) << "FLAC decode error: " << FLAC__StreamDecoderErrorStatusString[*lastError_] << "\\n";
+            lastError_ = nullptr;
+            return nullptr;
+        }
+    }
+
+    // Handle timing adjustments (same as regular decode)
+    if ((cacheInfo_.cachedBlocks_ > 0) && (cacheInfo_.sampleRate_ != 0))
+    {
+        double diffMs = static_cast<double>(cacheInfo_.cachedBlocks_) / (static_cast<double>(cacheInfo_.sampleRate_) / 1000.);
+        auto us = static_cast<uint64_t>(diffMs * 1000.);
+        tv diff(static_cast<int32_t>(us / 1000000), static_cast<int32_t>(us % 1000000));
+        LOG(TRACE, LOG_TAG) << "Cached: " << cacheInfo_.cachedBlocks_ << ", " << diffMs << "ms, " << diff.sec << "s, " << diff.usec << "us\\n";
+        zero_copy_chunk_->timestamp = chunk->timestamp - diff;
+    } else {
+        zero_copy_chunk_->timestamp = chunk->timestamp;
+    }
+
+    // NO COPY NEEDED! The zero_copy_chunk_ already contains the decoded data
+    // Set final payload size based on what was actually written
+    zero_copy_chunk_->payloadSize = static_cast<uint32_t>(output_bytes_used_);
+
+    // Log growth statistics periodically
+    logGrowthStatistics();
+
+    // Return ownership of the zero-copy chunk
+    return std::move(zero_copy_chunk_);
+}
+
 
 SampleFormat FlacDecoder::setHeader(msg::CodecHeader* chunk)
 {
@@ -167,13 +238,19 @@ void FlacDecoder::logGrowthStatistics() const
     if (elapsed.count() >= 30) { // Log every 30 seconds
         uint64_t expansions = buffer_expansions_.load();
         uint64_t operations = decode_operations_.load();
+        uint64_t zero_copy_ops = zero_copy_operations_.load();
+        uint64_t regular_ops = operations - zero_copy_ops;
 
         double expansion_rate = operations > 0 ? (double(expansions) / double(operations)) * 100.0 : 0.0;
+        double zero_copy_rate = operations > 0 ? (double(zero_copy_ops) / double(operations)) * 100.0 : 0.0;
 
         LOG(INFO, LOG_TAG) << "=== FLAC Decoder Buffer Growth Stats (every 30s) ===\\n"
                           << "Decode Operations: " << operations << ", "
                           << "Buffer Expansions: " << expansions << ", "
-                          << "Expansion Rate: " << std::fixed << std::setprecision(2) << expansion_rate << "%, "
+                          << "Expansion Rate: " << std::fixed << std::setprecision(2) << expansion_rate << "%\\n"
+                          << "Zero-Copy Operations: " << zero_copy_ops << ", "
+                          << "Regular Operations: " << regular_ops << ", "
+                          << "Zero-Copy Rate: " << std::fixed << std::setprecision(2) << zero_copy_rate << "%\\n"
                           << "Current Capacity: " << output_capacity_ << " bytes\\n";
 
         last_stats_log_ = now;
@@ -231,14 +308,24 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
         if (flacDecoder->cacheInfo_.isCachedChunk_)
             flacDecoder->cacheInfo_.cachedBlocks_ += frame->header.blocksize;
 
-        // Check if we need to grow our buffer pool output buffer
+        // Handle buffer growth for both regular and zero-copy modes
         size_t required_size = flacDecoder->output_bytes_used_ + bytes;
-        if (required_size > flacDecoder->output_capacity_) {
-            // Grow buffer with some headroom to avoid frequent reallocations
-            size_t new_capacity = required_size + (required_size / 2); // 1.5x growth
-            flacDecoder->output_buffer_guard_.resize(new_capacity);
-            flacDecoder->output_capacity_ = flacDecoder->output_buffer_guard_.get().size();
-            flacDecoder->buffer_expansions_++;
+
+        // Check if we're in zero-copy mode
+        if (auto* zc_chunk = dynamic_cast<msg::ZeroCopyPcmChunk*>(flacDecoder->pcm_chunk_)) {
+            // Zero-copy mode: resize the ZeroCopyPcmChunk buffer if needed
+            if (zc_chunk->ensureCapacity(required_size)) {
+                flacDecoder->buffer_expansions_++;
+            }
+        } else {
+            // Regular mode: use working buffer approach
+            if (required_size > flacDecoder->output_capacity_) {
+                // Grow buffer with some headroom to avoid frequent reallocations
+                size_t new_capacity = required_size + (required_size / 2); // 1.5x growth
+                flacDecoder->output_buffer_guard_.resize(new_capacity);
+                flacDecoder->output_capacity_ = flacDecoder->output_buffer_guard_.get().size();
+                flacDecoder->buffer_expansions_++;
+            }
         }
 
         for (size_t channel = 0; channel < flacDecoder->sample_format_.channels(); ++channel)
@@ -249,21 +336,31 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
                 return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
             }
 
+            // Write to the appropriate buffer based on mode
+            char* output_ptr;
+            if (auto* zc_chunk = dynamic_cast<msg::ZeroCopyPcmChunk*>(flacDecoder->pcm_chunk_)) {
+                // Zero-copy mode: write directly to ZeroCopyPcmChunk payload
+                output_ptr = zc_chunk->payload + flacDecoder->output_bytes_used_;
+            } else {
+                // Regular mode: write to working buffer
+                output_ptr = flacDecoder->output_buffer_guard_.get().data() + flacDecoder->output_bytes_used_;
+            }
+
             if (flacDecoder->sample_format_.sampleSize() == 1)
             {
-                auto* chunkBuffer = reinterpret_cast<int8_t*>(flacDecoder->output_buffer_guard_.get().data() + flacDecoder->output_bytes_used_);
+                auto* chunkBuffer = reinterpret_cast<int8_t*>(output_ptr);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
                     chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = static_cast<int8_t>(buffer[channel][i]);
             }
             else if (flacDecoder->sample_format_.sampleSize() == 2)
             {
-                auto* chunkBuffer = reinterpret_cast<int16_t*>(flacDecoder->output_buffer_guard_.get().data() + flacDecoder->output_bytes_used_);
+                auto* chunkBuffer = reinterpret_cast<int16_t*>(output_ptr);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
                     chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = SWAP_16((int16_t)(buffer[channel][i]));
             }
             else if (flacDecoder->sample_format_.sampleSize() == 4)
             {
-                auto* chunkBuffer = reinterpret_cast<int32_t*>(flacDecoder->output_buffer_guard_.get().data() + flacDecoder->output_bytes_used_);
+                auto* chunkBuffer = reinterpret_cast<int32_t*>(output_ptr);
                 for (size_t i = 0; i < frame->header.blocksize; i++)
                     chunkBuffer[flacDecoder->sample_format_.channels() * i + channel] = SWAP_32((int32_t)(buffer[channel][i]));
             }
