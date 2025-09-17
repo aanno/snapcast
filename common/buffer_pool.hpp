@@ -49,6 +49,7 @@ public:
         /// Last used timestamp for cleanup
         std::chrono::steady_clock::time_point last_used;
         
+        /// c'tor
         explicit Buffer(size_t size) 
             : data(size)
             , capacity(size)
@@ -56,6 +57,7 @@ public:
         {
         }
         
+        /// resize buffer if needed
         void resize_if_needed(size_t new_size)
         {
             if (new_size > capacity)
@@ -75,11 +77,13 @@ public:
     class BufferGuard
     {
     public:
+        /// c'tor
         BufferGuard(DynamicBufferPool& pool, std::unique_ptr<Buffer> buffer)
             : pool_(pool), buffer_(std::move(buffer))
         {
         }
         
+        /// d'tor
         ~BufferGuard()
         {
             if (buffer_)
