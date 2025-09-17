@@ -152,24 +152,39 @@ bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t expected_size, const
         }
 
         // Round size to page boundary as required by TCP_ZEROCOPY_RECEIVE
-        size_t rounded_size = MmapBufferPool::roundToPageSize(expected_size);
+        // size_t rounded_size = MmapBufferPool::roundToPageSize(expected_size);
 
-        // Map the socket directly for zero-copy receive (not anonymous mapping!)
-        void* mapped_data = mmap(nullptr, rounded_size, PROT_READ, MAP_SHARED, native_socket, 0);
-
-        if (mapped_data == MAP_FAILED) {
-            LOG(DEBUG, LOG_TAG) << "mmap failed for socket " << native_socket << ": " << strerror(errno) << "\n";
-            stats_.mmap_buffer_misses++;
+        // TODO: find the right place to initialize mmap_buffer_pool_
+        // TODO: check if thread safe
+        // TODO: destroy/free in d'tor
+        if (mmap_buffer_pool_ == nullptr) {
+            mmap_buffer_pool_ = new MmapBufferPool(4, native_socket);
+            if (!mmap_buffer_pool_) {
+                LOG(ERROR, LOG_TAG) << "Creating new MmapBufferPool failed";
+            }
+        }
+        // Internally calls mmap(nullptr, 8192, PROT_READ, MAP_SHARED, client_sock, 0)
+        auto mapped_data = mmap_buffer_pool_->acquire(expected_size);
+        if (!mapped_data) {
+            LOG(ERROR, LOG_TAG) << "MmapBufferPool.acquire failed";
             return false;
         }
 
-        LOG(DEBUG, LOG_TAG) << "Successfully mapped " << rounded_size << " bytes at " << mapped_data << " for socket " << native_socket << "\n";
+        // Map the socket directly for zero-copy receive (not anonymous mapping!)
+        // void* mapped_data = mmap(nullptr, rounded_size, PROT_READ, MAP_SHARED, native_socket, 0);
+        // if (mapped_data == MAP_FAILED) {
+        //     LOG(DEBUG, LOG_TAG) << "mmap failed for socket " << native_socket << ": " << strerror(errno) << "\n";
+        //     stats_.mmap_buffer_misses++;
+        //     return false;
+        // }
+        // LOG(DEBUG, LOG_TAG) << "Successfully mapped " << rounded_size << " bytes at " << mapped_data << " for socket " << native_socket << "\n";
         stats_.mmap_buffer_hits++;
 
         // Prepare TCP_ZEROCOPY_RECEIVE structure
         struct tcp_zerocopy_receive zc = {};
-        zc.address = reinterpret_cast<uint64_t>(mapped_data);
-        zc.length = static_cast<uint32_t>(rounded_size);
+        zc.address = reinterpret_cast<uint64_t>(mapped_data->data());
+        // zc.length = static_cast<uint32_t>(rounded_size);
+        zc.length = mapped_data->size();
         zc.recv_skip_hint = 0; // Initialize to 0
 
         LOG(DEBUG, LOG_TAG) << "Calling getsockopt TCP_ZEROCOPY_RECEIVE with address=" << std::hex << zc.address << std::dec << ", length=" << zc.length << "\n";
@@ -188,15 +203,15 @@ bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t expected_size, const
             if (zc.recv_skip_hint > 0) {
                 LOG(DEBUG, LOG_TAG) << "recv_skip_hint=" << zc.recv_skip_hint << " bytes need conventional read\n";
                 // For now, fall back if we have skip hint - we can implement this later
-                munmap(mapped_data, rounded_size);
+                // munmap(mapped_data, rounded_size);
                 return false;
             }
 
             // Process the zero-copy data
-            processZeroCopyData(mapped_data, zc.length, handler);
+            processZeroCopyData(mapped_data->data(), zc.length, handler);
 
             // Unmap after processing
-            munmap(mapped_data, rounded_size);
+            // munmap(mapped_data, rounded_size);
             return true;
         } else {
             // Zero-copy failed, clean up and fall back
@@ -205,7 +220,7 @@ bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t expected_size, const
             } else {
                 LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE returned 0 bytes (length=" << zc.length << ", skip_hint=" << zc.recv_skip_hint << ")\n";
             }
-            munmap(mapped_data, rounded_size);
+            // munmap(mapped_data, rounded_size);
             return false;
         }
 
