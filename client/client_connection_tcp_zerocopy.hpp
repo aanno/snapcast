@@ -129,8 +129,8 @@ private:
     /// Page size for alignment calculations
     static const size_t PAGE_SIZE;
 
-    /// Minimum message size to attempt zero-copy (temporarily lowered for testing)
-    static constexpr size_t MIN_ZEROCOPY_SIZE = 3800;
+    /// Minimum message size to attempt zero-copy (kernel typically requires 4KB+ for effective zero-copy)
+    static constexpr size_t MIN_ZEROCOPY_SIZE = 4096;
 
     /// Thread safety for statistics access
     mutable std::mutex stats_mutex_;
