@@ -92,6 +92,9 @@ public:
     void logZeroCopyStats() const;
 
 private:
+    /// Wait for data availability and try zero-copy receive
+    void waitForDataAndTryZeroCopy(size_t expected_size, const MessageHandler<msg::BaseMessage>& handler);
+
     /// Try to receive message using TCP_ZEROCOPY_RECEIVE
     bool tryZeroCopyReceive(size_t expected_size, const MessageHandler<msg::BaseMessage>& handler);
 

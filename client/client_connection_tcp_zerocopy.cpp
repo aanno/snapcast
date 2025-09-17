@@ -28,6 +28,7 @@
 #include <boost/asio/read.hpp>
 
 // system headers
+#include <sys/mman.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -102,54 +103,77 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
 
         // Step 2: For message body, try TCP_ZEROCOPY_RECEIVE if suitable
         if (isSuitableForZeroCopy(base_message_.size)) {
-            LOG(DEBUG, LOG_TAG) << "Attempting TCP_ZEROCOPY_RECEIVE for " << base_message_.size << " byte message body\n";
-            if (tryZeroCopyReceive(base_message_.size, handler)) {
-                return; // Zero-copy successful
-            }
-            LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE failed, falling back to regular receive\n";
+            LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes suitable for zero-copy, waiting for data availability\n";
+            // Wait for socket to have data ready before attempting zero-copy
+            waitForDataAndTryZeroCopy(base_message_.size, handler);
+        } else {
+            LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes not suitable for zero-copy (min=" << MIN_ZEROCOPY_SIZE << ", page=" << PAGE_SIZE << ")\n";
+            // Step 3: Fallback to regular async_read for message body
+            receiveRegular(base_message_.size, handler);
         }
-
-        // Step 3: Fallback to regular async_read for message body
-        receiveRegular(base_message_.size, handler);
     });
 }
 
+void ClientConnectionTcpZeroCopy::waitForDataAndTryZeroCopy(size_t expected_size, const MessageHandler<msg::BaseMessage>& handler)
+{
+    // Wait for socket to have data ready for reading
+    socket_.async_wait(tcp_socket::wait_read, [this, expected_size, handler](const boost::system::error_code& ec)
+    {
+        if (ec) {
+            LOG(ERROR, LOG_TAG) << "Error waiting for socket data availability: " << ec.message() << "\n";
+            if (handler)
+                handler(ec, nullptr);
+            return;
+        }
+
+        LOG(DEBUG, LOG_TAG) << "Socket has data available, attempting TCP_ZEROCOPY_RECEIVE for " << expected_size << " bytes\n";
+
+        // Now that data is available, try zero-copy receive
+        if (tryZeroCopyReceive(expected_size, handler)) {
+            return; // Zero-copy successful
+        }
+
+        LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE failed even with data available, falling back to regular receive\n";
+
+        // Fall back to regular receive
+        receiveRegular(expected_size, handler);
+    });
+}
 
 bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t expected_size, const MessageHandler<msg::BaseMessage>& handler)
 {
     stats_.zerocopy_attempts++;
 
     try {
-        // Get page-aligned buffer from mmap pool
-        size_t rounded_size = MmapBufferPool::roundToPageSize(expected_size);
-        auto buffer_guard = mmap_buffer_pool_.acquire(rounded_size);
-
-        if (!buffer_guard || !buffer_guard->valid()) {
-            stats_.mmap_buffer_misses++;
-            stats_.fallback_size_mismatch++;
-            return false;
-        }
-
-        stats_.mmap_buffer_hits++;
-
-        // Prepare TCP_ZEROCOPY_RECEIVE structure
-        struct tcp_zerocopy_receive zc = {};
-        zc.address = reinterpret_cast<uint64_t>(buffer_guard->data());
-        zc.length = static_cast<uint32_t>(rounded_size);
-
-        // Verify page alignment
-        if (!MmapBufferPool::isPageAligned(buffer_guard->data())) {
-            LOG(WARNING, LOG_TAG) << "Buffer not page-aligned, falling back to regular receive\n";
-            stats_.fallback_page_misalign++;
-            return false;
-        }
-
-        // Try zero-copy receive using getsockopt
+        // Get native socket handle
         int native_socket = getNativeSocket();
         if (native_socket < 0) {
             LOG(ERROR, LOG_TAG) << "Failed to get native socket handle\n";
             return false;
         }
+
+        // Round size to page boundary as required by TCP_ZEROCOPY_RECEIVE
+        size_t rounded_size = MmapBufferPool::roundToPageSize(expected_size);
+
+        // Map the socket directly for zero-copy receive (not anonymous mapping!)
+        void* mapped_data = mmap(nullptr, rounded_size, PROT_READ, MAP_SHARED, native_socket, 0);
+
+        if (mapped_data == MAP_FAILED) {
+            LOG(DEBUG, LOG_TAG) << "mmap failed for socket " << native_socket << ": " << strerror(errno) << "\n";
+            stats_.mmap_buffer_misses++;
+            return false;
+        }
+
+        LOG(DEBUG, LOG_TAG) << "Successfully mapped " << rounded_size << " bytes at " << mapped_data << " for socket " << native_socket << "\n";
+        stats_.mmap_buffer_hits++;
+
+        // Prepare TCP_ZEROCOPY_RECEIVE structure
+        struct tcp_zerocopy_receive zc = {};
+        zc.address = reinterpret_cast<uint64_t>(mapped_data);
+        zc.length = static_cast<uint32_t>(rounded_size);
+        zc.recv_skip_hint = 0; // Initialize to 0
+
+        LOG(DEBUG, LOG_TAG) << "Calling getsockopt TCP_ZEROCOPY_RECEIVE with address=" << std::hex << zc.address << std::dec << ", length=" << zc.length << "\n";
 
         socklen_t optlen = sizeof(zc);
         int ret = getsockopt(native_socket, IPPROTO_TCP, TCP_ZEROCOPY_RECEIVE, &zc, &optlen);
@@ -159,18 +183,30 @@ bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t expected_size, const
             stats_.zerocopy_successful++;
             stats_.zerocopy_bytes += zc.length;
 
-            LOG(DEBUG, LOG_TAG) << "Zero-copy receive successful: " << zc.length << " bytes mapped\n";
+            LOG(DEBUG, LOG_TAG) << "Zero-copy receive successful: " << zc.length << " bytes mapped, skip_hint=" << zc.recv_skip_hint << "\n";
+
+            // Handle recv_skip_hint if needed
+            if (zc.recv_skip_hint > 0) {
+                LOG(DEBUG, LOG_TAG) << "recv_skip_hint=" << zc.recv_skip_hint << " bytes need conventional read\n";
+                // For now, fall back if we have skip hint - we can implement this later
+                munmap(mapped_data, rounded_size);
+                return false;
+            }
 
             // Process the zero-copy data
-            processZeroCopyData(buffer_guard->data(), zc.length, handler);
+            processZeroCopyData(mapped_data, zc.length, handler);
+
+            // Unmap after processing
+            munmap(mapped_data, rounded_size);
             return true;
         } else {
-            // Zero-copy failed, will fall back to regular receive
+            // Zero-copy failed, clean up and fall back
             if (ret != 0) {
-                LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE failed: " << strerror(errno) << "\n";
+                LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE failed: " << strerror(errno) << " (ret=" << ret << ")\n";
             } else {
-                LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE returned 0 bytes\n";
+                LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE returned 0 bytes (length=" << zc.length << ", skip_hint=" << zc.recv_skip_hint << ")\n";
             }
+            munmap(mapped_data, rounded_size);
             return false;
         }
 
@@ -211,8 +247,9 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
 
 bool ClientConnectionTcpZeroCopy::isSuitableForZeroCopy(size_t size) const
 {
-    // Must be at least minimum size and preferably a multiple of page size
-    return size >= MIN_ZEROCOPY_SIZE && (size % PAGE_SIZE == 0 || size >= PAGE_SIZE);
+    // Must be at least minimum size to justify zero-copy overhead
+    // No need to check page alignment - MmapBufferPool handles rounding up
+    return size >= MIN_ZEROCOPY_SIZE;
 }
 
 int ClientConnectionTcpZeroCopy::getNativeSocket() const
