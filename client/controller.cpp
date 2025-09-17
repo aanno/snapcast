@@ -195,27 +195,27 @@ void Controller::getNextMessage()
             if (stream_ && decoder_)
             {
                 // execute on the io_context to do the (costly) decoding on another thread (if more than one thread is used)
-                // boost::asio::post(io_context_, [this, response = std::move(response)]() mutable {
-                auto pcmChunk = msg::message_cast<msg::PcmChunk>(std::move(response));
-                pcmChunk->format = sampleFormat_;
-                // LOG(TRACE, LOG_TAG) << "chunk: " << pcmChunk->payloadSize << ", sampleFormat: " << sampleFormat_.toString() << "\n";
+                boost::asio::post(io_context_, [this, response = std::move(response)]() mutable {
+                    auto pcmChunk = msg::message_cast<msg::PcmChunk>(std::move(response));
+                    pcmChunk->format = sampleFormat_;
+                    // LOG(TRACE, LOG_TAG) << "chunk: " << pcmChunk->payloadSize << ", sampleFormat: " << sampleFormat_.toString() << "\n";
 
-                // Phase 4: Try zero-copy decode for FLAC decoder
-                if (auto* flac_decoder = dynamic_cast<decoder::FlacDecoder*>(decoder_.get())) {
-                    // Use Phase 4 True Zero-Copy decode
-                    if (auto zero_copy_chunk = flac_decoder->decodeZeroCopy(pcmChunk.get())) {
-                        // LOG(TRACE, LOG_TAG) << "Zero-copy decoded: " << zero_copy_chunk->payloadSize << ", Duration: " << zero_copy_chunk->durationMs() << "\n";
-                        stream_->addChunk(std::move(zero_copy_chunk));
+                    // Phase 4: Try zero-copy decode for FLAC decoder
+                    if (auto* flac_decoder = dynamic_cast<decoder::FlacDecoder*>(decoder_.get())) {
+                        // Use Phase 4 True Zero-Copy decode
+                        if (auto zero_copy_chunk = flac_decoder->decodeZeroCopy(pcmChunk.get())) {
+                            // LOG(TRACE, LOG_TAG) << "Zero-copy decoded: " << zero_copy_chunk->payloadSize << ", Duration: " << zero_copy_chunk->durationMs() << "\n";
+                            stream_->addChunk(std::move(zero_copy_chunk));
+                        }
+                    } else {
+                        // Phase 3: Fallback to regular decode for other decoders
+                        if (decoder_->decode(pcmChunk.get())) {
+                            // LOG(TRACE, LOG_TAG) << ", decoded: " << pcmChunk->payloadSize << ", Duration: " << pcmChunk->durationMs() << ", sec: " <<
+                            // pcmChunk->timestamp.sec << ", usec: " << pcmChunk->timestamp.usec / 1000 << ", type: " << pcmChunk->type << "\n";
+                            stream_->addChunk(std::move(pcmChunk));
+                        }
                     }
-                } else {
-                    // Phase 3: Fallback to regular decode for other decoders
-                    if (decoder_->decode(pcmChunk.get())) {
-                        // LOG(TRACE, LOG_TAG) << ", decoded: " << pcmChunk->payloadSize << ", Duration: " << pcmChunk->durationMs() << ", sec: " <<
-                        // pcmChunk->timestamp.sec << ", usec: " << pcmChunk->timestamp.usec / 1000 << ", type: " << pcmChunk->type << "\n";
-                        stream_->addChunk(std::move(pcmChunk));
-                    }
-                }
-                // });
+                });
             }
         }
         else if (response->type == message_type::kServerSettings)

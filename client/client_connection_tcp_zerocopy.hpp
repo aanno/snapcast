@@ -32,13 +32,14 @@
 #include <thread>
 #include <chrono>
 
-/// TRUE Zero-copy TCP client connection for receiving audio chunks
+/// TRUE Zero-copy TCP client connection using mmap-based receive
 /**
- * This connection extends the regular TCP connection with TRUE zero-copy receive capability.
- * - Uses direct recv() into buffer pool buffers (NO memory copies)
- * - Falls back to regular async_read for small control messages
- * - Buffer pool provides RAII management with automatic return
- * - Provides comprehensive statistics and periodic logging
+ * This connection provides TRUE zero-copy receive using TCP_ZEROCOPY_RECEIVE.
+ * - Uses mmap page-aligned buffers for direct kernel mapping
+ * - Leverages TCP_ZEROCOPY_RECEIVE getsockopt for zero-copy
+ * - Falls back to regular recv() when zero-copy conditions not met
+ * - MmapBufferPool provides page-aligned RAII buffer management
+ * - Comprehensive statistics for zero-copy success/failure analysis
  */
 class ClientConnectionTcpZeroCopy : public ClientConnectionTcp
 {
