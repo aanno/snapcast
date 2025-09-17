@@ -20,6 +20,7 @@
 
 // local headers
 #include "decoder.hpp"
+#include "common/buffer_pool.hpp"
 
 // 3rd party headers
 #include <FLAC/stream_decoder.h>
@@ -71,10 +72,20 @@ public:
     std::unique_ptr<msg::PcmChunk> flac_chunk_;
     msg::PcmChunk* pcm_chunk_{nullptr};
     SampleFormat sample_format_;
+    
+    // Read position tracking to eliminate memmove
+    size_t input_read_pos_{0};
 
 private:
     std::mutex mutex_;
     FLAC__StreamDecoder* decoder_{nullptr};
+    
+    // Buffer pool for zero-copy memory management
+    DynamicBufferPool& buffer_pool_;
+    
+    // Buffer guards for RAII buffer management
+    DynamicBufferPool::BufferGuard input_buffer_guard_;
+    DynamicBufferPool::BufferGuard output_buffer_guard_;
 };
 
 } // namespace decoder

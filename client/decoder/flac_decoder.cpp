@@ -50,7 +50,10 @@ void error_callback(const FLAC__StreamDecoder* decoder, FLAC__StreamDecoderError
 // Global variables removed - now using instance members in FlacDecoder class
 
 
-FlacDecoder::FlacDecoder() : Decoder(), lastError_(nullptr), flac_chunk_(std::make_unique<msg::PcmChunk>())
+FlacDecoder::FlacDecoder() : Decoder(), lastError_(nullptr), flac_chunk_(std::make_unique<msg::PcmChunk>()), 
+                             buffer_pool_(DynamicBufferPool::instance()),
+                             input_buffer_guard_(buffer_pool_.acquire(4096)),  // Initial size
+                             output_buffer_guard_(buffer_pool_.acquire(8192))  // Initial size
 {
 }
 
@@ -69,10 +72,22 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
     std::lock_guard<std::mutex> lock(mutex_);
     cacheInfo_.reset();
     pcm_chunk_ = chunk;
-    flac_chunk_->payload = static_cast<char*>(realloc(flac_chunk_->payload, chunk->payloadSize));
-    memcpy(flac_chunk_->payload, chunk->payload, chunk->payloadSize);
+    
+    // Use buffer pool for input buffer instead of realloc
+    if (input_buffer_guard_.get().size() < chunk->payloadSize) {
+        input_buffer_guard_.resize(chunk->payloadSize);
+    }
+    auto& input_buffer = input_buffer_guard_.get();
+    
+    // Copy input data to buffer pool buffer (still needed because FLAC modifies it)
+    memcpy(input_buffer.data(), chunk->payload, chunk->payloadSize);
+    
+    // Point flac_chunk to our buffer pool buffer and reset read position
+    flac_chunk_->payload = input_buffer.data();
     flac_chunk_->payloadSize = chunk->payloadSize;
+    input_read_pos_ = 0;  // Reset read position for new decode
 
+    // Reset output buffer size to 0 (but keep capacity for reuse)
     pcm_chunk_->payload = static_cast<char*>(realloc(pcm_chunk_->payload, 0)); // NOLINT
     pcm_chunk_->payloadSize = 0;
     while (flac_chunk_->payloadSize > 0)
@@ -140,16 +155,23 @@ FLAC__StreamDecoderReadStatus read_callback(const FLAC__StreamDecoder* /*decoder
     {
         //		cerr << "read_callback: " << *bytes << ", avail: " << flac_decoder->flac_chunk_->payloadSize << "\n";
         flac_decoder->cacheInfo_.isCachedChunk_ = false;
-        if (*bytes > flac_decoder->flac_chunk_->payloadSize)
-            *bytes = flac_decoder->flac_chunk_->payloadSize;
+        
+        // Calculate remaining bytes from current read position
+        size_t remaining = flac_decoder->flac_chunk_->payloadSize - flac_decoder->input_read_pos_;
+        if (*bytes > remaining)
+            *bytes = remaining;
 
         //		if (*bytes == 0)
         //			return FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM;
 
-        memcpy(buffer, flac_decoder->flac_chunk_->payload, *bytes);
-        memmove(flac_decoder->flac_chunk_->payload, flac_decoder->flac_chunk_->payload + *bytes, flac_decoder->flac_chunk_->payloadSize - *bytes);
+        // Copy from current read position (NO memmove needed!)
+        memcpy(buffer, flac_decoder->flac_chunk_->payload + flac_decoder->input_read_pos_, *bytes);
+        
+        // Advance read position instead of shifting data
+        flac_decoder->input_read_pos_ += *bytes;
+        
+        // Update remaining size for compatibility
         flac_decoder->flac_chunk_->payloadSize = flac_decoder->flac_chunk_->payloadSize - static_cast<uint32_t>(*bytes);
-        flac_decoder->flac_chunk_->payload = static_cast<char*>(realloc(flac_decoder->flac_chunk_->payload, flac_decoder->flac_chunk_->payloadSize)); // NOLINT
     }
     return FLAC__STREAM_DECODER_READ_STATUS_CONTINUE;
 }
