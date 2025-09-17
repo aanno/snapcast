@@ -49,6 +49,7 @@
  * - Buffer must be page-aligned (handled by MmapBufferPool)
  * - Buffer size must be multiple of page size
  * - Incoming data must align on page boundaries for optimal performance
+ * - loopback doesn't support TCP zero-copy due to missing header-data split
  */
 class ClientConnectionTcpZeroCopy : public ClientConnectionTcp
 {
