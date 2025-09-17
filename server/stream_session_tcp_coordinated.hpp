@@ -110,7 +110,7 @@ protected:
     /// Send message @p buffer and pass result to @p handler
     void sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler) override;
 
-    // Internal stop without virtual call
+    /// Internal stop without virtual call
     void stopInternal();
 
 private:

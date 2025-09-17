@@ -18,6 +18,7 @@ set(TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_main.cpp
     ${CMAKE_SOURCE_DIR}/common/stream_uri.cpp
     ${CMAKE_SOURCE_DIR}/common/base64.cpp
+    ${CMAKE_SOURCE_DIR}/common/aixlog.cpp
     ${CMAKE_SOURCE_DIR}/common/utils/string_utils.cpp
     ${CMAKE_SOURCE_DIR}/server/authinfo.cpp
     # ${CMAKE_SOURCE_DIR}/server/jwt.cpp

@@ -110,6 +110,9 @@ private:
     size_t cache_misses_{0};
 };
 
+// doxygen don't understand the following
+/// \cond
+
 // Global cache instance
 static ShouldLogCache& getShouldLogCache()
 {
@@ -162,9 +165,6 @@ bool Log::should_log_cached(SEVERITY severity, const char* tag)
     
     return result;
 }
-
-// doxygen don't understand the following
-/// \cond
 
 // Overload for new Severity enum class
 bool Log::should_log_cached(Severity severity, const char* tag)
