@@ -28,6 +28,7 @@
 
 static constexpr auto LOG_TAG = "BufferPool";
 
+/// c'tor
 DynamicBufferPool::DynamicBufferPool(size_t initial_count, size_t default_buffer_size)
     : default_buffer_size_(std::max(default_buffer_size, MIN_BUFFER_SIZE))
     , initial_count_(initial_count)
@@ -37,6 +38,7 @@ DynamicBufferPool::DynamicBufferPool(size_t initial_count, size_t default_buffer
     LOG(DEBUG, LOG_TAG) << "Initialized buffer pool (lazy) with default size " << default_buffer_size_ << "\n";
 }
 
+/// Acquire a buffer of at least min_size
 DynamicBufferPool::BufferGuard DynamicBufferPool::acquire(size_t min_size)
 {
     check_cleanup();
@@ -72,7 +74,7 @@ DynamicBufferPool::BufferGuard DynamicBufferPool::acquire(size_t min_size)
             LOG(TRACE, LOG_TAG) << "Reused buffer from size bucket " << it->first 
                                 << " for requested size " << target_size << "\n";
             
-            return BufferGuard(*this, std::move(buffer));
+            return { *this, std::move(buffer) };
         }
         ++it;
     }
@@ -83,7 +85,7 @@ DynamicBufferPool::BufferGuard DynamicBufferPool::acquire(size_t min_size)
     
     LOG(TRACE, LOG_TAG) << "Created new buffer of size " << target_size << "\n";
     
-    return BufferGuard(*this, std::move(buffer));
+    return { *this, std::move(buffer) };
 }
 
 void DynamicBufferPool::release(std::unique_ptr<Buffer> buffer)

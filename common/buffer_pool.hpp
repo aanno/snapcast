@@ -42,8 +42,11 @@ public:
     /// Individual buffer wrapper with metadata
     struct Buffer
     {
+        /// actual data storage
         std::vector<char> data;
+        /// maximum capacity of the buffer
         size_t capacity;
+        /// Last used timestamp for cleanup
         std::chrono::steady_clock::time_point last_used;
         
         explicit Buffer(size_t size) 
@@ -83,15 +86,19 @@ public:
                 pool_.release(std::move(buffer_));
         }
         
-        // No copying, only moving
+        /// No copying, only moving
         BufferGuard(const BufferGuard&) = delete;
+
+        /// delete copy assignment
         BufferGuard& operator=(const BufferGuard&) = delete;
         
+        /// move c'tor
         BufferGuard(BufferGuard&& other) noexcept
             : pool_(other.pool_), buffer_(std::move(other.buffer_))
         {
         }
         
+        /// move assignment
         BufferGuard& operator=(BufferGuard&& other) noexcept
         {
             if (this != &other)
@@ -103,9 +110,13 @@ public:
             return *this;
         }
         
+        /// Access as non-const
         std::vector<char>& get() { return buffer_->data; }
+
+        /// Access as const
         const std::vector<char>& get() const { return buffer_->data; }
         
+        /// Resize the buffer if needed
         void resize(size_t size) { buffer_->resize_if_needed(size); }
         
     private:
@@ -125,15 +136,24 @@ public:
     /// Get pool statistics
     struct Stats
     {
+        /// Total number of buffers managed by the pool
         size_t total_buffers{0};
+        /// Number of buffers currently available in the pool
         size_t available_buffers{0};
+        /// Total bytes allocated
         size_t bytes_allocated{0};
+        /// Number of buffers created
         size_t buffers_created{0};
+        /// Number of times buffers were reused
         size_t buffers_reused{0};
+        /// Number of cleanup operations performed
         size_t cleanup_operations{0};
     };
     
+    /// Get current pool statistics
     Stats getStats() const;
+
+    /// Reset statistics counters
     void resetStats();
     
     /// Force cleanup of old unused buffers

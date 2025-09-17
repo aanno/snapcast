@@ -26,9 +26,12 @@ public:
     /// @brief Key for the cache
     struct CacheKey
     {
+        /// severity level
         int severity;
+        /// logging tag
         std::string tag;
         
+        /// @brief Equality operator
         bool operator==(const CacheKey& other) const
         {
             return severity == other.severity && tag == other.tag;
@@ -38,6 +41,7 @@ public:
     /// @brief Hash function for CacheKey
     struct CacheKeyHash
     {
+        /// @brief  Compute hash
         std::size_t operator()(const CacheKey& key) const
         {
             return std::hash<int>()(key.severity) ^ 

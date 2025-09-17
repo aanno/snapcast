@@ -48,7 +48,10 @@ using boost::asio::ip::tcp;
 class StreamSessionTcpCoordinated : public StreamSessionTcp
 {
 public:
+    /// ctor. Received message from the client are passed to StreamMessageReceiver
     StreamSessionTcpCoordinated(StreamMessageReceiver* receiver, const ServerSettings& server_settings, tcp::socket&& socket);
+
+    /// d'tor
     ~StreamSessionTcpCoordinated() override;
 
     void start() override;
@@ -57,23 +60,39 @@ public:
     /// Get zerocopy statistics for this session
     struct ZeroCopyStats
     {
-        uint64_t zerocopy_attempts{0};      // Total zerocopy send attempts
-        uint64_t zerocopy_successful{0};    // Successful zerocopy sends
-        uint64_t zerocopy_bytes{0};         // Total bytes sent via zerocopy
-        uint64_t regular_sends{0};          // Messages sent via regular async_write
-        uint64_t regular_bytes{0};          // Total bytes sent via regular async_write
-        uint64_t coordination_fallbacks{0}; // Fallbacks due to pending async ops
-        uint64_t pending_async_operations{0}; // Currently pending async_write operations
-        uint64_t outstanding_zerocopy_buffers{0}; // Buffers awaiting completion notifications
-        uint64_t completion_notifications_received{0}; // Completion notifications received
-        uint64_t completion_notifications_missing{0}; // Expected but missing notifications
-        uint64_t buffers_completed_via_notifications{0}; // Total buffers completed via notifications
-        uint64_t buffer_reuse_count{0}; // How many times buffers were reused
+        /// Total zerocopy send attempts
+        uint64_t zerocopy_attempts{0};
+        /// Successful zerocopy sends
+        uint64_t zerocopy_successful{0};
+        /// Total bytes sent via zerocopy
+        uint64_t zerocopy_bytes{0};
+        /// Messages sent via regular async_write
+        uint64_t regular_sends{0};
+        /// Total bytes sent via regular async_write
+        uint64_t regular_bytes{0};
+        /// Fallbacks due to pending async ops
+        uint64_t coordination_fallbacks{0};
+        /// Currently pending async_write operations
+        uint64_t pending_async_operations{0};
+        /// Buffers awaiting completion notifications
+        uint64_t outstanding_zerocopy_buffers{0};
+        /// Completion notifications received
+        uint64_t completion_notifications_received{0};
+        /// Expected but missing notifications
+        uint64_t completion_notifications_missing{0};
+        /// Total buffers completed via notifications
+        uint64_t buffers_completed_via_notifications{0};
+        /// How many times buffers were reused
+        uint64_t buffer_reuse_count{0};
+
+        /// Percentage of successful zerocopy sends
         double zerocopy_percentage() const 
         { 
             return (zerocopy_attempts + regular_sends) > 0 ? 
                    (double(zerocopy_successful) / double(zerocopy_attempts + regular_sends)) * 100.0 : 0.0; 
         }
+
+        /// Reliability of completion notifications
         double completion_reliability() const 
         {
             return zerocopy_successful > 0 ? 
@@ -81,7 +100,10 @@ public:
         }
     };
     
+    /// Retrieve current zerocopy statistics
     ZeroCopyStats getZeroCopyStats() const;
+
+    /// Reset zerocopy statistics
     void resetZeroCopyStats();
 
 protected:
@@ -98,7 +120,7 @@ private:
     void sendZeroCopy(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler);
     
     /// Send using regular async_write (coordinated with async operations)
-    void sendRegularCoordinated(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler);
+    void sendRegularCoordinated(const std::shared_ptr<shared_const_buffer>& buffer, WriteHandler&& handler);
     
     /// Process pending send queue
     void processPendingSends();

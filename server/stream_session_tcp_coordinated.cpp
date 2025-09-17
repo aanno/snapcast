@@ -181,7 +181,7 @@ void StreamSessionTcpCoordinated::sendAsync(const std::shared_ptr<shared_const_b
     }
 }
 
-void StreamSessionTcpCoordinated::sendRegularCoordinated(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler)
+void StreamSessionTcpCoordinated::sendRegularCoordinated(const std::shared_ptr<shared_const_buffer>& buffer, WriteHandler&& handler)
 {
     // Track the async operation
     pending_async_operations_++;
@@ -221,7 +221,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_cons
     // Create iovec from the shared_const_buffer - no copying needed!
     // Get the first boost::asio::const_buffer from the shared_const_buffer
     auto const_buf = *buffer->begin();
-    const auto* data = boost::asio::buffer_cast<const void*>(const_buf);
+    const auto* data = static_cast<const void*>(const_buf.data());
     struct iovec iov = {const_cast<void*>(data), buffer_size};
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
@@ -269,7 +269,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_cons
         size_t remaining_bytes = buffer_size - result;
         // Create a sub-buffer for the remaining data
         auto const_buf = *buffer->begin();
-        auto remaining_data = boost::asio::buffer_cast<const char*>(const_buf) + result;
+        auto remaining_data = static_cast<const char*>(const_buf.data()) + result;
         auto remaining_buffer = std::make_shared<std::vector<char>>(remaining_data, remaining_data + remaining_bytes);
         
         LOG(INFO, LOG_TAG) << "Sending remaining " << remaining_bytes << " bytes via regular send\n";
@@ -277,7 +277,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_cons
         
         // Send remaining data with shared_ptr to ensure buffer lifetime
         boost::asio::async_write(socket_, boost::asio::buffer(*remaining_buffer),
-            [this, handler = std::move(handler), buffer_size, remaining_buffer](boost::system::error_code ec, std::size_t) mutable {
+            [handler = std::move(handler), buffer_size, remaining_buffer](boost::system::error_code ec, std::size_t) mutable {
             if (handler) {
                 handler(ec, ec ? 0 : buffer_size); // Report full size on success
             }
@@ -388,9 +388,9 @@ void StreamSessionTcpCoordinated::processErrorQueue()
 {
     // static int call_count = 0;
     static int debug_call_count = 0;
-    char control_buf[512];
+    std::array<char, 512> control_buf;
     struct msghdr msg = {};
-    msg.msg_control = control_buf;
+    msg.msg_control = control_buf.data();
     msg.msg_controllen = sizeof(control_buf);
     
     while (true)
@@ -421,7 +421,7 @@ void StreamSessionTcpCoordinated::processErrorQueue()
             // LOG(TRACE, LOG_TAG) << "Control message: level=" << cmsg->cmsg_level << ", type=" << cmsg->cmsg_type << "\n";
             if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
             {
-                struct sock_extended_err* ee = reinterpret_cast<struct sock_extended_err*>(CMSG_DATA(cmsg));
+                auto ee = reinterpret_cast<struct sock_extended_err*>(CMSG_DATA(cmsg));
                 if (ee->ee_errno == 0 && ee->ee_origin == SO_EE_ORIGIN_ZEROCOPY)
                 {
                     // Zerocopy completion notification
