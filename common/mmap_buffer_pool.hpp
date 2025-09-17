@@ -36,7 +36,7 @@
  * Designed specifically for TCP_ZEROCOPY_RECEIVE which requires:
  * - Page-aligned buffer addresses
  * - Buffer sizes that are multiples of page size
- * - Direct kernel mapping capability
+ * - Direct kernel mapping capability via socket file descriptor
  *
  * Features:
  * - mmap/munmap based allocation for zero-copy compatibility
@@ -54,8 +54,9 @@ public:
         void* data;                    ///< mmap'd memory address (page-aligned)
         size_t size;                   ///< Buffer size (multiple of page size)
         std::chrono::steady_clock::time_point last_used; ///< Last usage timestamp
+        int socket_fd;                 ///< Socket file descriptor for zero-copy
 
-        explicit MmapBuffer(size_t buffer_size);
+        explicit MmapBuffer(size_t buffer_size, int socket_fd);
         ~MmapBuffer();
 
         // No copying, only moving
@@ -84,7 +85,7 @@ public:
 
 public:
     /// Constructor
-    explicit MmapBufferPool(size_t initial_buffers_per_size = 4);
+    explicit MmapBufferPool(size_t initial_buffers_per_size = 4, int socket_fd = -1);
 
     /// Destructor
     ~MmapBufferPool() override;
@@ -131,6 +132,7 @@ private:
     mutable std::atomic<size_t> total_bytes_{0};
     mutable std::atomic<size_t> cleanup_operations_{0};
 
+    int socket_fd_; ///< Socket file descriptor for zero-copy
     size_t initial_buffers_per_size_;
     bool initialized_;
 

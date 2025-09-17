@@ -39,13 +39,13 @@ const std::vector<size_t> MmapBufferPool::SIZE_BUCKETS = {
 };
 
 // MmapBuffer implementation
-MmapBufferPool::MmapBuffer::MmapBuffer(size_t buffer_size)
-    : data(nullptr), size(buffer_size), last_used(std::chrono::steady_clock::now())
+MmapBufferPool::MmapBuffer::MmapBuffer(size_t buffer_size, int socket_fd)
+    : data(nullptr), size(buffer_size), last_used(std::chrono::steady_clock::now()), socket_fd(socket_fd)
 {
-    // Allocate page-aligned memory using mmap
-    data = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    // Allocate page-aligned memory using mmap with socket file descriptor for zero-copy
+    data = mmap(nullptr, size, PROT_READ, MAP_SHARED, socket_fd, 0);
     if (data == MAP_FAILED) {
-        throw std::runtime_error("Failed to allocate mmap buffer of size " + std::to_string(size));
+        throw std::runtime_error("Failed to allocate mmap buffer of size " + std::to_string(size) + " for socket " + std::to_string(socket_fd));
     }
 }
 
@@ -58,10 +58,11 @@ MmapBufferPool::MmapBuffer::~MmapBuffer()
 }
 
 MmapBufferPool::MmapBuffer::MmapBuffer(MmapBuffer&& other) noexcept
-    : data(other.data), size(other.size), last_used(other.last_used)
+    : data(other.data), size(other.size), last_used(other.last_used), socket_fd(other.socket_fd)
 {
     other.data = nullptr;
     other.size = 0;
+    other.socket_fd = -1;
 }
 
 MmapBufferPool::MmapBuffer& MmapBufferPool::MmapBuffer::operator=(MmapBuffer&& other) noexcept
@@ -73,8 +74,10 @@ MmapBufferPool::MmapBuffer& MmapBufferPool::MmapBuffer::operator=(MmapBuffer&& o
         data = other.data;
         size = other.size;
         last_used = other.last_used;
+        socket_fd = other.socket_fd;
         other.data = nullptr;
         other.size = 0;
+        other.socket_fd = -1;
     }
     return *this;
 }
@@ -86,8 +89,8 @@ MmapBufferPool::MmapBufferGuard::MmapBufferGuard(MmapBufferPool& pool, std::uniq
 }
 
 // MmapBufferPool implementation
-MmapBufferPool::MmapBufferPool(size_t initial_buffers_per_size)
-    : initial_buffers_per_size_(initial_buffers_per_size), initialized_(false)
+MmapBufferPool::MmapBufferPool(size_t initial_buffers_per_size, int socket_fd)
+    : socket_fd_(socket_fd), initial_buffers_per_size_(initial_buffers_per_size), initialized_(false)
 {
     // Pre-allocate initial buffers for each size bucket
     std::lock_guard<std::mutex> lock(mutex_);
@@ -136,7 +139,7 @@ void MmapBufferPool::release(std::unique_ptr<MmapBuffer> buffer)
     available_buffers_[buffer->size].push_back(std::move(buffer));
 }
 
-void MmapBufferPool::releaseBuffer(void* buffer_data, size_t buffer_size)
+void MmapBufferPool::releaseBuffer(void* /*buffer_data*/, size_t /*buffer_size*/)
 {
     // This is called by BufferGuardBase destructor
     // The actual buffer is managed by MmapBufferGuard destructor
@@ -155,7 +158,7 @@ size_t MmapBufferPool::findSizeBucket(size_t size) const
 
 std::unique_ptr<MmapBufferPool::MmapBuffer> MmapBufferPool::createBuffer(size_t size)
 {
-    auto buffer = std::make_unique<MmapBuffer>(size);
+    auto buffer = std::make_unique<MmapBuffer>(size, socket_fd_);
     total_buffers_++;
     total_bytes_ += size;
     return buffer;
