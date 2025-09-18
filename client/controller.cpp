@@ -325,6 +325,12 @@ void Controller::getNextMessage()
             player_->setVolume({serverSettings_->getVolume() / 100., serverSettings_->isMuted()});
             // }
         }
+        else if (response->type == message_type::kTime)
+        {
+            // Time responses are handled by ZeroCopy controlled loop callbacks
+            // This is expected for ZeroCopy connections - no action needed here
+            LOG(DEBUG, LOG_TAG) << "Time response received via traditional loop (handled by ZeroCopy callback)\n";
+        }
         else if (response->type == message_type::kError)
         {
             auto error = msg::message_cast<msg::Error>(std::move(response));
