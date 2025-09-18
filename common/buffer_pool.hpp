@@ -48,6 +48,8 @@ public:
         size_t capacity;
         /// Last used timestamp for cleanup
         std::chrono::steady_clock::time_point last_used;
+        /// Checkout timestamp for leak detection
+        std::chrono::steady_clock::time_point checked_out_at;
         
         /// c'tor
         explicit Buffer(size_t size) 
@@ -81,13 +83,16 @@ public:
         BufferGuard(DynamicBufferPool& pool, std::unique_ptr<Buffer> buffer)
             : pool_(pool), buffer_(std::move(buffer))
         {
+            // TEMP DISABLED: if (buffer_) pool_.track_checkout(buffer_.get());
         }
         
         /// d'tor
         ~BufferGuard()
         {
-            if (buffer_)
+            if (buffer_) {
+                // TEMP DISABLED: pool_.track_return(buffer_.get());
                 pool_.release(std::move(buffer_));
+            }
         }
         
         /// No copying, only moving
@@ -100,6 +105,7 @@ public:
         BufferGuard(BufferGuard&& other) noexcept
             : pool_(other.pool_), buffer_(std::move(other.buffer_))
         {
+            // No need to track - ownership transferred, tracking entry moves with the buffer
         }
         
         /// move assignment
@@ -107,9 +113,12 @@ public:
         {
             if (this != &other)
             {
-                if (buffer_)
+                if (buffer_) {
+                    // TEMP DISABLED: pool_.track_return(buffer_.get());
                     pool_.release(std::move(buffer_));
+                }
                 buffer_ = std::move(other.buffer_);
+                // No need to track_checkout - ownership transferred, tracking entry moves with buffer
             }
             return *this;
         }
@@ -152,6 +161,8 @@ public:
         size_t buffers_reused{0};
         /// Number of cleanup operations performed
         size_t cleanup_operations{0};
+        /// Number of buffers checked out for >10 seconds (potential leaks)
+        size_t potential_leaks{0};
     };
     
     /// Get current pool statistics
@@ -178,6 +189,12 @@ private:
     
     /// Check and perform cleanup if needed
     void check_cleanup();
+
+    /// Track buffer checkout for leak detection
+    void track_checkout(void* buffer_ptr);
+
+    /// Track buffer return for leak detection
+    void track_return(void* buffer_ptr);
     
     // Configuration
     static constexpr size_t MAX_POOL_SIZE = 128;      // Maximum buffers per size bucket
@@ -191,6 +208,9 @@ private:
     
     // Storage - map from size bucket to available buffers
     std::map<size_t, std::deque<std::unique_ptr<Buffer>>> available_buffers_;
+
+    // Leak detection - track checked out buffers
+    std::map<void*, std::chrono::steady_clock::time_point> checked_out_buffers_;
     
     // Statistics
     size_t total_buffers_{0};

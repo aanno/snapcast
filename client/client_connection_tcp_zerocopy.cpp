@@ -153,11 +153,11 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
         
         // Step 3: For message body, try TCP_ZEROCOPY_RECEIVE if suitable and enabled
         if (isSuitableForZeroCopy(base_message_.size)) {
-            LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes suitable for zero-copy, waiting for data availability\n";
+            // LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes suitable for zero-copy, waiting for data availability\n";
             // Wait for socket to have data ready before attempting zero-copy
             waitForDataAndTryZeroCopy(base_message_.size, handler);
         } else {
-            LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes not suitable for zero-copy (min=" << MIN_ZEROCOPY_SIZE << ", enabled=" << server_.zerocopy << ")\n";
+            // LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes not suitable for zero-copy (min=" << MIN_ZEROCOPY_SIZE << ", enabled=" << server_.zerocopy << ")\n";
             // Step 4: Fallback to regular async_read for message body
             receiveRegular(base_message_.size, handler);
         }
@@ -428,6 +428,7 @@ void ClientConnectionTcpZeroCopy::logZeroCopyStats() const
     LOG(INFO, LOG_TAG) << "\tDynamic Pool - Created: " << dynamic_stats.buffers_created << "\n";
     LOG(INFO, LOG_TAG) << "\tDynamic Pool - Reused: " << dynamic_stats.buffers_reused << "\n";
     LOG(INFO, LOG_TAG) << "\tDynamic Pool - Cleanup Ops: " << dynamic_stats.cleanup_operations << "\n";
+    LOG(INFO, LOG_TAG) << "\tDynamic Pool - Potential Leaks (>10s): " << dynamic_stats.potential_leaks << "\n";
 
     if (mmap_buffer_pool_)
         mmap_buffer_pool_->logStats();

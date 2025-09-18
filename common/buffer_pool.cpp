@@ -152,12 +152,23 @@ DynamicBufferPool::Stats DynamicBufferPool::getStats() const
         stats.available_buffers += bucket.second.size();
     }
     
-    LOG(INFO, LOG_TAG) << "Buffer Pool Stats - Total: " << stats.total_buffers 
-                       << ", Created: " << stats.buffers_created 
-                       << ", Reused: " << stats.buffers_reused 
-                       << ", Available: " << stats.available_buffers 
+    // Count potential leaks (buffers checked out > 10 seconds)
+    auto now = std::chrono::steady_clock::now();
+    constexpr auto LEAK_THRESHOLD = std::chrono::seconds(10);
+    for (const auto& checkout : checked_out_buffers_)
+    {
+        if (now - checkout.second >= LEAK_THRESHOLD)
+        {
+            stats.potential_leaks++;
+        }
+    }
+
+    LOG(INFO, LOG_TAG) << "Buffer Pool Stats - Total: " << stats.total_buffers
+                       << ", Created: " << stats.buffers_created
+                       << ", Reused: " << stats.buffers_reused
+                       << ", Available: " << stats.available_buffers
                        << ", Bytes: " << stats.bytes_allocated << "\n";
-    
+
     return stats;
 }
 
@@ -210,6 +221,18 @@ void DynamicBufferPool::check_cleanup()
     {
         cleanup(DEFAULT_MAX_IDLE);
     }
+}
+
+void DynamicBufferPool::track_checkout(void* buffer_ptr)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    checked_out_buffers_[buffer_ptr] = std::chrono::steady_clock::now();
+}
+
+void DynamicBufferPool::track_return(void* buffer_ptr)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    checked_out_buffers_.erase(buffer_ptr);
 }
 
 DynamicBufferPool& DynamicBufferPool::instance()
