@@ -128,7 +128,6 @@ private:
     
     /// Send data iteratively using sendmsg (for partial send completions)
     void sendIterative(const void* data, size_t remaining_bytes, 
-                      const std::shared_ptr<shared_const_buffer>& original_buffer, 
                       size_t original_size, WriteHandler&& handler);
     
     /// Process pending send queue

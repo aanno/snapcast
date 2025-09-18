@@ -202,7 +202,7 @@ private:
     static constexpr size_t GROWTH_FACTOR = 2;       // Buffer size growth factor
     static constexpr size_t MIN_BUFFER_SIZE = 1024;  // Minimum buffer size
     static constexpr auto CLEANUP_INTERVAL = std::chrono::seconds(30);
-    static constexpr auto DEFAULT_MAX_IDLE = std::chrono::seconds(300);
+    static constexpr auto DEFAULT_MAX_IDLE = std::chrono::seconds(60);
     
     // Thread safety
     mutable std::mutex mutex_;

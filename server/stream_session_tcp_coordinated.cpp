@@ -285,7 +285,7 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_cons
         auto remaining_data = static_cast<const char*>(const_buf.data()) + result;
         
         // Use iterative sendmsg approach for remaining data
-        sendIterative(remaining_data, remaining_bytes, buffer, buffer_size, std::move(handler));
+        sendIterative(remaining_data, remaining_bytes, buffer_size, std::move(handler));
         return;
     }
     
@@ -311,7 +311,6 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_cons
 }
 
 void StreamSessionTcpCoordinated::sendIterative(const void* data, size_t remaining_bytes, 
-                                               const std::shared_ptr<shared_const_buffer>& original_buffer, 
                                                size_t original_size, WriteHandler&& handler)
 {
     // Iterative approach: keep sending until all data is sent
