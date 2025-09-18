@@ -34,6 +34,7 @@
 #include <memory>
 #include <mutex>
 #include <chrono>
+#include <queue>
 
 /// TRUE Zero-copy TCP client connection using TCP_ZEROCOPY_RECEIVE
 /**
@@ -140,4 +141,27 @@ private:
     
     /// Regular buffer pool for boost::asio operations
     DynamicBufferPool& buffer_pool_;
+
+    // ============ Controlled Async Loop Infrastructure ============
+
+    /// Maximum number of concurrent read operations (3: audio, control, timestamps)
+    static constexpr size_t MAX_CONCURRENT_READS = 3;
+
+    /// Number of currently active read operations
+    std::atomic<size_t> active_reads_{0};
+
+    /// Queue for incoming message handlers waiting for processing
+    std::queue<MessageHandler<msg::BaseMessage>> pending_handlers_;
+
+    /// Mutex to protect pending handlers queue
+    std::mutex handlers_mutex_;
+
+    /// Start a single controlled read operation
+    void startControlledRead();
+
+    /// Handle completion of a controlled read and potentially start next one
+    void onControlledReadComplete(const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response);
+
+    /// Hide messageReceived to ensure handler is always called for controlled reading
+    void messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler);
 };

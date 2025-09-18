@@ -108,66 +108,168 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
             LOG(ERROR, LOG_TAG) << "Invalid native socket handle: " << native_socket << "\n";
         }
     }
-    
+
+    // ==== SEQUENTIAL CONTROLLED LOOP: Only ONE header read at a time ====
+
+    // Queue the handler for processing
+    {
+        std::lock_guard<std::mutex> lock(handlers_mutex_);
+        pending_handlers_.push(handler);
+    }
+
+    // Start a controlled read ONLY if none are active (ensure sequential processing)
+    size_t current_active = active_reads_.load();
+    if (current_active == 0) {
+        // Atomically set to 1 if currently 0 (only one reader allowed)
+        size_t expected = 0;
+        if (active_reads_.compare_exchange_weak(expected, 1)) {
+            LOG(DEBUG, LOG_TAG) << "Starting sequential controlled read\n";
+            startControlledRead();
+        }
+    } else {
+        LOG(DEBUG, LOG_TAG) << "Sequential read in progress, handler queued\n";
+    }
+}
+
+// ============ Controlled Async Loop Implementation ============
+
+void ClientConnectionTcpZeroCopy::startControlledRead()
+{
+    LOG(DEBUG, LOG_TAG) << "startControlledRead: Beginning header read\n";
+
     // Step 1: Read message header using DynamicBufferPool (regular boost::asio I/O)
     auto header_buffer_guard = buffer_pool_.acquire(base_msg_size_);
     auto& header_buffer = header_buffer_guard.get();
 
     boost::asio::async_read(socket_, boost::asio::buffer(header_buffer.data(), base_msg_size_),
-                           [this, handler, header_buffer_guard = std::move(header_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
+                           boost::asio::bind_executor(strand_, [this, header_buffer_guard = std::move(header_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
     {
-        if (ec)
-        {
+        LOG(DEBUG, LOG_TAG) << "startControlledRead: Header read completed, ec=" << ec << ", length=" << length << "\n";
+
+        try {
+            LOG(DEBUG, LOG_TAG) << "TRACE: Entering header completion handler, ec.value()=" << ec.value() << "\n";
+
+            if (ec)
+            {
+                LOG(DEBUG, LOG_TAG) << "TRACE: Error condition detected, calling onControlledReadComplete\n";
             LOG(ERROR, LOG_TAG) << "Error reading message header of length " << length << ": " << ec.message() << "\n";
-            if (handler)
-                handler(ec, nullptr);
+            // Complete this controlled read with error
+            onControlledReadComplete(ec, nullptr);
             return;
         }
 
+        LOG(DEBUG, LOG_TAG) << "TRACE: No error, proceeding to parse header\n";
+
         // Parse header
+        LOG(DEBUG, LOG_TAG) << "TRACE: About to deserialize header\n";
         base_message_.deserialize(header_buffer_guard.get().data());
+        LOG(DEBUG, LOG_TAG) << "TRACE: Header deserialized, type=" << base_message_.type << ", size=" << base_message_.size << "\n";
         tv t;
         base_message_.received = t;
+
+        LOG(DEBUG, LOG_TAG) << "TRACE: About to validate message type and size\n";
 
         if (base_message_.type > message_type::kLast)
         {
             LOG(ERROR, LOG_TAG) << "unknown message type received: " << base_message_.type << ", size: " << base_message_.size << "\n";
-            if (handler)
-                handler(boost::asio::error::invalid_argument, nullptr);
+            onControlledReadComplete(boost::asio::error::invalid_argument, nullptr);
             return;
         }
         else if (base_message_.size > msg::max_size)
         {
             LOG(ERROR, LOG_TAG) << "received message of type " << base_message_.type << " too large: " << base_message_.size << "\n";
-            if (handler)
-                handler(boost::asio::error::invalid_argument, nullptr);
+            onControlledReadComplete(boost::asio::error::invalid_argument, nullptr);
             return;
         }
 
+        LOG(DEBUG, LOG_TAG) << "TRACE: Message validation passed, checking zerocopy flag\n";
+
         // Step 2: Short-circuit complex zero-copy logic when -z flag not used
         if (!server_.zerocopy) {
+            LOG(DEBUG, LOG_TAG) << "TRACE: -z flag not set, using receiveRegular\n";
             // -z flag not set: skip zero-copy entirely, use regular receive
-            receiveRegular(base_message_.size, handler);
+            receiveRegular(base_message_.size, [this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response) {
+                onControlledReadComplete(ec, std::move(response));
+            });
             return;
         }
-        
+
+        LOG(DEBUG, LOG_TAG) << "TRACE: -z flag is set, checking if suitable for zerocopy\n";
+
         // Step 3: For message body, try TCP_ZEROCOPY_RECEIVE if suitable and enabled
         if (isSuitableForZeroCopy(base_message_.size)) {
-            // LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes suitable for zero-copy, waiting for data availability\n";
+            LOG(DEBUG, LOG_TAG) << "TRACE: Message suitable for zerocopy, calling waitForDataAndTryZeroCopy\n";
             // Wait for socket to have data ready before attempting zero-copy
-            waitForDataAndTryZeroCopy(base_message_.size, handler);
+            waitForDataAndTryZeroCopy(base_message_.size, [this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response) {
+                onControlledReadComplete(ec, std::move(response));
+            });
         } else {
-            // LOG(DEBUG, LOG_TAG) << "Message size " << base_message_.size << " bytes not suitable for zero-copy (min=" << MIN_ZEROCOPY_SIZE << ", enabled=" << server_.zerocopy << ")\n";
+            LOG(DEBUG, LOG_TAG) << "TRACE: Message not suitable for zerocopy, calling receiveRegular fallback\n";
             // Step 4: Fallback to regular async_read for message body
-            receiveRegular(base_message_.size, handler);
+            receiveRegular(base_message_.size, [this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response) {
+                onControlledReadComplete(ec, std::move(response));
+            });
         }
-    });
+
+        } catch (const std::exception& e) {
+            LOG(ERROR, LOG_TAG) << "TRACE: Exception in header completion handler: " << e.what() << "\n";
+            onControlledReadComplete(boost::asio::error::operation_aborted, nullptr);
+        } catch (...) {
+            LOG(ERROR, LOG_TAG) << "TRACE: Unknown exception in header completion handler\n";
+            onControlledReadComplete(boost::asio::error::operation_aborted, nullptr);
+        }
+    }));
+}
+
+void ClientConnectionTcpZeroCopy::onControlledReadComplete(const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response)
+{
+    LOG(DEBUG, LOG_TAG) << "onControlledReadComplete: ec=" << ec << ", response=" << (response ? "valid" : "null") << "\n";
+
+    // Get the next handler from the queue FIRST
+    MessageHandler<msg::BaseMessage> handler;
+    bool has_more_pending = false;
+    {
+        std::lock_guard<std::mutex> lock(handlers_mutex_);
+        if (!pending_handlers_.empty()) {
+            handler = pending_handlers_.front();
+            pending_handlers_.pop();
+            has_more_pending = !pending_handlers_.empty();
+        }
+    }
+
+    // Call the handler if we have one
+    if (handler) {
+        handler(ec, std::move(response));
+    }
+
+    // CONTINUOUS SEQUENTIAL PROCESSING: Keep reading as long as socket is connected
+    // Reset active_reads to 0, then start next read if no error
+    active_reads_.store(0);
+
+    if (ec) {
+        // Stop reading on error
+        LOG(DEBUG, LOG_TAG) << "Sequential reading stopped due to error: " << ec.message() << "\n";
+    } else {
+        // Continue reading - either for pending handlers or to receive server messages
+        // Use boost::asio::post to defer to next event loop iteration (threading fix!)
+        boost::asio::post(strand_, [this, has_more_pending]() {
+            size_t expected = 0;
+            if (active_reads_.compare_exchange_weak(expected, 1)) {
+                if (has_more_pending) {
+                    LOG(DEBUG, LOG_TAG) << "Starting next sequential controlled read (pending handlers)\n";
+                } else {
+                    LOG(DEBUG, LOG_TAG) << "Starting next sequential controlled read (continuous)\n";
+                }
+                startControlledRead();
+            }
+        });
+    }
 }
 
 void ClientConnectionTcpZeroCopy::waitForDataAndTryZeroCopy(size_t expected_size, const MessageHandler<msg::BaseMessage>& handler)
 {
     // Wait for socket to have data ready for reading
-    socket_.async_wait(tcp_socket::wait_read, [this, expected_size, handler](const boost::system::error_code& ec)
+    socket_.async_wait(tcp_socket::wait_read, boost::asio::bind_executor(strand_, [this, expected_size, handler](const boost::system::error_code& ec)
     {
         if (ec) {
             LOG(ERROR, LOG_TAG) << "Error waiting for socket data availability: " << ec.message() << "\n";
@@ -194,7 +296,7 @@ void ClientConnectionTcpZeroCopy::waitForDataAndTryZeroCopy(size_t expected_size
 
         // Fall back to regular receive
         receiveRegular(expected_size, handler);
-    });
+    }));
 }
 
 bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t expected_size, const MessageHandler<msg::BaseMessage>& handler)
@@ -316,6 +418,8 @@ bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t expected_size, const
 
 void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const MessageHandler<msg::BaseMessage>& handler)
 {
+    LOG(DEBUG, LOG_TAG) << "TRACE: receiveRegular called for size=" << message_size << "\n";
+
     stats_.regular_receives++;
     stats_.regular_bytes += message_size;
 
@@ -323,9 +427,12 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
     auto body_buffer_guard = buffer_pool_.acquire(message_size);
     auto& body_buffer = body_buffer_guard.get();
 
+    LOG(DEBUG, LOG_TAG) << "TRACE: receiveRegular starting async_read for body\n";
+
     boost::asio::async_read(socket_, boost::asio::buffer(body_buffer.data(), message_size),
-                           [this, handler, body_buffer_guard = std::move(body_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
+                           boost::asio::bind_executor(strand_, [this, handler, body_buffer_guard = std::move(body_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
     {
+        LOG(DEBUG, LOG_TAG) << "TRACE: receiveRegular completion handler called, ec=" << ec << ", length=" << length << "\n";
         if (ec)
         {
             LOG(ERROR, LOG_TAG) << "Error reading message body of length " << length << ": " << ec.message() << "\n";
@@ -334,13 +441,30 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
             return;
         }
 
+        LOG(DEBUG, LOG_TAG) << "TRACE: receiveRegular creating message from body data\n";
+
         auto response = msg::factory::createMessage(base_message_, body_buffer_guard.get().data());
         if (!response)
             LOG(WARNING, LOG_TAG) << "Failed to deserialize message of type: " << base_message_.type << "\n";
 
+        LOG(DEBUG, LOG_TAG) << "TRACE: receiveRegular calling messageReceived and handler\n";
         messageReceived(std::move(response), handler);
         // body_buffer_guard automatically returns buffer to pool when it goes out of scope
-    });
+    }));
+}
+
+void ClientConnectionTcpZeroCopy::messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler)
+{
+    LOG(DEBUG, LOG_TAG) << "TRACE: messageReceived override called with handler\n";
+
+    // For controlled reading, we ALWAYS call the handler to maintain the sequential pattern
+    // Don't call getNextMessage recursively like the parent does - our controlled reading handles that
+    if (handler) {
+        LOG(DEBUG, LOG_TAG) << "TRACE: calling handler with received message\n";
+        handler({}, std::move(message));
+    } else {
+        LOG(WARNING, LOG_TAG) << "TRACE: handler is null in messageReceived\n";
+    }
 }
 
 bool ClientConnectionTcpZeroCopy::isSuitableForZeroCopy(size_t size) const
