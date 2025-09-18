@@ -21,11 +21,14 @@
 
 // local headers
 #include "common/aixlog.hpp"
+#include "common/buffer_pool.hpp"
 #include "common/message/codec_header.hpp"
 #include "common/message/factory.hpp"
+#include "common/str_compat.hpp"
 
 // 3rd party headers
 #include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
 
 // system headers
 #include <sys/mman.h>
@@ -44,8 +47,10 @@ static constexpr auto LOG_TAG = "ClientZeroCopy";
 const size_t ClientConnectionTcpZeroCopy::PAGE_SIZE = MmapBufferPool::getPageSize();
 
 ClientConnectionTcpZeroCopy::ClientConnectionTcpZeroCopy(boost::asio::io_context& io_context, ClientSettings::Server server)
-    : ClientConnectionTcp(io_context, std::move(server))
-    , stats_timer_(io_context)
+    : ClientConnection(io_context, std::move(server))
+    , stats_timer_(strand_)
+    , socket_(strand_)
+    , buffer_pool_(DynamicBufferPool::instance())
 {
     LOG(INFO, LOG_TAG) << "Zero-Copy TCP connection initialized (" 
                        << (server_.zerocopy ? "enabled" : "disabled") 
@@ -65,14 +70,46 @@ ClientConnectionTcpZeroCopy::~ClientConnectionTcpZeroCopy()
 
 void ClientConnectionTcpZeroCopy::disconnect()
 {
+    LOG(DEBUG, LOG_TAG) << "Disconnecting zero-copy client\n";
     stats_timer_.cancel();
-    ClientConnectionTcp::disconnect();
-    LOG(INFO, LOG_TAG) << "Zero-copy connection disconnected\n";
+    
+    if (!socket_.is_open())
+    {
+        LOG(DEBUG, LOG_TAG) << "Not connected\n";
+        return;
+    }
+    
+    boost::system::error_code ec;
+    socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+    if (ec)
+        LOG(ERROR, LOG_TAG) << "Error in socket shutdown: " << ec.message() << "\n";
+    socket_.close(ec);
+    if (ec)
+        LOG(ERROR, LOG_TAG) << "Error in socket close: " << ec.message() << "\n";
+
+    cancelRequests();
+    LOG(DEBUG, LOG_TAG) << "Zero-copy connection disconnected\n";
 }
 
 void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
 {
-    // Step 1: Read message header normally (small, not worth zero-copy)
+    // Initialize MmapBufferPool on first use if not already done
+    if (!mmap_buffer_pool_) {
+        int native_socket = getNativeSocket();
+        if (native_socket >= 0) {
+            try {
+                mmap_buffer_pool_ = std::make_unique<MmapBufferPool>(4, native_socket);
+                LOG(DEBUG, LOG_TAG) << "Initialized MmapBufferPool for socket " << native_socket << "\n";
+            } catch (const std::exception& e) {
+                LOG(ERROR, LOG_TAG) << "Failed to initialize MmapBufferPool: " << e.what() << "\n";
+                // Continue without MmapBufferPool - this will cause fallback behavior
+            }
+        } else {
+            LOG(ERROR, LOG_TAG) << "Invalid native socket handle: " << native_socket << "\n";
+        }
+    }
+    
+    // Step 1: Read message header using DynamicBufferPool (regular boost::asio I/O)
     auto header_buffer_guard = buffer_pool_.acquire(base_msg_size_);
     auto& header_buffer = header_buffer_guard.get();
 
@@ -278,7 +315,7 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
     stats_.regular_receives++;
     stats_.regular_bytes += message_size;
 
-    // Use buffer pool for regular message body receive
+    // Use DynamicBufferPool for regular message body receive (boost::asio I/O)
     auto body_buffer_guard = buffer_pool_.acquire(message_size);
     auto& body_buffer = body_buffer_guard.get();
 
@@ -383,4 +420,30 @@ void ClientConnectionTcpZeroCopy::logZeroCopyStats() const
     // Log mmap buffer pool stats
     if (mmap_buffer_pool_)
         mmap_buffer_pool_->logStats();
+}
+
+std::string ClientConnectionTcpZeroCopy::getMacAddress()
+{
+    std::string mac =
+#ifndef WINDOWS
+        ::getMacAddress(socket_.native_handle());
+#else
+        ::getMacAddress(socket_.local_endpoint().address().to_string());
+#endif
+    if (mac.empty())
+        mac = "00:00:00:00:00:00";
+    LOG(INFO, LOG_TAG) << "My MAC: \"" << mac << "\", socket: " << socket_.native_handle() << "\n";
+    return mac;
+}
+
+boost::system::error_code ClientConnectionTcpZeroCopy::doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint)
+{
+    boost::system::error_code ec;
+    socket_.connect(endpoint, ec);
+    return ec;
+}
+
+void ClientConnectionTcpZeroCopy::write(boost::asio::streambuf& buffer, WriteHandler&& write_handler)
+{
+    boost::asio::async_write(socket_, buffer, write_handler);
 }

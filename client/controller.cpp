@@ -25,6 +25,7 @@
 
 // local headers
 #include "client_connection_tcp_zerocopy.hpp"
+#include "client_connection.hpp"
 #include "decoder/null_decoder.hpp"
 #include "decoder/pcm_decoder.hpp"
 #if defined(HAS_OGG) && (defined(HAS_TREMOR) || defined(HAS_VORBIS))
@@ -428,15 +429,8 @@ void Controller::start()
                 settings_.server.host = host;
                 settings_.server.port = port;
                 LOG(INFO, LOG_TAG) << "Found server " << settings_.server.host << ":" << settings_.server.port << "\n";
-                if (settings_.server.zerocopy)
-                {
-                    LOG(INFO, LOG_TAG) << "Creating zero-copy TCP connection for RECEIVE\n";
-                    clientConnection_ = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
-                }
-                else
-                {
-                    clientConnection_ = make_unique<ClientConnectionTcp>(io_context_, settings_.server);
-                }
+                LOG(INFO, LOG_TAG) << "Creating zero-copy TCP connection for RECEIVE (unified client)\n";
+                clientConnection_ = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
                 worker();
             }
         });
@@ -451,15 +445,8 @@ void Controller::start()
 #endif
         else
         {
-            if (settings_.server.zerocopy)
-            {
-                LOG(INFO, LOG_TAG) << "Creating zero-copy TCP connection for RECEIVE\n";
-                clientConnection_ = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
-            }
-            else
-            {
-                clientConnection_ = make_unique<ClientConnectionTcp>(io_context_, settings_.server);
-            }
+            LOG(INFO, LOG_TAG) << "Creating zero-copy TCP connection for RECEIVE (unified client)\n";
+            clientConnection_ = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
         }
         worker();
     }

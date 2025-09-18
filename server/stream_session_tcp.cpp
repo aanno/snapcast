@@ -24,7 +24,6 @@
 
 // 3rd party headers
 #include <boost/asio/read.hpp>
-#include <boost/asio/write.hpp>
 
 // standard headers
 #include <iostream>
@@ -135,12 +134,4 @@ void StreamSessionTcp::readNext()
 }
 
 
-void StreamSessionTcp::sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler)
-{
-    boost::asio::async_write(socket_, *buffer,
-                             [self = shared_from_this(), buffer, handler = std::move(handler)](boost::system::error_code ec, std::size_t length)
-    {
-        if (handler)
-            handler(ec, length);
-    });
-}
+

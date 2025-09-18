@@ -51,14 +51,19 @@
  * - Incoming data must align on page boundaries for optimal performance
  * - loopback doesn't support TCP zero-copy due to missing header-data split
  */
-class ClientConnectionTcpZeroCopy : public ClientConnectionTcp
+class ClientConnectionTcpZeroCopy : public ClientConnection
 {
 public:
     ClientConnectionTcpZeroCopy(boost::asio::io_context& io_context, ClientSettings::Server server);
     ~ClientConnectionTcpZeroCopy() override;
 
     void disconnect() override;
+    std::string getMacAddress() override;
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
+
+protected:
+    boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
+    void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) override;
 
     /// Zero-copy receive statistics
     struct ZeroCopyStats
@@ -135,4 +140,10 @@ private:
 
     /// Thread safety for statistics access
     mutable std::mutex stats_mutex_;
+    
+    /// TCP socket
+    boost::asio::ip::tcp::socket socket_;
+    
+    /// Regular buffer pool for boost::asio operations
+    DynamicBufferPool& buffer_pool_;
 };

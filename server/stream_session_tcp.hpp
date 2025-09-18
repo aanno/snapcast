@@ -30,11 +30,11 @@
 using boost::asio::ip::tcp;
 
 
-/// Endpoint for a connected client.
+/// Abstract base class for TCP-based stream sessions.
 /**
- * Endpoint for a connected client.
- * Messages are sent to the client with the "send" method.
- * Received messages from the client are passed to the StreamMessageReceiver callback
+ * Abstract TCP session that provides common TCP functionality like socket management,
+ * message reading, start/stop lifecycle, and IP address retrieval.
+ * Derived classes must implement the sendAsync method with their specific sending strategy.
  */
 class StreamSessionTcp : public StreamSession
 {
@@ -49,8 +49,8 @@ public:
 protected:
     /// Read next message
     void readNext();
-    /// Send message @p buffer and pass result to @p handler
-    void sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler) override;
+    /// Send message @p buffer and pass result to @p handler (pure virtual - must be implemented by derived classes)
+    void sendAsync(const std::shared_ptr<shared_const_buffer> buffer, WriteHandler&& handler) override = 0;
     /// The underlying socket
     tcp::socket socket_;
 };

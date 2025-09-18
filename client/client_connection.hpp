@@ -207,30 +207,6 @@ protected:
 };
 
 
-/// Plain TCP connection
-class ClientConnectionTcp : public ClientConnection
-{
-public:
-    /// c'tor
-    ClientConnectionTcp(boost::asio::io_context& io_context, ClientSettings::Server server);
-    /// d'tor
-    virtual ~ClientConnectionTcp();
-
-    void disconnect() override;
-    std::string getMacAddress() override;
-    void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
-
-protected:
-    boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
-    void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) override;
-
-    /// TCP socket
-    tcp_socket socket_;
-    /// Buffer pool for efficient memory management
-    DynamicBufferPool& buffer_pool_;
-};
-
-
 /// Websocket connection
 class ClientConnectionWs : public ClientConnection
 {
