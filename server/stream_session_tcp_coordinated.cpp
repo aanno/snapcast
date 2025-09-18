@@ -41,18 +41,23 @@ static constexpr auto LOG_TAG_STATS = "ZeroCopyStats";
 
 StreamSessionTcpCoordinated::StreamSessionTcpCoordinated(StreamMessageReceiver* receiver, const ServerSettings& server_settings, tcp::socket&& socket)
     : StreamSessionTcp(receiver, server_settings, std::move(socket))
+    , server_settings_(server_settings)
 {
     native_socket_ = socket_.native_handle();
     LOG(DEBUG, LOG_TAG) << "Native socket handle: " << native_socket_ << "\n";
-    zerocopy_available_ = initializeZeroCopy();
     
-    if (zerocopy_available_)
-    {
-        LOG(INFO, LOG_TAG) << "Coordinated ZeroCopy enabled for session " << getIP() << "\n";
-    }
-    else
-    {
-        LOG(INFO, LOG_TAG) << "ZeroCopy not available for session " << getIP() << ", using regular TCP\n";
+    // Check if zero-copy is enabled via -z flag before initializing
+    if (server_settings_.stream.zerocopy) {
+        zerocopy_available_ = initializeZeroCopy();
+        
+        if (zerocopy_available_) {
+            LOG(INFO, LOG_TAG) << "Coordinated ZeroCopy enabled for session " << getIP() << "\n";
+        } else {
+            LOG(WARNING, LOG_TAG) << "ZeroCopy requested but not available for session " << getIP() << ", using regular TCP\n";
+        }
+    } else {
+        LOG(INFO, LOG_TAG) << "ZeroCopy disabled (-z flag not set) for session " << getIP() << ", using regular TCP\n";
+        zerocopy_available_ = false;
     }
 }
 
@@ -195,12 +200,12 @@ void StreamSessionTcpCoordinated::sendRegularCoordinated(const std::shared_ptr<s
     
     LOG(DEBUG, LOG_TAG_STATS) << "Regular send started, pending_async_operations now: " << pending_async_operations_.load() << "\n";
     
-    // Use the parent class implementation with coordination tracking
-    StreamSessionTcp::sendAsync(buffer, [this, handler = std::move(handler)](boost::system::error_code ec, std::size_t bytes_transferred) mutable
+    // Use direct boost::asio::async_write instead of parent class to avoid competing buffer pools
+    boost::asio::async_write(socket_, *buffer, [this, handler = std::move(handler)](boost::system::error_code ec, std::size_t bytes_transferred) mutable
     {
         // Decrement pending operations counter
         pending_async_operations_--;
-        // LOG(DEBUG, LOG_TAG_STATS) << "Regular send completed, pending_async_operations now: " << pending_async_operations_.load() << "\n";
+        LOG(DEBUG, LOG_TAG_STATS) << "Regular send completed, pending_async_operations now: " << pending_async_operations_.load() << "\n";
         
         // Call the original handler
         if (handler)
@@ -270,23 +275,17 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_cons
             pending_zerocopy_buffers_[buffer_id] = buffer;
         }
         
-        // Send the unsent portion via regular send
+        // Send the unsent portion via iterative approach
         size_t remaining_bytes = buffer_size - result;
+        LOG(INFO, LOG_TAG) << "Sending remaining " << remaining_bytes << " bytes via iterative send\n";
+        releaseZeroCopy();
+        
         // Create a sub-buffer for the remaining data
         auto const_buf = *buffer->begin();
         auto remaining_data = static_cast<const char*>(const_buf.data()) + result;
-        auto remaining_buffer = std::make_shared<std::vector<char>>(remaining_data, remaining_data + remaining_bytes);
         
-        LOG(INFO, LOG_TAG) << "Sending remaining " << remaining_bytes << " bytes via regular send\n";
-        releaseZeroCopy();
-        
-        // Send remaining data with shared_ptr to ensure buffer lifetime
-        boost::asio::async_write(socket_, boost::asio::buffer(*remaining_buffer),
-            [handler = std::move(handler), buffer_size, remaining_buffer](boost::system::error_code ec, std::size_t) mutable {
-            if (handler) {
-                handler(ec, ec ? 0 : buffer_size); // Report full size on success
-            }
-        });
+        // Use iterative sendmsg approach for remaining data
+        sendIterative(remaining_data, remaining_bytes, buffer, buffer_size, std::move(handler));
         return;
     }
     
@@ -309,6 +308,63 @@ void StreamSessionTcpCoordinated::sendZeroCopy(const std::shared_ptr<shared_cons
     // Complete the handler immediately
     if (handler)
         handler(boost::system::error_code(), buffer_size);
+}
+
+void StreamSessionTcpCoordinated::sendIterative(const void* data, size_t remaining_bytes, 
+                                               const std::shared_ptr<shared_const_buffer>& original_buffer, 
+                                               size_t original_size, WriteHandler&& handler)
+{
+    // Iterative approach: keep sending until all data is sent
+    const char* current_data = static_cast<const char*>(data);
+    size_t bytes_left = remaining_bytes;
+    size_t total_sent = original_size - remaining_bytes; // Already sent via zero-copy
+    
+    while (bytes_left > 0) {
+        // Use regular sendmsg (no MSG_ZEROCOPY for remainder)
+        struct msghdr msg = {};
+        struct iovec iov = {const_cast<char*>(current_data), bytes_left};
+        msg.msg_iov = &iov;
+        msg.msg_iovlen = 1;
+        
+        ssize_t sent = sendmsg(native_socket_, &msg, MSG_DONTWAIT);
+        
+        if (sent < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // Would block - fall back to async_write for remaining data
+                LOG(DEBUG, LOG_TAG) << "Iterative send would block, falling back to async_write for " << bytes_left << " bytes\n";
+                
+                auto remaining_buffer = std::make_shared<std::vector<char>>(current_data, current_data + bytes_left);
+                boost::asio::async_write(socket_, boost::asio::buffer(*remaining_buffer),
+                    [handler = std::move(handler), original_size, remaining_buffer](boost::system::error_code ec, std::size_t) mutable {
+                    if (handler) {
+                        handler(ec, ec ? 0 : original_size); // Report full size on success
+                    }
+                });
+                return;
+            } else {
+                // Actual error
+                LOG(ERROR, LOG_TAG) << "Iterative sendmsg failed: " << strerror(errno) << "\n";
+                if (handler)
+                    handler(boost::system::error_code(errno, boost::system::system_category()), total_sent);
+                return;
+            }
+        }
+        
+        // Update progress
+        current_data += sent;
+        bytes_left -= sent;
+        total_sent += sent;
+        
+        LOG(DEBUG, LOG_TAG) << "Iterative send progress: " << sent << " bytes sent, " << bytes_left << " remaining\n";
+        
+        if (bytes_left == 0) {
+            // All data sent successfully
+            LOG(DEBUG, LOG_TAG) << "Iterative send completed: " << original_size << " bytes total\n";
+            if (handler)
+                handler(boost::system::error_code(), original_size);
+            return;
+        }
+    }
 }
 
 void StreamSessionTcpCoordinated::processPendingSends()

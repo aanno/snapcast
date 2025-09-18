@@ -126,6 +126,11 @@ private:
     /// Send using regular async_write (coordinated with async operations)
     void sendRegularCoordinated(const std::shared_ptr<shared_const_buffer>& buffer, WriteHandler&& handler);
     
+    /// Send data iteratively using sendmsg (for partial send completions)
+    void sendIterative(const void* data, size_t remaining_bytes, 
+                      const std::shared_ptr<shared_const_buffer>& original_buffer, 
+                      size_t original_size, WriteHandler&& handler);
+    
     /// Process pending send queue
     void processPendingSends();
     
@@ -156,6 +161,9 @@ private:
     
     // Configuration
     static constexpr size_t ZEROCOPY_THRESHOLD = 1024;  // Use zerocopy for messages >1KB
+    
+    // Server settings (to check zerocopy flag)
+    const ServerSettings& server_settings_;
     
     // Zerocopy state
     bool zerocopy_available_{false};
