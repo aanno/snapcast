@@ -21,6 +21,7 @@
 // local headers
 #include "client_connection.hpp"
 #include "common/mmap_buffer_pool.hpp"
+#include "common/buffer_pool.hpp"
 
 // system headers
 #include <netinet/tcp.h>
@@ -75,8 +76,6 @@ protected:
         std::atomic<uint64_t> regular_bytes{0};          ///< Bytes via regular recv()
         std::atomic<uint64_t> fallback_page_misalign{0}; ///< Fallbacks due to page misalignment
         std::atomic<uint64_t> fallback_size_mismatch{0}; ///< Fallbacks due to size issues
-        std::atomic<uint64_t> mmap_buffer_hits{0};       ///< Buffer pool hits
-        std::atomic<uint64_t> mmap_buffer_misses{0};     ///< Buffer pool misses
 
         /// Calculate zero-copy success rate as percentage
         double getSuccessRate() const {
@@ -84,11 +83,6 @@ protected:
             return attempts > 0 ? (100.0 * zerocopy_successful.load() / attempts) : 0.0;
         }
 
-        /// Calculate buffer pool hit rate as percentage
-        double getBufferHitRate() const {
-            uint64_t total = mmap_buffer_hits.load() + mmap_buffer_misses.load();
-            return total > 0 ? (100.0 * mmap_buffer_hits.load() / total) : 0.0;
-        }
     };
 
     /// Get current zero-copy statistics

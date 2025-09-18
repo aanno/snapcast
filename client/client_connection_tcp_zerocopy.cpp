@@ -185,6 +185,13 @@ void ClientConnectionTcpZeroCopy::waitForDataAndTryZeroCopy(size_t expected_size
 
         LOG(DEBUG, LOG_TAG) << "TCP_ZEROCOPY_RECEIVE failed even with data available, falling back to regular receive\n";
 
+        // Track fallback reason - could be size or page alignment issues
+        if (expected_size < MIN_ZEROCOPY_SIZE) {
+            stats_.fallback_size_mismatch++;
+        } else {
+            stats_.fallback_page_misalign++;
+        }
+
         // Fall back to regular receive
         receiveRegular(expected_size, handler);
     });
@@ -219,11 +226,8 @@ bool ClientConnectionTcpZeroCopy::tryZeroCopyReceive(size_t expected_size, const
             auto buffer_guard = mmap_buffer_pool_->acquire(std::max(remaining_bytes, PAGE_SIZE));
             if (!buffer_guard) {
                 LOG(DEBUG, LOG_TAG) << "MmapBufferPool.acquire failed for " << remaining_bytes << " bytes\n";
-                stats_.mmap_buffer_misses++;
                 return false;
             }
-            
-            stats_.mmap_buffer_hits++;
 
             // Prepare TCP_ZEROCOPY_RECEIVE structure
             struct tcp_zerocopy_receive zc = {};
@@ -400,6 +404,7 @@ void ClientConnectionTcpZeroCopy::onStatsTimer(const boost::system::error_code& 
     }
 }
 
+
 void ClientConnectionTcpZeroCopy::logZeroCopyStats() const
 {
     std::lock_guard<std::mutex> lock(stats_mutex_);
@@ -412,12 +417,18 @@ void ClientConnectionTcpZeroCopy::logZeroCopyStats() const
     LOG(INFO, LOG_TAG) << "\tRegular Bytes: " << stats_.regular_bytes.load() << "\n";
     LOG(INFO, LOG_TAG) << "\tPage Misalign Fallbacks: " << stats_.fallback_page_misalign.load() << "\n";
     LOG(INFO, LOG_TAG) << "\tSize Mismatch Fallbacks: " << stats_.fallback_size_mismatch.load() << "\n";
-    LOG(INFO, LOG_TAG) << "\tBuffer Pool Hits: " << stats_.mmap_buffer_hits.load() << "\n";
-    LOG(INFO, LOG_TAG) << "\tBuffer Pool Misses: " << stats_.mmap_buffer_misses.load() << "\n";
     LOG(INFO, LOG_TAG) << "\tZC Success Rate: " << std::fixed << std::setprecision(2) << stats_.getSuccessRate() << "%\n";
-    LOG(INFO, LOG_TAG) << "\tBuffer Hit Rate: " << std::fixed << std::setprecision(2) << stats_.getBufferHitRate() << "%\n";
 
-    // Log mmap buffer pool stats
+    // Log buffer pool stats
+    LOG(INFO, LOG_TAG) << "=== Buffer Pool Stats ===\n";
+    auto dynamic_stats = buffer_pool_.getStats();
+    LOG(INFO, LOG_TAG) << "\tDynamic Pool - Total Buffers: " << dynamic_stats.total_buffers << "\n";
+    LOG(INFO, LOG_TAG) << "\tDynamic Pool - Available: " << dynamic_stats.available_buffers << "\n";
+    LOG(INFO, LOG_TAG) << "\tDynamic Pool - Bytes Allocated: " << dynamic_stats.bytes_allocated << "\n";
+    LOG(INFO, LOG_TAG) << "\tDynamic Pool - Created: " << dynamic_stats.buffers_created << "\n";
+    LOG(INFO, LOG_TAG) << "\tDynamic Pool - Reused: " << dynamic_stats.buffers_reused << "\n";
+    LOG(INFO, LOG_TAG) << "\tDynamic Pool - Cleanup Ops: " << dynamic_stats.cleanup_operations << "\n";
+
     if (mmap_buffer_pool_)
         mmap_buffer_pool_->logStats();
 }
