@@ -83,14 +83,15 @@ public:
         BufferGuard(DynamicBufferPool& pool, std::unique_ptr<Buffer> buffer)
             : pool_(pool), buffer_(std::move(buffer))
         {
-            // TEMP DISABLED: if (buffer_) pool_.track_checkout(buffer_.get());
+            if (buffer_)
+                pool_.track_checkout(buffer_.get());
         }
         
         /// d'tor
         ~BufferGuard()
         {
             if (buffer_) {
-                // TEMP DISABLED: pool_.track_return(buffer_.get());
+                pool_.track_return(buffer_.get());
                 pool_.release(std::move(buffer_));
             }
         }
@@ -114,7 +115,7 @@ public:
             if (this != &other)
             {
                 if (buffer_) {
-                    // TEMP DISABLED: pool_.track_return(buffer_.get());
+                    pool_.track_return(buffer_.get());
                     pool_.release(std::move(buffer_));
                 }
                 buffer_ = std::move(other.buffer_);
@@ -205,6 +206,9 @@ private:
     
     // Thread safety
     mutable std::mutex mutex_;
+
+    // Separate mutex for leak detection to avoid deadlock
+    mutable std::mutex tracking_mutex_;
     
     // Storage - map from size bucket to available buffers
     std::map<size_t, std::deque<std::unique_ptr<Buffer>>> available_buffers_;

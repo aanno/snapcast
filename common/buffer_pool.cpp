@@ -152,14 +152,17 @@ DynamicBufferPool::Stats DynamicBufferPool::getStats() const
         stats.available_buffers += bucket.second.size();
     }
     
-    // Count potential leaks (buffers checked out > 10 seconds)
-    auto now = std::chrono::steady_clock::now();
-    constexpr auto LEAK_THRESHOLD = std::chrono::seconds(10);
-    for (const auto& checkout : checked_out_buffers_)
+    // Count potential leaks (buffers checked out > 10 seconds) using separate mutex
     {
-        if (now - checkout.second >= LEAK_THRESHOLD)
+        std::lock_guard<std::mutex> tracking_lock(tracking_mutex_);
+        auto now = std::chrono::steady_clock::now();
+        constexpr auto LEAK_THRESHOLD = std::chrono::seconds(10);
+        for (const auto& checkout : checked_out_buffers_)
         {
-            stats.potential_leaks++;
+            if (now - checkout.second >= LEAK_THRESHOLD)
+            {
+                stats.potential_leaks++;
+            }
         }
     }
 
@@ -225,13 +228,13 @@ void DynamicBufferPool::check_cleanup()
 
 void DynamicBufferPool::track_checkout(void* buffer_ptr)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(tracking_mutex_);
     checked_out_buffers_[buffer_ptr] = std::chrono::steady_clock::now();
 }
 
 void DynamicBufferPool::track_return(void* buffer_ptr)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(tracking_mutex_);
     checked_out_buffers_.erase(buffer_ptr);
 }
 
