@@ -22,6 +22,7 @@
 #include "client_connection.hpp"
 #include "common/mmap_buffer_pool.hpp"
 #include "common/buffer_pool.hpp"
+#include "common/message/server_settings.hpp"
 
 // system headers
 #include <netinet/tcp.h>
@@ -142,6 +143,9 @@ private:
     /// Regular buffer pool for boost::asio operations
     DynamicBufferPool& buffer_pool_;
 
+    /// Callback for ServerSettings message handling (Controller integration)
+    std::function<void(std::unique_ptr<msg::ServerSettings>)> server_settings_handler_;
+
     // ============ Controlled Async Loop Infrastructure ============
 
     /// Maximum number of concurrent read operations (3: audio, control, timestamps)
@@ -164,4 +168,10 @@ private:
 
     /// Hide messageReceived to ensure handler is always called for controlled reading
     void messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler);
+
+public:
+    /// Set callback for ServerSettings message handling
+    void setServerSettingsHandler(std::function<void(std::unique_ptr<msg::ServerSettings>)> handler) {
+        server_settings_handler_ = std::move(handler);
+    }
 };

@@ -455,7 +455,18 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
 
 void ClientConnectionTcpZeroCopy::messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler)
 {
-    LOG(DEBUG, LOG_TAG) << "TRACE: messageReceived override called with handler\n";
+    LOG(DEBUG, LOG_TAG) << "TRACE: messageReceived override called with handler, message type: " << message->type << "\n";
+
+    // Handle special messages for Controller integration
+    if (message->type == message_type::kServerSettings && server_settings_handler_) {
+        LOG(DEBUG, LOG_TAG) << "TRACE: Received ServerSettings, calling Controller callback\n";
+        // Create a copy for the callback since we need to pass message to handler too
+        auto server_settings = dynamic_cast<msg::ServerSettings*>(message.get());
+        if (server_settings) {
+            auto settings_copy = std::make_unique<msg::ServerSettings>(*server_settings);
+            server_settings_handler_(std::move(settings_copy));
+        }
+    }
 
     // For controlled reading, we ALWAYS call the handler to maintain the sequential pattern
     // Don't call getNextMessage recursively like the parent does - our controlled reading handles that

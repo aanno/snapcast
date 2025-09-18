@@ -446,10 +446,57 @@ void Controller::start()
         else
         {
             LOG(INFO, LOG_TAG) << "Creating zero-copy TCP connection for RECEIVE (unified client)\n";
-            clientConnection_ = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
+            auto zerocopy_connection = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
+
+            // Set callback for ServerSettings handling in controlled loop
+            zerocopy_connection->setServerSettingsHandler([this](std::unique_ptr<msg::ServerSettings> settings) {
+                this->handleServerSettings(std::move(settings));
+            });
+
+            clientConnection_ = std::move(zerocopy_connection);
         }
         worker();
     }
+}
+
+void Controller::sendHelloMessage()
+{
+    LOG(DEBUG, LOG_TAG) << "Sending hello message synchronously for controlled loop integration\n";
+
+    string macAddress = clientConnection_->getMacAddress();
+    std::optional<msg::Hello::Auth> auth;
+    if (settings_.server.auth.has_value())
+        auth = msg::Hello::Auth{settings_.server.auth->scheme, settings_.server.auth->param};
+
+    auto hello = std::make_shared<msg::Hello>(macAddress, settings_.host_id, settings_.instance, auth);
+
+    // Send hello synchronously - response will be handled by controlled loop
+    try {
+        clientConnection_->send(hello, [this](const boost::system::error_code& ec) {
+            if (ec) {
+                LOG(ERROR, LOG_TAG) << "Failed to send hello message: " << ec.message() << "\n";
+                reconnect();
+            } else {
+                LOG(DEBUG, LOG_TAG) << "Hello message sent successfully, waiting for ServerSettings response via controlled loop\n";
+            }
+        });
+    } catch (const std::exception& e) {
+        LOG(ERROR, LOG_TAG) << "Failed to send hello message: " << e.what() << "\n";
+        reconnect();
+    }
+}
+
+void Controller::handleServerSettings(std::unique_ptr<msg::ServerSettings> settings)
+{
+    LOG(DEBUG, LOG_TAG) << "Handling ServerSettings from controlled loop\n";
+
+    serverSettings_ = std::move(settings);
+    LOG(INFO, LOG_TAG) << "ServerSettings - buffer: " << serverSettings_->getBufferMs() << ", latency: " << serverSettings_->getLatency()
+                       << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() << "\n";
+
+    // Do initial time sync with the server (integrated with controlled loop)
+    LOG(DEBUG, LOG_TAG) << "Starting time sync after ServerSettings\n";
+    sendTimeSyncMessage(50);
 }
 
 
@@ -491,44 +538,8 @@ void Controller::worker()
             // Start receiver loop
             getNextMessage();
 
-            // Say hello to the server
-            std::optional<msg::Hello::Auth> auth;
-            if (settings_.server.auth.has_value())
-                auth = msg::Hello::Auth{settings_.server.auth->scheme, settings_.server.auth->param};
-            auto hello = std::make_shared<msg::Hello>(macAddress, settings_.host_id, settings_.instance, auth);
-            clientConnection_->sendRequest(hello, 2s, [this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response) mutable
-            {
-                if (ec)
-                {
-                    LOG(ERROR, LOG_TAG) << "Failed to send hello request, error: " << ec.message() << "\n";
-                    reconnect();
-                    return;
-                }
-                else
-                {
-                    if (response->type == message_type::kError)
-                    {
-                        auto error_msg = msg::message_cast<msg::Error>(std::move(response));
-                        LOG(ERROR, LOG_TAG) << "Received error repsonse to hello request: " << error_msg->error << ", code: " << error_msg->code
-                                            << ", message: " << error_msg->message << "\n";
-                        // reconnect();
-                        return;
-                    }
-                    else if (response->type != message_type::kServerSettings)
-                    {
-                        LOG(ERROR, LOG_TAG) << "Received unexpected message type as repsonse to hello request: " << response->type << "\n";
-                        reconnect();
-                        return;
-                    }
-
-                    serverSettings_ = msg::message_cast<msg::ServerSettings>(std::move(response));
-                    LOG(INFO, LOG_TAG) << "ServerSettings - buffer: " << serverSettings_->getBufferMs() << ", latency: " << serverSettings_->getLatency()
-                                       << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() << "\n";
-
-                    // Do initial time sync with the server
-                    sendTimeSyncMessage(50);
-                }
-            });
+            // Send hello to the server (synchronously, response handled by controlled loop)
+            sendHelloMessage();
         }
         else
         {

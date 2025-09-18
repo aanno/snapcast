@@ -62,6 +62,8 @@ private:
 
     void getNextMessage();
     void sendTimeSyncMessage(int quick_syncs);
+    void sendHelloMessage();  // Send hello synchronously for controlled loop integration
+    void handleServerSettings(std::unique_ptr<msg::ServerSettings> settings);  // Handle ServerSettings from controlled loop
 
     boost::asio::io_context& io_context_;
 #ifdef HAS_OPENSSL
