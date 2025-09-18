@@ -448,9 +448,13 @@ void Controller::start()
             LOG(INFO, LOG_TAG) << "Creating zero-copy TCP connection for RECEIVE (unified client)\n";
             auto zerocopy_connection = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
 
-            // Set callback for ServerSettings handling in controlled loop
+            // Set callbacks for controlled loop integration
             zerocopy_connection->setServerSettingsHandler([this](std::unique_ptr<msg::ServerSettings> settings) {
                 this->handleServerSettings(std::move(settings));
+            });
+
+            zerocopy_connection->setTimeHandler([this](std::unique_ptr<msg::Time> time_response) {
+                this->handleTimeResponse(std::move(time_response));
             });
 
             clientConnection_ = std::move(zerocopy_connection);
@@ -496,7 +500,7 @@ void Controller::handleServerSettings(std::unique_ptr<msg::ServerSettings> setti
 
     // Do initial time sync with the server (integrated with controlled loop)
     LOG(DEBUG, LOG_TAG) << "Starting time sync after ServerSettings\n";
-    sendTimeSyncMessage(50);
+    sendTimeSyncMessageSync(50);
 }
 
 
@@ -545,6 +549,59 @@ void Controller::worker()
         {
             LOG(ERROR, LOG_TAG) << "Error: " << ec.message() << "\n";
             reconnect();
+        }
+    });
+}
+
+void Controller::sendTimeSyncMessageSync(int quick_syncs)
+{
+    LOG(DEBUG, LOG_TAG) << "Sending time sync message synchronously for controlled loop integration\n";
+
+    auto timeReq = std::make_shared<msg::Time>();
+
+    // Store quick_syncs for the response handler to access
+    current_quick_syncs_ = quick_syncs;
+
+    // Send time sync synchronously - response will be handled by controlled loop
+    try {
+        clientConnection_->send(timeReq, [this](const boost::system::error_code& ec) {
+            if (ec) {
+                LOG(ERROR, LOG_TAG) << "Failed to send time sync message: " << ec.message() << "\n";
+                reconnect();
+            } else {
+                LOG(DEBUG, LOG_TAG) << "Time sync message sent successfully, waiting for Time response via controlled loop\n";
+            }
+        });
+    } catch (const std::exception& e) {
+        LOG(ERROR, LOG_TAG) << "Failed to send time sync message: " << e.what() << "\n";
+        reconnect();
+    }
+}
+
+void Controller::handleTimeResponse(std::unique_ptr<msg::Time> time_response)
+{
+    LOG(DEBUG, LOG_TAG) << "Handling Time response from controlled loop\n";
+
+    // Process the time sync response (same logic as original)
+    TimeProvider::getInstance().setDiff(time_response->latency, time_response->received - time_response->sent);
+
+    // Handle follow-up time syncs
+    std::chrono::microseconds next = TIME_SYNC_INTERVAL;
+    if (current_quick_syncs_ > 0)
+    {
+        if (--current_quick_syncs_ == 0)
+            LOG(INFO, LOG_TAG) << "diff to server [ms]: "
+                               << static_cast<float>(TimeProvider::getInstance().getDiffToServer<chronos::usec>().count()) / 1000.f << "\n";
+        next = 100us;
+    }
+
+    // Schedule next time sync using timer (keeping existing timer mechanism)
+    timer_.expires_after(next);
+    timer_.async_wait([this](const boost::system::error_code& ec)
+    {
+        if (!ec)
+        {
+            sendTimeSyncMessageSync(current_quick_syncs_);
         }
     });
 }

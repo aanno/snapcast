@@ -64,6 +64,8 @@ private:
     void sendTimeSyncMessage(int quick_syncs);
     void sendHelloMessage();  // Send hello synchronously for controlled loop integration
     void handleServerSettings(std::unique_ptr<msg::ServerSettings> settings);  // Handle ServerSettings from controlled loop
+    void sendTimeSyncMessageSync(int quick_syncs);  // Send time sync synchronously for controlled loop integration
+    void handleTimeResponse(std::unique_ptr<msg::Time> time_response);  // Handle Time response from controlled loop
 
     boost::asio::io_context& io_context_;
 #ifdef HAS_OPENSSL
@@ -78,4 +80,5 @@ private:
     std::unique_ptr<player::Player> player_;
     std::unique_ptr<msg::ServerSettings> serverSettings_;
     std::unique_ptr<msg::CodecHeader> headerChunk_;
+    int current_quick_syncs_ = 0;  // Track current quick sync count for controlled loop integration
 };

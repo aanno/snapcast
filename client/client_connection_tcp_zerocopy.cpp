@@ -466,6 +466,14 @@ void ClientConnectionTcpZeroCopy::messageReceived(std::unique_ptr<msg::BaseMessa
             auto settings_copy = std::make_unique<msg::ServerSettings>(*server_settings);
             server_settings_handler_(std::move(settings_copy));
         }
+    } else if (message->type == message_type::kTime && time_handler_) {
+        LOG(DEBUG, LOG_TAG) << "TRACE: Received Time response, calling Controller callback\n";
+        // Create a copy for the callback since we need to pass message to handler too
+        auto time_msg = dynamic_cast<msg::Time*>(message.get());
+        if (time_msg) {
+            auto time_copy = std::make_unique<msg::Time>(*time_msg);
+            time_handler_(std::move(time_copy));
+        }
     }
 
     // For controlled reading, we ALWAYS call the handler to maintain the sequential pattern
