@@ -580,7 +580,7 @@ void Controller::sendTimeSyncMessageSync(int quick_syncs)
 
 void Controller::handleTimeResponse(std::unique_ptr<msg::Time> time_response)
 {
-    LOG(DEBUG, LOG_TAG) << "Handling Time response from controlled loop\n";
+    // LOG(DEBUG, LOG_TAG) << "Handling Time response from controlled loop\n";
 
     // Process the time sync response (same logic as original)
     TimeProvider::getInstance().setDiff(time_response->latency, time_response->received - time_response->sent);
