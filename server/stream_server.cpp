@@ -22,7 +22,6 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "config.hpp"
-#include "stream_session_tcp.hpp"
 #include "stream_session_tcp_coordinated.hpp"
 #include "common/buffer_pool.hpp"
 
@@ -217,17 +216,10 @@ void StreamServer::handleAccept(tcp::socket socket)
 
         LOG(NOTICE, LOG_TAG) << "StreamServer::NewConnection: " << socket.remote_endpoint().address().to_string() << "\n";
         
-        shared_ptr<StreamSession> session;
-        if (settings_.stream.zerocopy)
-        {
-            LOG(INFO, LOG_TAG) << "Creating zerocopy-enabled session for " << socket.remote_endpoint().address().to_string() << "\n";
-            session = make_shared<StreamSessionTcpCoordinated>(this, settings_, std::move(socket));
-        }
-        else
-        {
-            LOG(DEBUG, LOG_TAG) << "Creating regular TCP session for " << socket.remote_endpoint().address().to_string() << "\n";
-            session = make_shared<StreamSessionTcp>(this, settings_, std::move(socket));
-        }
+        // Always use coordinated session (unified buffer pool approach)
+        LOG(INFO, LOG_TAG) << "Creating coordinated session for " << socket.remote_endpoint().address().to_string() 
+                           << (settings_.stream.zerocopy ? " (zero-copy enabled)" : " (zero-copy disabled)") << "\n";
+        auto session = make_shared<StreamSessionTcpCoordinated>(this, settings_, std::move(socket));
         
         addSession(session);
     }

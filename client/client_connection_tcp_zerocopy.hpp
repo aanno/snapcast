@@ -118,8 +118,8 @@ private:
     void onStatsTimer(const boost::system::error_code& error);
 
 private:
-    /// Page-aligned mmap buffer pool for zero-copy
-    MmapBufferPool* mmap_buffer_pool_ = nullptr;
+    /// Page-aligned mmap buffer pool for zero-copy (initialized on first use)
+    std::unique_ptr<MmapBufferPool> mmap_buffer_pool_;
 
     /// Zero-copy statistics
     mutable ZeroCopyStats stats_;
