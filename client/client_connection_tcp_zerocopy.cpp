@@ -137,12 +137,11 @@ void ClientConnectionTcpZeroCopy::startControlledRead()
 {
     // LOG(DEBUG, LOG_TAG) << "startControlledRead: Beginning header read\n";
 
-    // Step 1: Read message header using DynamicBufferPool (regular boost::asio I/O)
-    auto header_buffer_guard = buffer_pool_.acquire(base_msg_size_);
-    auto& header_buffer = header_buffer_guard.get();
+    // Step 1: Read message header using stack array (26 bytes) - no pool allocation needed
+    auto header_buffer = std::make_shared<std::array<char, 32>>();  // Shared to capture in lambda, 32 for alignment
 
-    boost::asio::async_read(socket_, boost::asio::buffer(header_buffer.data(), base_msg_size_),
-                           boost::asio::bind_executor(strand_, [this, header_buffer_guard = std::move(header_buffer_guard)](boost::system::error_code ec, std::size_t length) mutable
+    boost::asio::async_read(socket_, boost::asio::buffer(header_buffer->data(), base_msg_size_),
+                           boost::asio::bind_executor(strand_, [this, header_buffer](boost::system::error_code ec, std::size_t length)
     {
         // LOG(DEBUG, LOG_TAG) << "startControlledRead: Header read completed, ec=" << ec << ", length=" << length << "\n";
 
@@ -162,7 +161,7 @@ void ClientConnectionTcpZeroCopy::startControlledRead()
 
         // Parse header
         // LOG(DEBUG, LOG_TAG) << "TRACE: About to deserialize header\n";
-        base_message_.deserialize(header_buffer_guard.get().data());
+        base_message_.deserialize(header_buffer->data());
         // LOG(DEBUG, LOG_TAG) << "TRACE: Header deserialized, type=" << base_message_.type << ", size=" << base_message_.size << "\n";
         tv t;
         base_message_.received = t;

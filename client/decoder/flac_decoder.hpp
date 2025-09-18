@@ -101,12 +101,12 @@ public:
     mutable std::atomic<uint64_t> zero_copy_operations_{0};
     mutable std::chrono::steady_clock::time_point last_stats_log_{std::chrono::steady_clock::now()};
 
-    // Buffer pool for zero-copy memory management
+    // Buffer pool for zero-copy memory management (only for temporary ZeroCopyPcmChunk creation)
     DynamicBufferPool& buffer_pool_;
 
-    // Buffer guards for RAII buffer management (accessible to callbacks)
-    DynamicBufferPool::BufferGuard input_buffer_guard_;
-    DynamicBufferPool::BufferGuard output_buffer_guard_;
+    // Direct allocation for persistent decoder buffers (not pool usage)
+    std::vector<char> input_buffer_;
+    std::vector<char> output_buffer_;
 
 private:
     std::mutex mutex_;
