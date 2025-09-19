@@ -103,6 +103,10 @@ Observations:
 
 ### Implementation plan
 
+* We need the right chunk_ms, but could we ensure with a value in ms to have 
+  chunk size of exactly 8KB minus HEADERS_SIZE?
+  + If this is not possible (with an integer ms value), we should change the
+    setting from chunk_ms to chunk_bytes.
 * Phase 1: Ensure that chunk_ms is used for PCM (wire chunk size is smaller)
 * Phase 2: From the experiment, we know that sending exact 4KB multiples works well
   + We should use this idea but implement it with ZC or other tweaks.
