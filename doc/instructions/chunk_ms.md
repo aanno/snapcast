@@ -107,6 +107,10 @@ Observations:
   chunk size of exactly 8KB minus HEADERS_SIZE?
   + If this is not possible (with an integer ms value), we should change the
     setting from chunk_ms to chunk_bytes.
+* In the server, we need LOG messages about the PCM chunk size, the flac chunk size,
+  and the wire chunk size.
+* In the client, we need LOG messages about the received chunk size (wire),
+  the flac chunk size, and the PCM chunk size.
 * Phase 1: Ensure that chunk_ms is used for PCM (wire chunk size is smaller)
 * Phase 2: From the experiment, we know that sending exact 4KB multiples works well
   + We should use this idea but implement it with ZC or other tweaks.
