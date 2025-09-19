@@ -456,34 +456,15 @@ void ClientConnectionTcpZeroCopy::receiveRegular(size_t message_size, const Mess
 
 void ClientConnectionTcpZeroCopy::messageReceived(std::unique_ptr<msg::BaseMessage> message, const MessageHandler<msg::BaseMessage>& handler)
 {
-    // LOG(DEBUG, LOG_TAG) << "messageReceived override called with handler, message type: " << message->type << "\n";
-
-    // Handle special messages for Controller integration
-    if (message->type == message_type::kServerSettings && server_settings_handler_) {
-        // LOG(DEBUG, LOG_TAG) << "TRACE: Received ServerSettings, calling Controller callback\n";
-        // Create a copy for the callback since we need to pass message to handler too
-        auto server_settings = dynamic_cast<msg::ServerSettings*>(message.get());
-        if (server_settings) {
-            auto settings_copy = std::make_unique<msg::ServerSettings>(*server_settings);
-            server_settings_handler_(std::move(settings_copy));
-        }
-    } else if (message->type == message_type::kTime && time_handler_) {
-        // LOG(DEBUG, LOG_TAG) << "TRACE: Received Time response, calling Controller callback\n";
-        // Create a copy for the callback since we need to pass message to handler too
-        auto time_msg = dynamic_cast<msg::Time*>(message.get());
-        if (time_msg) {
-            auto time_copy = std::make_unique<msg::Time>(*time_msg);
-            time_handler_(std::move(time_copy));
-        }
-    }
+    // Pure transport layer - no protocol-specific knowledge
+    // Just pass the message to the handler for protocol layer processing
 
     // For controlled reading, we ALWAYS call the handler to maintain the sequential pattern
     // Don't call getNextMessage recursively like the parent does - our controlled reading handles that
     if (handler) {
-        // LOG(DEBUG, LOG_TAG) << "TRACE: calling handler with received message\n";
         handler({}, std::move(message));
     } else {
-        // LOG(WARNING, LOG_TAG) << "TRACE: handler is null in messageReceived\n";
+        LOG(WARNING, LOG_TAG) << "Handler is null in messageReceived\n";
     }
 }
 
