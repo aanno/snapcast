@@ -42,6 +42,8 @@
 using namespace std;
 
 static constexpr auto LOG_TAG = "ClientZeroCopy";
+// Number of preallocated buffers per size bin in MmapBufferPool
+static constexpr auto kNumOfBuffersPerBin = 2;
 
 // Static page size initialization
 const size_t ClientConnectionTcpZeroCopy::PAGE_SIZE = MmapBufferPool::getPageSize();
@@ -98,7 +100,7 @@ void ClientConnectionTcpZeroCopy::getNextMessage(const MessageHandler<msg::BaseM
         int native_socket = getNativeSocket();
         if (native_socket >= 0) {
             try {
-                mmap_buffer_pool_ = std::make_unique<MmapBufferPool>(4, native_socket);
+                mmap_buffer_pool_ = std::make_unique<MmapBufferPool>(kNumOfBuffersPerBin, native_socket);
                 LOG(DEBUG, LOG_TAG) << "Initialized MmapBufferPool for socket " << native_socket << "\n";
             } catch (const std::exception& e) {
                 LOG(ERROR, LOG_TAG) << "Failed to initialize MmapBufferPool: " << e.what() << "\n";

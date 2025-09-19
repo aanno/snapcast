@@ -33,9 +33,9 @@
 const std::vector<size_t> MmapBufferPool::SIZE_BUCKETS = {
     4096,   // 4K  - small messages
     8192,   // 8K  - medium messages
-    16384,  // 16K - large messages
-    32768,  // 32K - very large messages
-    65536   // 64K - maximum size
+    // 16384,  // 16K - large messages
+    // 32768,  // 32K - very large messages
+    // 65536   // 64K - maximum size
 };
 
 // MmapBuffer implementation
