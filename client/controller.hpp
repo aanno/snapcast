@@ -75,14 +75,16 @@ private:
 #endif
     boost::asio::steady_timer timer_;
     ClientSettings settings_;
-    SampleFormat sampleFormat_;
-    std::unique_ptr<ClientConnection> clientConnection_;
-    client::NetworkTransport* transport_;  // Clean interface view of transport layer
     std::shared_ptr<Stream> stream_;
     std::unique_ptr<decoder::Decoder> decoder_;
     std::unique_ptr<player::Player> player_;
     std::unique_ptr<msg::ServerSettings> serverSettings_;
+    client::NetworkTransport* transport_;  // Clean interface view of transport layer
+    std::unique_ptr<client::ProtocolHandler> protocol_handler_;  // Protocol message routing layer
+
+    // Additional members not in constructor initialization
+    SampleFormat sampleFormat_;
+    std::unique_ptr<ClientConnection> clientConnection_;
     std::unique_ptr<msg::CodecHeader> headerChunk_;
     int current_quick_syncs_ = 0;  // Track current quick sync count for controlled loop integration
-    std::unique_ptr<client::ProtocolHandler> protocol_handler_;  // Protocol message routing layer
 };

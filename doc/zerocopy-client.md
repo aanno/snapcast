@@ -53,6 +53,8 @@ The client implementation uses Linux kernel TCP_ZEROCOPY_RECEIVE functionality f
 
 The current implementation uses a **controlled sequential async loop** to prevent race conditions and ensure proper message ordering:
 
+**Note**: This controlled loop pattern serves as the foundation for the clean protocol architecture documented in `protocol_client.md`. The zero-copy transport layer now implements the `NetworkTransport` interface while maintaining full compatibility with this controlled async pattern.
+
 ```cpp
 void readMessage() {
     // Step 1: Read message header using stack array (26 bytes) - no pool allocation needed
