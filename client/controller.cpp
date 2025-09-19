@@ -91,7 +91,7 @@ Controller::Controller(boost::asio::io_context& io_context, const ClientSettings
       ssl_context_(boost::asio::ssl::context::tlsv12_client),
 #endif
       timer_(io_context), settings_(settings), stream_(nullptr), decoder_(nullptr), player_(nullptr), serverSettings_(nullptr),
-      protocol_handler_(std::make_unique<client::ProtocolHandler>())
+      transport_(nullptr), protocol_handler_(std::make_unique<client::ProtocolHandler>())
 {
 #ifdef HAS_OPENSSL
     if (settings.server.isSsl())
@@ -331,26 +331,51 @@ void Controller::setupProtocolHandlers()
 
 void Controller::getNextMessage()
 {
-    clientConnection_->getNextMessage([this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response)
-    {
-        if (ec)
+    // Use clean transport interface when available, fallback to clientConnection for other transports
+    if (transport_) {
+        transport_->receiveMessage([this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response)
         {
-            LOG(ERROR, LOG_TAG) << "Error receiving next message: " << ec << "\n";
-            reconnect();
-            return;
-        }
+            if (ec)
+            {
+                LOG(ERROR, LOG_TAG) << "Error receiving next message: " << ec << "\n";
+                reconnect();
+                return;
+            }
 
-        if (!response)
+            if (!response)
+            {
+                return getNextMessage();
+            }
+
+            // Delegate message handling to protocol handler
+            protocol_handler_->handleMessage(std::move(response));
+
+            // Continue receiving messages
+            getNextMessage();
+        });
+    } else {
+        // Fallback for non-NetworkTransport connections (WebSocket, etc.)
+        clientConnection_->getNextMessage([this](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> response)
         {
-            return getNextMessage();
-        }
+            if (ec)
+            {
+                LOG(ERROR, LOG_TAG) << "Error receiving next message: " << ec << "\n";
+                reconnect();
+                return;
+            }
 
-        // Delegate message handling to protocol handler
-        protocol_handler_->handleMessage(std::move(response));
-        
-        // Continue receiving messages
-        getNextMessage();
-    });
+            if (!response)
+            {
+                return getNextMessage();
+            }
+
+            // Delegate message handling to protocol handler
+            protocol_handler_->handleMessage(std::move(response));
+
+            // Continue receiving messages
+            getNextMessage();
+        });
+    }
 }
 
 
@@ -410,7 +435,9 @@ void Controller::start()
                 settings_.server.port = port;
                 LOG(INFO, LOG_TAG) << "Found server " << settings_.server.host << ":" << settings_.server.port << "\n";
                 LOG(INFO, LOG_TAG) << "Creating zero-copy TCP connection for RECEIVE (unified client)\n";
-                clientConnection_ = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
+                auto zerocopy_connection = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
+                transport_ = zerocopy_connection.get();  // Set transport interface
+                clientConnection_ = std::move(zerocopy_connection);
                 worker();
             }
         });
@@ -429,6 +456,7 @@ void Controller::start()
             auto zerocopy_connection = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
 
             // Message handlers now routed through ProtocolHandler - no direct callbacks needed
+            transport_ = zerocopy_connection.get();  // Set transport interface
 
             clientConnection_ = std::move(zerocopy_connection);
         }

@@ -584,3 +584,25 @@ void ClientConnectionTcpZeroCopy::write(boost::asio::streambuf& buffer, WriteHan
 {
     boost::asio::async_write(socket_, buffer, write_handler);
 }
+
+// ============ NetworkTransport Interface Implementation ============
+
+void ClientConnectionTcpZeroCopy::connect(ConnectCallback callback)
+{
+    // Delegate to existing ClientConnection::connect method
+    ClientConnection::connect(callback);
+}
+
+void ClientConnectionTcpZeroCopy::send(std::shared_ptr<msg::BaseMessage> message, SendCallback callback)
+{
+    // Delegate to existing ClientConnection::send method
+    ClientConnection::send(message, callback);
+}
+
+void ClientConnectionTcpZeroCopy::receiveMessage(MessageCallback callback)
+{
+    // Convert MessageCallback to MessageHandler format and delegate to existing getNextMessage
+    getNextMessage([callback](const boost::system::error_code& ec, std::unique_ptr<msg::BaseMessage> message) {
+        callback(ec, std::move(message));
+    });
+}

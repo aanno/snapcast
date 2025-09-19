@@ -22,6 +22,7 @@
 #include "client_connection.hpp"
 #include "client_settings.hpp"
 #include "protocol_handler.hpp"
+#include "network_transport.hpp"
 #include "common/message/server_settings.hpp"
 #include "decoder/decoder.hpp"
 #include "player/player.hpp"
@@ -76,6 +77,7 @@ private:
     ClientSettings settings_;
     SampleFormat sampleFormat_;
     std::unique_ptr<ClientConnection> clientConnection_;
+    client::NetworkTransport* transport_;  // Clean interface view of transport layer
     std::shared_ptr<Stream> stream_;
     std::unique_ptr<decoder::Decoder> decoder_;
     std::unique_ptr<player::Player> player_;

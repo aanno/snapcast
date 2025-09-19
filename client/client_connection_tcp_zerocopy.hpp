@@ -20,6 +20,7 @@
 
 // local headers
 #include "client_connection.hpp"
+#include "network_transport.hpp"
 #include "common/mmap_buffer_pool.hpp"
 #include "common/buffer_pool.hpp"
 #include "common/message/message.hpp"
@@ -54,15 +55,21 @@
  * - Incoming data must align on page boundaries for optimal performance
  * - loopback doesn't support TCP zero-copy due to missing header-data split
  */
-class ClientConnectionTcpZeroCopy : public ClientConnection
+class ClientConnectionTcpZeroCopy : public ClientConnection, public client::NetworkTransport
 {
 public:
     ClientConnectionTcpZeroCopy(boost::asio::io_context& io_context, ClientSettings::Server server);
     ~ClientConnectionTcpZeroCopy() override;
 
+    // ClientConnection interface
     void disconnect() override;
     std::string getMacAddress() override;
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
+
+    // NetworkTransport interface
+    void connect(ConnectCallback callback) override;
+    void send(std::shared_ptr<msg::BaseMessage> message, SendCallback callback) override;
+    void receiveMessage(MessageCallback callback) override;
 
 protected:
     boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
