@@ -9,6 +9,11 @@ The enhanced protocol separates audio timing concerns from network optimization 
 - **`chunk_ms`**: Controls PCM audio chunk duration (audio timing)
 - **`chunk_kb`**: Controls wire block size for network transmission (zero-copy optimization)
 
+## Usage
+
+TODO:
+chunk_ms=20&chunk_kb=4
+
 ## Architecture Changes
 
 ### Traditional Protocol (Before)

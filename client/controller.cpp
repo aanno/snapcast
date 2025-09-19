@@ -180,6 +180,42 @@ std::vector<std::string> Controller::getSupportedPlayerNames()
 
 void Controller::setupProtocolHandlers()
 {
+    // Initialize wire block reconstructor for chunk_kb mode
+    wire_block_reconstructor_ = std::make_unique<client::WireBlockReconstructor>(
+        [this](std::shared_ptr<msg::WireChunk> reconstructed_chunk) {
+            // Handle reconstructed FLAC chunk - convert to unique_ptr and process as normal WireChunk
+            LOG(INFO, "Controller") << "WIRE BLOCK RECONSTRUCTED: size: " << reconstructed_chunk->payloadSize << " bytes"
+                                    << ", timestamp: " << reconstructed_chunk->timestamp.sec << "." << reconstructed_chunk->timestamp.usec << "\n";
+
+            std::unique_ptr<msg::WireChunk> wire_chunk(new msg::WireChunk(*reconstructed_chunk));
+
+            if (stream_ && decoder_)
+            {
+                boost::asio::post(io_context_, [this, wire_chunk = std::move(wire_chunk)]() mutable {
+                    auto pcmChunk = msg::message_cast<msg::PcmChunk>(std::move(wire_chunk));
+                    pcmChunk->format = sampleFormat_;
+
+                    if (auto* flac_decoder = dynamic_cast<decoder::FlacDecoder*>(decoder_.get())) {
+                        if (auto zero_copy_chunk = flac_decoder->decodeZeroCopy(pcmChunk.get())) {
+                            stream_->addChunk(std::move(zero_copy_chunk));
+                        }
+                    } else {
+                        if (decoder_->decode(pcmChunk.get())) {
+                            stream_->addChunk(std::move(pcmChunk));
+                        }
+                    }
+                });
+            }
+        }
+    );
+
+    // Setup WireBlock handler for chunk_kb mode
+    protocol_handler_->setWireBlockHandler([this](std::shared_ptr<msg::WireBlock> wire_block) {
+        LOG(INFO, "Controller") << "WIRE BLOCK RECEIVED: sequence " << wire_block->sequence_number
+                                << ", payload " << wire_block->payload_length << " bytes\n";
+        wire_block_reconstructor_->processWireBlock(wire_block);
+    });
+
     // Setup WireChunk handler for audio processing
     protocol_handler_->setWireChunkHandler([this](std::unique_ptr<msg::WireChunk> wire_chunk) {
         // Log received wire chunk

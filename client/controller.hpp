@@ -23,6 +23,7 @@
 #include "client_settings.hpp"
 #include "protocol_handler.hpp"
 #include "network_transport.hpp"
+#include "wire_block_reconstructor.hpp"
 #include "common/message/server_settings.hpp"
 #include "decoder/decoder.hpp"
 #include "player/player.hpp"
@@ -81,6 +82,7 @@ private:
     std::unique_ptr<msg::ServerSettings> serverSettings_;
     client::NetworkTransport* transport_;  // Clean interface view of transport layer
     std::unique_ptr<client::ProtocolHandler> protocol_handler_;  // Protocol message routing layer
+    std::unique_ptr<client::WireBlockReconstructor> wire_block_reconstructor_;  // Wire block reconstruction for chunk_kb mode
 
     // Additional members not in constructor initialization
     SampleFormat sampleFormat_;

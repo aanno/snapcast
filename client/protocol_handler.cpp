@@ -45,15 +45,27 @@ void ProtocolHandler::handleMessage(std::unique_ptr<msg::BaseMessage> message)
     {
         case message_type::kWireChunk:
         {
-            // LOG(TRACE, LOG_TAG) << "Routing WireChunk message\n";
-            if (wire_chunk_handler_)
+            // Try to cast as WireBlock first (factory will have created the correct type)
+            auto wire_block = msg::message_cast<msg::WireBlock>(std::move(message));
+            if (wire_block && wire_block_handler_)
             {
-                auto wire_chunk = msg::message_cast<msg::WireChunk>(std::move(message));
-                wire_chunk_handler_(std::move(wire_chunk));
+                LOG(TRACE, LOG_TAG) << "Routing WireBlock message, sequence: " << wire_block->sequence_number 
+                                   << ", payload: " << wire_block->payload_length << " bytes\n";
+                wire_block_handler_(std::move(wire_block));
             }
             else
             {
-                LOG(WARNING, LOG_TAG) << "No WireChunk handler registered\n";
+                // Fall back to WireChunk/PcmChunk handling
+                LOG(TRACE, LOG_TAG) << "Routing WireChunk message\n";
+                if (wire_chunk_handler_)
+                {
+                    auto wire_chunk = msg::message_cast<msg::WireChunk>(std::move(message));
+                    wire_chunk_handler_(std::move(wire_chunk));
+                }
+                else
+                {
+                    LOG(WARNING, LOG_TAG) << "No WireChunk handler registered\n";
+                }
             }
             break;
         }

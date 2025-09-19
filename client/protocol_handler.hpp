@@ -21,6 +21,7 @@
 // local headers
 #include "common/message/message.hpp"
 #include "common/message/wire_chunk.hpp"
+#include "common/message/wire_block.hpp"
 #include "common/message/server_settings.hpp"
 #include "common/message/codec_header.hpp"
 #include "common/message/time.hpp"
@@ -44,6 +45,7 @@ class ProtocolHandler
 public:
     // Callback types for different message handling
     using WireChunkHandler = std::function<void(std::unique_ptr<msg::WireChunk>)>;
+    using WireBlockHandler = std::function<void(std::shared_ptr<msg::WireBlock>)>;
     using ServerSettingsHandler = std::function<void(std::unique_ptr<msg::ServerSettings>)>;
     using CodecHeaderHandler = std::function<void(std::unique_ptr<msg::CodecHeader>)>;
     using TimeHandler = std::function<void(std::unique_ptr<msg::Time>)>;
@@ -55,6 +57,7 @@ public:
 
     // Callback registration methods
     void setWireChunkHandler(WireChunkHandler handler) { wire_chunk_handler_ = std::move(handler); }
+    void setWireBlockHandler(WireBlockHandler handler) { wire_block_handler_ = std::move(handler); }
     void setServerSettingsHandler(ServerSettingsHandler handler) { server_settings_handler_ = std::move(handler); }
     void setCodecHeaderHandler(CodecHeaderHandler handler) { codec_header_handler_ = std::move(handler); }
     void setTimeHandler(TimeHandler handler) { time_handler_ = std::move(handler); }
@@ -70,6 +73,7 @@ public:
 private:
     // Message type handlers
     WireChunkHandler wire_chunk_handler_;
+    WireBlockHandler wire_block_handler_;
     ServerSettingsHandler server_settings_handler_;
     CodecHeaderHandler codec_header_handler_;
     TimeHandler time_handler_;

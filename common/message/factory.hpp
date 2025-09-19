@@ -27,6 +27,7 @@
 #include "pcm_chunk.hpp"
 #include "server_settings.hpp"
 #include "time.hpp"
+#include "wire_block.hpp"
 
 
 namespace msg
@@ -61,6 +62,17 @@ static std::unique_ptr<T> createMessage(const BaseMessage& base_message, char* b
     return result;
 }
 
+/// Detect if a kWireChunk message is actually a WireBlock based on size
+static bool isWireBlockMessage(const BaseMessage& base_message)
+{
+    // WireBlock has additional header: timestamp(8) + sequence_number(4) + payload_length(4) = 16 bytes
+    // WireChunk has only: timestamp(8) = 8 bytes
+    // BaseMessage header is 26 bytes
+    const size_t wire_block_min_size = 26 + 16; // BaseMessage + WireBlock header
+    return base_message.size >= wire_block_min_size && 
+           base_message.size >= 42; // Additional safety check for minimum WireBlock size
+}
+
 /// Create a BaseMessage from @p base_message header and payload @p buffer
 static std::unique_ptr<BaseMessage> createMessage(const BaseMessage& base_message, char* buffer)
 {
@@ -76,9 +88,17 @@ static std::unique_ptr<BaseMessage> createMessage(const BaseMessage& base_messag
         case message_type::kTime:
             return createMessage<Time>(base_message, buffer);
         case message_type::kWireChunk:
-            // this is kind of cheated to safe the convertion from WireChunk to PcmChunk
-            // the user of the factory must be aware that a PcmChunk will be created
-            return createMessage<PcmChunk>(base_message, buffer);
+            // Detect if this is a WireBlock or traditional WireChunk/PcmChunk
+            if (isWireBlockMessage(base_message))
+            {
+                return createMessage<WireBlock>(base_message, buffer);
+            }
+            else
+            {
+                // this is kind of cheated to safe the convertion from WireChunk to PcmChunk
+                // the user of the factory must be aware that a PcmChunk will be created
+                return createMessage<PcmChunk>(base_message, buffer);
+            }
         case message_type::kClientInfo:
             return createMessage<ClientInfo>(base_message, buffer);
         case message_type::kError:
