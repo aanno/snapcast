@@ -62,7 +62,6 @@ private:
     std::unique_ptr<player::Player> createPlayer(ClientSettings::Player& settings, const std::string& player_name);
 
     void getNextMessage();
-    void sendTimeSyncMessage(int quick_syncs);
     void sendHelloMessage();  // Send hello synchronously for controlled loop integration
     void handleServerSettings(std::unique_ptr<msg::ServerSettings> settings);  // Handle ServerSettings from controlled loop
     void sendTimeSyncMessageSync(int quick_syncs);  // Send time sync synchronously for controlled loop integration

@@ -75,7 +75,6 @@
 #include "time_provider.hpp"
 
 // standard headers
-#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -212,14 +211,8 @@ void Controller::setupProtocolHandlers()
 
     // Setup ServerSettings handler
     protocol_handler_->setServerSettingsHandler([this](std::unique_ptr<msg::ServerSettings> server_settings) {
-        serverSettings_ = std::move(server_settings);
-        LOG(INFO, LOG_TAG) << "ServerSettings - buffer: " << serverSettings_->getBufferMs() << ", latency: " << serverSettings_->getLatency()
-                           << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() << "\n";
-        if (stream_ && player_)
-        {
-            player_->setVolume({serverSettings_->getVolume() / 100., serverSettings_->isMuted()});
-            stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency));
-        }
+        // Route ServerSettings to the dedicated handler
+        handleServerSettings(std::move(server_settings));
     });
 
     // Setup CodecHeader handler for decoder/player initialization
@@ -319,10 +312,9 @@ void Controller::setupProtocolHandlers()
     });
 
     // Setup Time handler for time sync responses
-    protocol_handler_->setTimeHandler([this](std::unique_ptr<msg::Time> /*time_message*/) {
-        // Time responses are handled by ZeroCopy controlled loop callbacks
-        // This is expected for ZeroCopy connections - no action needed here
-        LOG(DEBUG, LOG_TAG) << "Time response received via protocol handler (handled by ZeroCopy callback)\n";
+    protocol_handler_->setTimeHandler([this](std::unique_ptr<msg::Time> time_message) {
+        // Route time sync responses to the dedicated handler
+        handleTimeResponse(std::move(time_message));
     });
 
     // Setup Error handler
@@ -362,41 +354,6 @@ void Controller::getNextMessage()
 }
 
 
-void Controller::sendTimeSyncMessage(int quick_syncs)
-{
-    auto timeReq = std::make_shared<msg::Time>();
-    clientConnection_->sendRequest<msg::Time>(timeReq, 2s,
-                                              [this, quick_syncs](const boost::system::error_code& ec, const std::unique_ptr<msg::Time>& response) mutable
-    {
-        if (ec)
-        {
-            LOG(ERROR, LOG_TAG) << "Time sync request failed: " << ec.message() << "\n";
-            reconnect();
-            return;
-        }
-        else
-        {
-            TimeProvider::getInstance().setDiff(response->latency, response->received - response->sent);
-        }
-
-        std::chrono::microseconds next = TIME_SYNC_INTERVAL;
-        if (quick_syncs > 0)
-        {
-            if (--quick_syncs == 0)
-                LOG(INFO, LOG_TAG) << "diff to server [ms]: "
-                                   << static_cast<float>(TimeProvider::getInstance().getDiffToServer<chronos::usec>().count()) / 1000.f << "\n";
-            next = 100us;
-        }
-        timer_.expires_after(next);
-        timer_.async_wait([this, quick_syncs](const boost::system::error_code& ec)
-        {
-            if (!ec)
-            {
-                sendTimeSyncMessage(quick_syncs);
-            }
-        });
-    });
-}
 
 void Controller::browseMdns(const MdnsHandler& handler)
 {
@@ -471,14 +428,7 @@ void Controller::start()
             LOG(INFO, LOG_TAG) << "Creating zero-copy TCP connection for RECEIVE (unified client)\n";
             auto zerocopy_connection = make_unique<ClientConnectionTcpZeroCopy>(io_context_, settings_.server);
 
-            // Set callbacks for controlled loop integration
-            zerocopy_connection->setServerSettingsHandler([this](std::unique_ptr<msg::ServerSettings> settings) {
-                this->handleServerSettings(std::move(settings));
-            });
-
-            zerocopy_connection->setTimeHandler([this](std::unique_ptr<msg::Time> time_response) {
-                this->handleTimeResponse(std::move(time_response));
-            });
+            // Message handlers now routed through ProtocolHandler - no direct callbacks needed
 
             clientConnection_ = std::move(zerocopy_connection);
         }
