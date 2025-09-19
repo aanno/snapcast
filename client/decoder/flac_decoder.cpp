@@ -71,6 +71,8 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     decode_operations_++;
+    size_t input_size = chunk->payloadSize;
+    LOG(INFO, LOG_TAG) << "FLAC DECODE START: input size: " << input_size << " bytes\n";
     cacheInfo_.reset();
     pcm_chunk_ = chunk;
     
@@ -123,6 +125,10 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
 
     // Log growth statistics periodically
     logGrowthStatistics();
+    
+    // Log decode completion
+    LOG(INFO, LOG_TAG) << "FLAC DECODE COMPLETE: input " << input_size << " -> output " << pcm_chunk_->payloadSize << " bytes"
+                       << ", expansion: " << (pcm_chunk_->payloadSize * 100 / input_size) << "%\n";
 
     return true;
 }

@@ -91,6 +91,7 @@ static constexpr auto kUriCodec = "codec";
 static constexpr auto kUriName = "name";
 static constexpr auto kUriSampleFormat = "sampleformat";
 static constexpr auto kUriChunkMs = "chunk_ms";
+static constexpr auto kUriChunkKb = "chunk_kb";
 static constexpr auto kControlScript = "controlscript";
 static constexpr auto kControlScriptParams = "controlscriptparams";
 
@@ -233,6 +234,14 @@ protected:
     SampleFormat sampleFormat_;
     /// Chunk read duration
     size_t chunk_ms_;
+    /// Target chunk size in KB (alternative to chunk_ms)
+    size_t chunk_kb_;
+    /// Accumulation buffer for chunk_kb mode
+    std::vector<char> pcm_accumulator_;
+    /// Total accumulated PCM size for current chunk_kb target
+    size_t accumulated_pcm_size_;
+    /// Target encoded size in bytes (chunk_kb * 1024)
+    size_t target_encoded_size_;
     /// Encoder (PCM, flac, vorbus, opus)
     std::unique_ptr<encoder::Encoder> encoder_;
     /// Name of this stream

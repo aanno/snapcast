@@ -47,8 +47,8 @@ static constexpr auto LOG_TAG = "PcmStream";
 
 
 PcmStream::PcmStream(PcmStream::Listener* pcmListener, boost::asio::io_context& ioc, ServerSettings server_settings, StreamUri uri)
-    : active_(false), strand_(boost::asio::make_strand(ioc.get_executor())), pcmListeners_{pcmListener}, uri_(std::move(uri)), chunk_ms_(20),
-      state_(ReaderState::kIdle), server_settings_(std::move(server_settings)), req_id_(0), property_timer_(strand_)
+    : active_(false), strand_(boost::asio::make_strand(ioc.get_executor())), pcmListeners_{pcmListener}, uri_(std::move(uri)), chunk_ms_(20), chunk_kb_(0),
+      accumulated_pcm_size_(0), target_encoded_size_(0), state_(ReaderState::kIdle), server_settings_(std::move(server_settings)), req_id_(0), property_timer_(strand_)
 {
     encoder::EncoderFactory encoderFactory;
     if (uri_.query.find(kUriCodec) == uri_.query.end())
@@ -62,11 +62,31 @@ PcmStream::PcmStream(PcmStream::Listener* pcmListener, boost::asio::io_context& 
     if (uri_.query.find(kUriSampleFormat) == uri_.query.end())
         throw SnapException("Stream URI must have a sampleformat");
     sampleFormat_ = SampleFormat(uri_.query[kUriSampleFormat]);
+    
+    // Process chunk_kb from URI FIRST (takes precedence over chunk_ms)
+    if (uri_.query.find(kUriChunkKb) != uri_.query.end()) {
+        chunk_kb_ = cpt::stoul(uri_.query[kUriChunkKb]);
+        target_encoded_size_ = chunk_kb_ * 1024;  // Convert KB to bytes
+        // For chunk_kb mode, use a small initial chunk_ms that will be accumulated
+        chunk_ms_ = 10;  // Small chunks for accumulation
+    } else {
+        // Process chunk_ms from URI only if chunk_kb not specified
+        if (uri_.query.find(kUriChunkMs) != uri_.query.end())
+            chunk_ms_ = cpt::stoul(uri_.query[kUriChunkMs]);
+        // chunk_ms_ already initialized to 20 as default
+    }
+    
     chunk_ = std::make_unique<msg::PcmChunk>(sampleFormat_, chunk_ms_);
     silent_chunk_ = std::vector<char>(chunk_->payloadSize, 0);
     LOG(DEBUG, LOG_TAG) << "Chunk duration: " << chunk_->durationMs() << " ms, frames: " << chunk_->getFrameCount() << ", size: " << chunk_->payloadSize
                         << "\n";
-    LOG(INFO, LOG_TAG) << "PcmStream: " << name_ << ", sampleFormat: " << sampleFormat_.toString() << "\n";
+    if (chunk_kb_ > 0) {
+        LOG(INFO, LOG_TAG) << "PcmStream: " << name_ << ", sampleFormat: " << sampleFormat_.toString() 
+                           << ", chunk_kb: " << chunk_kb_ << " (target: " << target_encoded_size_ << " bytes) - SIZE-BASED CHUNKING\n";
+    } else {
+        LOG(INFO, LOG_TAG) << "PcmStream: " << name_ << ", sampleFormat: " << sampleFormat_.toString() 
+                           << ", chunk_ms: " << chunk_ms_ << " - TIME-BASED CHUNKING\n";
+    }
 
     if (uri_.query.find(kControlScript) != uri_.query.end())
     {
@@ -75,9 +95,6 @@ PcmStream::PcmStream(PcmStream::Listener* pcmListener, boost::asio::io_context& 
             params = uri_.query[kControlScriptParams];
         stream_ctrl_ = std::make_unique<ScriptStreamControl>(strand_, server_settings_.stream.plugin_dir, uri_.query[kControlScript], std::move(params));
     }
-
-    if (uri_.query.find(kUriChunkMs) != uri_.query.end())
-        chunk_ms_ = cpt::stoul(uri_.query[kUriChunkMs]);
 
     double silence_threshold_percent = 0.;
     try
@@ -310,8 +327,14 @@ void PcmStream::setState(ReaderState newState)
 void PcmStream::chunkEncoded(const encoder::Encoder& encoder, const std::shared_ptr<msg::PcmChunk>& chunk, double duration)
 {
     std::ignore = encoder;
-    // LOG(TRACE, LOG_TAG) << "onChunkEncoded: " << getName() << ", duration: " << duration
-    //                     << " ms, compression ratio: " << 100 - ceil(100 * (chunk->durationMs() / duration)) << "%\n";
+    // Enhanced logging for chunk size analysis
+    size_t encoded_size = chunk->payloadSize;
+    // Calculate original PCM size from duration and sample format
+    size_t original_pcm_size = static_cast<size_t>(duration * sampleFormat_.rate() * sampleFormat_.frameSize() / 1000.0);
+    double compression_ratio = original_pcm_size > 0 ? (100.0 * (original_pcm_size - encoded_size) / original_pcm_size) : 0.0;
+    LOG(INFO, LOG_TAG) << "FLAC ENCODED: " << getName() << ", duration: " << duration << "ms"
+                       << ", PCM->FLAC size: " << original_pcm_size << "->" << encoded_size << " bytes"
+                       << ", compression: " << compression_ratio << "%\n";
     if (duration <= 0)
         return;
 
@@ -332,6 +355,10 @@ void PcmStream::chunkEncoded(const encoder::Encoder& encoder, const std::shared_
 
 void PcmStream::chunkRead(const msg::PcmChunk& chunk)
 {
+    // Log PCM chunk read
+    LOG(INFO, LOG_TAG) << "PCM READ: " << getName() << ", size: " << chunk.payloadSize << " bytes"
+                       << ", duration: " << chunk.durationMs() << "ms, frames: " << chunk.getFrameCount() << "\n";
+    
     for (auto* listener : pcmListeners_)
     {
         if (listener != nullptr)

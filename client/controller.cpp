@@ -182,6 +182,10 @@ void Controller::setupProtocolHandlers()
 {
     // Setup WireChunk handler for audio processing
     protocol_handler_->setWireChunkHandler([this](std::unique_ptr<msg::WireChunk> wire_chunk) {
+        // Log received wire chunk
+        LOG(INFO, "Controller") << "WIRE RECEIVED: size: " << wire_chunk->payloadSize << " bytes"
+                                << ", timestamp: " << wire_chunk->timestamp.sec << "." << wire_chunk->timestamp.usec << "\n";
+        
         if (stream_ && decoder_)
         {
             // execute on the io_context to do the (costly) decoding on another thread (if more than one thread is used)
