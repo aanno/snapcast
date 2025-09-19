@@ -26,6 +26,7 @@
 // local headers
 #include "client_connection_tcp_zerocopy.hpp"
 #include "client_connection.hpp"
+#include "protocol_handler.hpp"
 #include "decoder/null_decoder.hpp"
 #include "decoder/pcm_decoder.hpp"
 #if defined(HAS_OGG) && (defined(HAS_TREMOR) || defined(HAS_VORBIS))
@@ -90,7 +91,8 @@ Controller::Controller(boost::asio::io_context& io_context, const ClientSettings
 #ifdef HAS_OPENSSL
       ssl_context_(boost::asio::ssl::context::tlsv12_client),
 #endif
-      timer_(io_context), settings_(settings), stream_(nullptr), decoder_(nullptr), player_(nullptr), serverSettings_(nullptr)
+      timer_(io_context), settings_(settings), stream_(nullptr), decoder_(nullptr), player_(nullptr), serverSettings_(nullptr),
+      protocol_handler_(std::make_unique<client::ProtocolHandler>())
 {
 #ifdef HAS_OPENSSL
     if (settings.server.isSsl())
@@ -132,6 +134,9 @@ Controller::Controller(boost::asio::io_context& io_context, const ClientSettings
         }
     }
 #endif // HAS_OPENSSL
+
+    // Setup protocol handler callbacks
+    setupProtocolHandlers();
 }
 
 /// Helper to create a player instance
@@ -174,6 +179,163 @@ std::vector<std::string> Controller::getSupportedPlayerNames()
     return result;
 }
 
+void Controller::setupProtocolHandlers()
+{
+    // Setup WireChunk handler for audio processing
+    protocol_handler_->setWireChunkHandler([this](std::unique_ptr<msg::WireChunk> wire_chunk) {
+        if (stream_ && decoder_)
+        {
+            // execute on the io_context to do the (costly) decoding on another thread (if more than one thread is used)
+            boost::asio::post(io_context_, [this, wire_chunk = std::move(wire_chunk)]() mutable {
+                auto pcmChunk = msg::message_cast<msg::PcmChunk>(std::move(wire_chunk));
+                pcmChunk->format = sampleFormat_;
+                // LOG(TRACE, LOG_TAG) << "chunk: " << pcmChunk->payloadSize << ", sampleFormat: " << sampleFormat_.toString() << "\n";
+
+                // Phase 4: Try zero-copy decode for FLAC decoder
+                if (auto* flac_decoder = dynamic_cast<decoder::FlacDecoder*>(decoder_.get())) {
+                    // Use Phase 4 True Zero-Copy decode
+                    if (auto zero_copy_chunk = flac_decoder->decodeZeroCopy(pcmChunk.get())) {
+                        // LOG(TRACE, LOG_TAG) << "Zero-copy decoded: " << zero_copy_chunk->payloadSize << ", Duration: " << zero_copy_chunk->durationMs() << "\n";
+                        stream_->addChunk(std::move(zero_copy_chunk));
+                    }
+                } else {
+                    // Phase 3: Fallback to regular decode for other decoders
+                    if (decoder_->decode(pcmChunk.get())) {
+                        // LOG(TRACE, LOG_TAG) << ", decoded: " << pcmChunk->payloadSize << ", Duration: " << pcmChunk->durationMs() << ", sec: " <<
+                        // pcmChunk->timestamp.sec << ", usec: " << pcmChunk->timestamp.usec / 1000 << ", type: " << pcmChunk->type << "\n";
+                        stream_->addChunk(std::move(pcmChunk));
+                    }
+                }
+            });
+        }
+    });
+
+    // Setup ServerSettings handler
+    protocol_handler_->setServerSettingsHandler([this](std::unique_ptr<msg::ServerSettings> server_settings) {
+        serverSettings_ = std::move(server_settings);
+        LOG(INFO, LOG_TAG) << "ServerSettings - buffer: " << serverSettings_->getBufferMs() << ", latency: " << serverSettings_->getLatency()
+                           << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() << "\n";
+        if (stream_ && player_)
+        {
+            player_->setVolume({serverSettings_->getVolume() / 100., serverSettings_->isMuted()});
+            stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency));
+        }
+    });
+
+    // Setup CodecHeader handler for decoder/player initialization
+    protocol_handler_->setCodecHeaderHandler([this](std::unique_ptr<msg::CodecHeader> codec_header) {
+        headerChunk_ = std::move(codec_header);
+        decoder_.reset(nullptr);
+        stream_ = nullptr;
+        player_.reset(nullptr);
+
+        if (headerChunk_->codec == "pcm")
+            decoder_ = make_unique<decoder::PcmDecoder>();
+#if defined(HAS_OGG) && (defined(HAS_TREMOR) || defined(HAS_VORBIS))
+        else if (headerChunk_->codec == "ogg")
+            decoder_ = make_unique<decoder::OggDecoder>();
+#endif
+#if defined(HAS_FLAC)
+        else if (headerChunk_->codec == "flac")
+            decoder_ = make_unique<decoder::FlacDecoder>();
+#endif
+#if defined(HAS_OPUS)
+        else if (headerChunk_->codec == "opus")
+            decoder_ = make_unique<decoder::OpusDecoder>();
+#endif
+        else if (headerChunk_->codec == "null")
+            decoder_ = make_unique<decoder::NullDecoder>();
+        else
+            throw SnapException("codec not supported: \"" + headerChunk_->codec + "\"");
+
+        sampleFormat_ = decoder_->setHeader(headerChunk_.get());
+        LOG(INFO, LOG_TAG) << "Codec: " << headerChunk_->codec << ", sampleformat: " << sampleFormat_.toString() << "\n";
+
+        stream_ = make_shared<Stream>(sampleFormat_, settings_.player.sample_format);
+        stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency));
+
+#ifdef HAS_ALSA
+        if (!player_)
+            player_ = createPlayer<AlsaPlayer>(settings_.player, player::ALSA);
+#endif
+#ifdef HAS_PULSE
+        if (!player_)
+            player_ = createPlayer<PulsePlayer>(settings_.player, player::PULSE);
+#endif
+#ifdef HAS_OBOE
+        if (!player_)
+            player_ = createPlayer<OboePlayer>(settings_.player, player::OBOE);
+#endif
+#ifdef HAS_OPENSL
+        if (!player_)
+            player_ = createPlayer<OpenslPlayer>(settings_.player, player::OPENSL);
+#endif
+#ifdef HAS_COREAUDIO
+        if (!player_)
+            player_ = createPlayer<CoreAudioPlayer>(settings_.player, player::COREAUDIO);
+#endif
+#ifdef HAS_WASAPI
+        if (!player_)
+            player_ = createPlayer<WASAPIPlayer>(settings_.player, player::WASAPI);
+#endif
+#ifdef HAS_PIPEWIRE
+        if (!player_)
+            player_ = createPlayer<PipeWirePlayer>(settings_.player, player::PIPEWIRE);
+#endif
+        if (!player_ && (settings_.player.player_name == player::FILE))
+            player_ = createPlayer<FilePlayer>(settings_.player, player::FILE);
+
+        if (!player_)
+            throw SnapException("No audio player support" + (settings_.player.player_name.empty() ? "" : " for: " + settings_.player.player_name));
+
+        player_->setVolumeCallback([this](const Player::Volume& volume)
+        {
+            // Cache the last volume and check if it really changed in the player's volume callback
+            static Player::Volume last_volume{-1, true};
+            if (volume != last_volume)
+            {
+                last_volume = volume;
+                auto info = std::make_shared<msg::ClientInfo>();
+                info->setVolume(static_cast<uint16_t>(volume.volume * 100.));
+                info->setMuted(volume.mute);
+                clientConnection_->send(info, [this](const boost::system::error_code& ec)
+                {
+                    if (ec)
+                    {
+                        LOG(ERROR, LOG_TAG) << "Failed to send client info, error: " << ec.message() << "\n";
+                        reconnect();
+                        return;
+                    }
+                });
+            }
+        });
+        player_->start();
+        // Don't change the initial hardware mixer volume on the user's device.
+        // The player class will send the device's volume to the server instead
+        // if (settings_.player.mixer.mode != ClientSettings::Mixer::Mode::hardware)
+        // {
+        player_->setVolume({serverSettings_->getVolume() / 100., serverSettings_->isMuted()});
+        // }
+    });
+
+    // Setup Time handler for time sync responses
+    protocol_handler_->setTimeHandler([this](std::unique_ptr<msg::Time> /*time_message*/) {
+        // Time responses are handled by ZeroCopy controlled loop callbacks
+        // This is expected for ZeroCopy connections - no action needed here
+        LOG(DEBUG, LOG_TAG) << "Time response received via protocol handler (handled by ZeroCopy callback)\n";
+    });
+
+    // Setup Error handler
+    protocol_handler_->setErrorHandler([this](std::unique_ptr<msg::Error> error_message) {
+        LOG(ERROR, LOG_TAG) << "Received error: " << error_message->error << ", message: " << error_message->message << ", code: " << error_message->code << "\n";
+    });
+
+    // Setup handler for unexpected messages
+    protocol_handler_->setUnexpectedMessageHandler([this](message_type type) {
+        LOG(WARNING, LOG_TAG) << "Unexpected message received, type: " << type << "\n";
+    });
+}
+
 
 void Controller::getNextMessage()
 {
@@ -191,155 +353,10 @@ void Controller::getNextMessage()
             return getNextMessage();
         }
 
-        if (response->type == message_type::kWireChunk)
-        {
-            if (stream_ && decoder_)
-            {
-                // execute on the io_context to do the (costly) decoding on another thread (if more than one thread is used)
-                boost::asio::post(io_context_, [this, response = std::move(response)]() mutable {
-                    auto pcmChunk = msg::message_cast<msg::PcmChunk>(std::move(response));
-                    pcmChunk->format = sampleFormat_;
-                    // LOG(TRACE, LOG_TAG) << "chunk: " << pcmChunk->payloadSize << ", sampleFormat: " << sampleFormat_.toString() << "\n";
-
-                    // Phase 4: Try zero-copy decode for FLAC decoder
-                    if (auto* flac_decoder = dynamic_cast<decoder::FlacDecoder*>(decoder_.get())) {
-                        // Use Phase 4 True Zero-Copy decode
-                        if (auto zero_copy_chunk = flac_decoder->decodeZeroCopy(pcmChunk.get())) {
-                            // LOG(TRACE, LOG_TAG) << "Zero-copy decoded: " << zero_copy_chunk->payloadSize << ", Duration: " << zero_copy_chunk->durationMs() << "\n";
-                            stream_->addChunk(std::move(zero_copy_chunk));
-                        }
-                    } else {
-                        // Phase 3: Fallback to regular decode for other decoders
-                        if (decoder_->decode(pcmChunk.get())) {
-                            // LOG(TRACE, LOG_TAG) << ", decoded: " << pcmChunk->payloadSize << ", Duration: " << pcmChunk->durationMs() << ", sec: " <<
-                            // pcmChunk->timestamp.sec << ", usec: " << pcmChunk->timestamp.usec / 1000 << ", type: " << pcmChunk->type << "\n";
-                            stream_->addChunk(std::move(pcmChunk));
-                        }
-                    }
-                });
-            }
-        }
-        else if (response->type == message_type::kServerSettings)
-        {
-            serverSettings_ = msg::message_cast<msg::ServerSettings>(std::move(response));
-            LOG(INFO, LOG_TAG) << "ServerSettings - buffer: " << serverSettings_->getBufferMs() << ", latency: " << serverSettings_->getLatency()
-                               << ", volume: " << serverSettings_->getVolume() << ", muted: " << serverSettings_->isMuted() << "\n";
-            if (stream_ && player_)
-            {
-                player_->setVolume({serverSettings_->getVolume() / 100., serverSettings_->isMuted()});
-                stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency));
-            }
-        }
-        else if (response->type == message_type::kCodecHeader)
-        {
-            headerChunk_ = msg::message_cast<msg::CodecHeader>(std::move(response));
-            decoder_.reset(nullptr);
-            stream_ = nullptr;
-            player_.reset(nullptr);
-
-            if (headerChunk_->codec == "pcm")
-                decoder_ = make_unique<decoder::PcmDecoder>();
-#if defined(HAS_OGG) && (defined(HAS_TREMOR) || defined(HAS_VORBIS))
-            else if (headerChunk_->codec == "ogg")
-                decoder_ = make_unique<decoder::OggDecoder>();
-#endif
-#if defined(HAS_FLAC)
-            else if (headerChunk_->codec == "flac")
-                decoder_ = make_unique<decoder::FlacDecoder>();
-#endif
-#if defined(HAS_OPUS)
-            else if (headerChunk_->codec == "opus")
-                decoder_ = make_unique<decoder::OpusDecoder>();
-#endif
-            else if (headerChunk_->codec == "null")
-                decoder_ = make_unique<decoder::NullDecoder>();
-            else
-                throw SnapException("codec not supported: \"" + headerChunk_->codec + "\"");
-
-            sampleFormat_ = decoder_->setHeader(headerChunk_.get());
-            LOG(INFO, LOG_TAG) << "Codec: " << headerChunk_->codec << ", sampleformat: " << sampleFormat_.toString() << "\n";
-
-            stream_ = make_shared<Stream>(sampleFormat_, settings_.player.sample_format);
-            stream_->setBufferLen(std::max(0, serverSettings_->getBufferMs() - serverSettings_->getLatency() - settings_.player.latency));
-
-#ifdef HAS_ALSA
-            if (!player_)
-                player_ = createPlayer<AlsaPlayer>(settings_.player, player::ALSA);
-#endif
-#ifdef HAS_PULSE
-            if (!player_)
-                player_ = createPlayer<PulsePlayer>(settings_.player, player::PULSE);
-#endif
-#ifdef HAS_OBOE
-            if (!player_)
-                player_ = createPlayer<OboePlayer>(settings_.player, player::OBOE);
-#endif
-#ifdef HAS_OPENSL
-            if (!player_)
-                player_ = createPlayer<OpenslPlayer>(settings_.player, player::OPENSL);
-#endif
-#ifdef HAS_COREAUDIO
-            if (!player_)
-                player_ = createPlayer<CoreAudioPlayer>(settings_.player, player::COREAUDIO);
-#endif
-#ifdef HAS_WASAPI
-            if (!player_)
-                player_ = createPlayer<WASAPIPlayer>(settings_.player, player::WASAPI);
-#endif
-#ifdef HAS_PIPEWIRE
-            if (!player_)
-                player_ = createPlayer<PipeWirePlayer>(settings_.player, player::PIPEWIRE);
-#endif
-            if (!player_ && (settings_.player.player_name == player::FILE))
-                player_ = createPlayer<FilePlayer>(settings_.player, player::FILE);
-
-            if (!player_)
-                throw SnapException("No audio player support" + (settings_.player.player_name.empty() ? "" : " for: " + settings_.player.player_name));
-
-            player_->setVolumeCallback([this](const Player::Volume& volume)
-            {
-                // Cache the last volume and check if it really changed in the player's volume callback
-                static Player::Volume last_volume{-1, true};
-                if (volume != last_volume)
-                {
-                    last_volume = volume;
-                    auto info = std::make_shared<msg::ClientInfo>();
-                    info->setVolume(static_cast<uint16_t>(volume.volume * 100.));
-                    info->setMuted(volume.mute);
-                    clientConnection_->send(info, [this](const boost::system::error_code& ec)
-                    {
-                        if (ec)
-                        {
-                            LOG(ERROR, LOG_TAG) << "Failed to send client info, error: " << ec.message() << "\n";
-                            reconnect();
-                            return;
-                        }
-                    });
-                }
-            });
-            player_->start();
-            // Don't change the initial hardware mixer volume on the user's device.
-            // The player class will send the device's volume to the server instead
-            // if (settings_.player.mixer.mode != ClientSettings::Mixer::Mode::hardware)
-            // {
-            player_->setVolume({serverSettings_->getVolume() / 100., serverSettings_->isMuted()});
-            // }
-        }
-        else if (response->type == message_type::kTime)
-        {
-            // Time responses are handled by ZeroCopy controlled loop callbacks
-            // This is expected for ZeroCopy connections - no action needed here
-            LOG(DEBUG, LOG_TAG) << "Time response received via traditional loop (handled by ZeroCopy callback)\n";
-        }
-        else if (response->type == message_type::kError)
-        {
-            auto error = msg::message_cast<msg::Error>(std::move(response));
-            LOG(ERROR, LOG_TAG) << "Received error: " << error->error << ", message: " << error->message << ", code: " << error->code << "\n";
-        }
-        else
-        {
-            LOG(WARNING, LOG_TAG) << "Unexpected message received, type: " << response->type << "\n";
-        }
+        // Delegate message handling to protocol handler
+        protocol_handler_->handleMessage(std::move(response));
+        
+        // Continue receiving messages
         getNextMessage();
     });
 }
