@@ -53,8 +53,7 @@ void error_callback(const FLAC__StreamDecoder* decoder, FLAC__StreamDecoderError
 
 FlacDecoder::FlacDecoder() : Decoder(), lastError_(nullptr), flac_chunk_(std::make_unique<msg::PcmChunk>()),
                              buffer_pool_(DynamicBufferPool::instance()),
-                             input_buffer_(4096),   // Direct allocation - 4KB initial size
-                             output_buffer_(8192)   // Direct allocation - 8KB initial size
+                             output_buffer_guard_(buffer_pool_.acquire(8192))  // Initial 8KB buffer from pool
 {
 }
 
@@ -75,16 +74,9 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
     cacheInfo_.reset();
     pcm_chunk_ = chunk;
     
-    // Use direct allocation for input buffer instead of pool
-    if (input_buffer_.size() < chunk->payloadSize) {
-        input_buffer_.resize(chunk->payloadSize);
-    }
-    
-    // Copy input data to direct allocated buffer (still needed because FLAC modifies it)
-    memcpy(input_buffer_.data(), chunk->payload, chunk->payloadSize);
-    
-    // Point flac_chunk to our buffer pool buffer and reset read position
-    flac_chunk_->payload = input_buffer_.data();
+    // TRUE ZERO-COPY: No input buffer copy - read directly from original payload
+    // Point flac_chunk directly to original payload (NO COPY!)
+    flac_chunk_->payload = chunk->payload;
     flac_chunk_->payloadSize = chunk->payloadSize;
     input_read_pos_ = 0;  // Reset read position for new decode
 
@@ -92,12 +84,10 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
     pcm_chunk_->payload = static_cast<char*>(realloc(pcm_chunk_->payload, 0)); // NOLINT
     pcm_chunk_->payloadSize = 0;
 
-    // Prepare our direct allocated buffer for output data collection
+    // TRUE ZERO-COPY: Use buffer pool for output instead of direct allocation
     size_t estimated_output_size = chunk->payloadSize * 2; // Estimate 2x expansion for typical FLAC
-    if (output_buffer_.size() < estimated_output_size) {
-        output_buffer_.resize(estimated_output_size);
-    }
-    output_capacity_ = output_buffer_.size();
+    output_buffer_guard_ = buffer_pool_.acquire(estimated_output_size);
+    output_capacity_ = output_buffer_guard_.get().size();
     output_bytes_used_ = 0; // Track how much of our buffer we've used
     while (flac_chunk_->payloadSize > 0)
     {
@@ -126,9 +116,10 @@ bool FlacDecoder::decode(msg::PcmChunk* chunk)
     // Copy accumulated data from buffer pool to PcmChunk
     if (output_bytes_used_ > 0) {
         pcm_chunk_->payload = static_cast<char*>(realloc(pcm_chunk_->payload, output_bytes_used_));
-        memcpy(pcm_chunk_->payload, output_buffer_.data(), output_bytes_used_);
+        memcpy(pcm_chunk_->payload, output_buffer_guard_.get().data(), output_bytes_used_);
         pcm_chunk_->payloadSize = static_cast<uint32_t>(output_bytes_used_);
     }
+    // Buffer guard automatically returns buffer to pool when it goes out of scope
 
     // Log growth statistics periodically
     logGrowthStatistics();
@@ -143,16 +134,9 @@ std::unique_ptr<msg::ZeroCopyPcmChunk> FlacDecoder::decodeZeroCopy(msg::PcmChunk
     zero_copy_operations_++;
     cacheInfo_.reset();
 
-    // Use direct allocation for input buffer (same as regular decode)
-    if (input_buffer_.size() < chunk->payloadSize) {
-        input_buffer_.resize(chunk->payloadSize);
-    }
-
-    // Copy input data to direct allocated buffer (still needed because FLAC modifies it)
-    memcpy(input_buffer_.data(), chunk->payload, chunk->payloadSize);
-
-    // Point flac_chunk to our buffer pool buffer and reset read position
-    flac_chunk_->payload = input_buffer_.data();
+    // TRUE ZERO-COPY: No input buffer copy - read directly from original payload
+    // Point flac_chunk directly to original payload (NO COPY!)
+    flac_chunk_->payload = chunk->payload;
     flac_chunk_->payloadSize = chunk->payloadSize;
     input_read_pos_ = 0;  // Reset read position for new decode
 
@@ -316,12 +300,12 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
                 flacDecoder->buffer_expansions_++;
             }
         } else {
-            // Regular mode: use working buffer approach
+            // Regular mode: use buffer pool approach
             if (required_size > flacDecoder->output_capacity_) {
-                // Grow buffer with some headroom to avoid frequent reallocations
+                // Get larger buffer from pool with some headroom to avoid frequent reallocations
                 size_t new_capacity = required_size + (required_size / 2); // 1.5x growth
-                flacDecoder->output_buffer_.resize(new_capacity);
-                flacDecoder->output_capacity_ = flacDecoder->output_buffer_.size();
+                flacDecoder->output_buffer_guard_ = flacDecoder->buffer_pool_.acquire(new_capacity);
+                flacDecoder->output_capacity_ = flacDecoder->output_buffer_guard_.get().size();
                 flacDecoder->buffer_expansions_++;
             }
         }
@@ -340,8 +324,8 @@ FLAC__StreamDecoderWriteStatus write_callback(const FLAC__StreamDecoder* /*decod
                 // Zero-copy mode: write directly to ZeroCopyPcmChunk payload
                 output_ptr = zc_chunk->payload + flacDecoder->output_bytes_used_;
             } else {
-                // Regular mode: write to working buffer
-                output_ptr = flacDecoder->output_buffer_.data() + flacDecoder->output_bytes_used_;
+                // Regular mode: write to buffer pool buffer
+                output_ptr = flacDecoder->output_buffer_guard_.get().data() + flacDecoder->output_bytes_used_;
             }
 
             if (flacDecoder->sample_format_.sampleSize() == 1)
