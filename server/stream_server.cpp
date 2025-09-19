@@ -24,6 +24,7 @@
 #include "config.hpp"
 #include "stream_session_tcp_coordinated.hpp"
 #include "common/buffer_pool.hpp"
+#include "common/wire_block_manager.hpp"
 
 // standard headers
 #include <iomanip>
@@ -45,10 +46,39 @@ static constexpr auto LOG_STATS_TAG = "StreamServerStats";
 StreamServer::StreamServer(boost::asio::io_context& io_context, ServerSettings serverSettings, StreamMessageReceiver* messageReceiver)
     : io_context_(io_context), config_timer_(io_context), diagnostics_timer_(io_context), settings_(std::move(serverSettings)), messageReceiver_(messageReceiver)
 {
+    // Wire block accumulator will be initialized dynamically when chunk_kb mode is detected
 }
 
 
 StreamServer::~StreamServer() = default;
+
+
+void StreamServer::sendWireBlock(std::shared_ptr<msg::WireBlock> wire_block)
+{
+    if (!wire_block)
+        return;
+        
+    LOG(INFO, "StreamSrv") << "WIRE BLOCK SEND: sequence " << wire_block->sequence_number 
+                           << ", payload " << wire_block->payload_length << "/" << wire_block->getMaxPayloadSize() 
+                           << " bytes (" << (wire_block->payload_length * 100 / wire_block->getMaxPayloadSize()) << "% full)\n";
+    
+    shared_const_buffer buffer(*wire_block);
+    
+    // Send to all connected clients
+    std::vector<std::shared_ptr<StreamSession>> sessions;
+    {
+        std::lock_guard<std::recursive_mutex> mlock(sessionsMutex_);
+        for (const auto& session : sessions_)
+            if (auto s = session.lock())
+                sessions.emplace_back(s);
+    }
+    
+    for (auto& session : sessions)
+    {
+        if (session)
+            session->send(buffer);
+    }
+}
 
 
 void StreamServer::cleanup()
@@ -77,8 +107,35 @@ void StreamServer::addSession(const std::shared_ptr<StreamSession>& session)
 
 void StreamServer::onChunkEncoded(const PcmStream* pcmStream, bool isDefaultStream, const std::shared_ptr<msg::PcmChunk>& chunk, double /*duration*/)
 {
-    // Log wire transmission
-    LOG(INFO, "StreamSrv") << "WIRE SEND: " << pcmStream->getName() << ", wire size: " << chunk->payloadSize << " bytes"
+    // Check if this stream uses chunk_kb mode (size-based chunking)
+    if (pcmStream->isChunkKbMode())
+    {
+        // Initialize or recreate accumulator with correct wire block size
+        size_t wire_block_size = pcmStream->getChunkKb() * 1024;  // Convert KB to bytes
+        if (!wire_block_accumulator_ || last_wire_block_size_ != wire_block_size)
+        {
+            wire_block_accumulator_ = std::make_unique<wire_block::WireBlockAccumulator>(
+                [this](std::shared_ptr<msg::WireBlock> wire_block) {
+                    this->sendWireBlock(wire_block);
+                }, wire_block_size
+            );
+            last_wire_block_size_ = wire_block_size;
+        }
+        
+        // Use wire block accumulator for chunk_kb mode
+        LOG(INFO, "StreamSrv") << "CHUNK_KB MODE: Adding FLAC chunk to " << (wire_block_size/1024) << "KB wire blocks, size: " << chunk->payloadSize << " bytes\n";
+        
+        // Convert PcmChunk to WireChunk for accumulator
+        auto wire_chunk = std::make_shared<msg::WireChunk>(chunk->payloadSize);
+        wire_chunk->timestamp = chunk->timestamp;
+        std::memcpy(wire_chunk->payload, chunk->payload, chunk->payloadSize);
+        
+        wire_block_accumulator_->addFlacChunk(wire_chunk);
+        return;
+    }
+    
+    // Traditional mode: send chunks directly
+    LOG(INFO, "StreamSrv") << "TRADITIONAL MODE: WIRE SEND: " << pcmStream->getName() << ", wire size: " << chunk->payloadSize << " bytes"
                            << ", type: " << chunk->type << ", timestamp: " << chunk->timestamp.sec << "." << chunk->timestamp.usec << "\n";
     shared_const_buffer buffer(*chunk);
 

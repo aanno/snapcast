@@ -148,6 +148,12 @@ public:
     virtual const SampleFormat& getSampleFormat() const;
     /// @return the codec of the stream
     virtual std::string getCodec() const;
+    
+    /// Check if stream uses chunk_kb mode (size-based chunking)
+    bool isChunkKbMode() const { return chunk_kb_ > 0; }
+    
+    /// Get target chunk size in KB (0 if using chunk_ms mode)
+    size_t getChunkKb() const { return chunk_kb_; }
 
     /// @return stream properties
     const Properties& getProperties() const;

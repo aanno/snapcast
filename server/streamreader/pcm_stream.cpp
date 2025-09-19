@@ -63,30 +63,27 @@ PcmStream::PcmStream(PcmStream::Listener* pcmListener, boost::asio::io_context& 
         throw SnapException("Stream URI must have a sampleformat");
     sampleFormat_ = SampleFormat(uri_.query[kUriSampleFormat]);
     
-    // Process chunk_kb from URI FIRST (takes precedence over chunk_ms)
+    // Process chunk_ms from URI (controls PCM audio timing)
+    if (uri_.query.find(kUriChunkMs) != uri_.query.end())
+        chunk_ms_ = cpt::stoul(uri_.query[kUriChunkMs]);
+    // chunk_ms_ already initialized to 20 as default
+    
+    // Process chunk_kb from URI (controls wire block size - independent of chunk_ms)
     if (uri_.query.find(kUriChunkKb) != uri_.query.end()) {
         chunk_kb_ = cpt::stoul(uri_.query[kUriChunkKb]);
-        target_encoded_size_ = chunk_kb_ * 1024;  // Convert KB to bytes
-        // For chunk_kb mode, use a small initial chunk_ms that will be accumulated
-        chunk_ms_ = 10;  // Small chunks for accumulation
-    } else {
-        // Process chunk_ms from URI only if chunk_kb not specified
-        if (uri_.query.find(kUriChunkMs) != uri_.query.end())
-            chunk_ms_ = cpt::stoul(uri_.query[kUriChunkMs]);
-        // chunk_ms_ already initialized to 20 as default
+        target_encoded_size_ = chunk_kb_ * 1024;  // Convert KB to bytes for wire blocks
     }
     
     chunk_ = std::make_unique<msg::PcmChunk>(sampleFormat_, chunk_ms_);
     silent_chunk_ = std::vector<char>(chunk_->payloadSize, 0);
     LOG(DEBUG, LOG_TAG) << "Chunk duration: " << chunk_->durationMs() << " ms, frames: " << chunk_->getFrameCount() << ", size: " << chunk_->payloadSize
                         << "\n";
+    LOG(INFO, LOG_TAG) << "PcmStream: " << name_ << ", sampleFormat: " << sampleFormat_.toString() 
+                       << ", chunk_ms: " << chunk_ms_ << "ms (PCM timing)";
     if (chunk_kb_ > 0) {
-        LOG(INFO, LOG_TAG) << "PcmStream: " << name_ << ", sampleFormat: " << sampleFormat_.toString() 
-                           << ", chunk_kb: " << chunk_kb_ << " (target: " << target_encoded_size_ << " bytes) - SIZE-BASED CHUNKING\n";
-    } else {
-        LOG(INFO, LOG_TAG) << "PcmStream: " << name_ << ", sampleFormat: " << sampleFormat_.toString() 
-                           << ", chunk_ms: " << chunk_ms_ << " - TIME-BASED CHUNKING\n";
+        LOG(INFO, LOG_TAG) << ", chunk_kb: " << chunk_kb_ << "KB (wire blocks: " << target_encoded_size_ << " bytes)";
     }
+    LOG(INFO, LOG_TAG) << "\n";
 
     if (uri_.query.find(kControlScript) != uri_.query.end())
     {

@@ -22,6 +22,7 @@
 // local headers
 #include "common/message/message.hpp"
 #include "common/queue.hpp"
+#include "common/wire_block_manager.hpp"
 #include "control_server.hpp"
 #include "server_settings.hpp"
 #include "stream_session.hpp"
@@ -85,6 +86,9 @@ private:
     void handleAccept(tcp::socket socket);
     void cleanup();
     
+    /// Send wire block to all connected clients (for chunk_kb mode)
+    void sendWireBlock(std::shared_ptr<msg::WireBlock> wire_block);
+    
     /// Start periodic diagnostics timer
     void startDiagnosticsTimer();
 
@@ -102,4 +106,9 @@ private:
     ServerSettings settings_;
     Queue<std::shared_ptr<msg::BaseMessage>> messages_;
     StreamMessageReceiver* messageReceiver_;
+    
+    /// Wire block accumulator for chunk_kb mode (optional)
+    std::unique_ptr<wire_block::WireBlockAccumulator> wire_block_accumulator_;
+    /// Last wire block size to detect changes
+    size_t last_wire_block_size_{0};
 };
