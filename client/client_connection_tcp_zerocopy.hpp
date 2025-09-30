@@ -72,7 +72,13 @@ public:
     void receiveMessage(MessageCallback callback) override;
 
 protected:
+    /// non-virtual version of disconnect(), for d'tor
+    void close();
+
+    /// non-virtual version of connect(), for d'tor
     boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
+
+    /// async write using boost::asio
     void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) override;
 
     /// Zero-copy receive statistics

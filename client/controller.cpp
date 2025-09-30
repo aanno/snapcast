@@ -318,12 +318,12 @@ void Controller::setupProtocolHandlers()
     });
 
     // Setup Error handler
-    protocol_handler_->setErrorHandler([this](std::unique_ptr<msg::Error> error_message) {
+    protocol_handler_->setErrorHandler([](std::unique_ptr<msg::Error> error_message) {
         LOG(ERROR, LOG_TAG) << "Received error: " << error_message->error << ", message: " << error_message->message << ", code: " << error_message->code << "\n";
     });
 
     // Setup handler for unexpected messages
-    protocol_handler_->setUnexpectedMessageHandler([this](message_type type) {
+    protocol_handler_->setUnexpectedMessageHandler([](message_type type) {
         LOG(WARNING, LOG_TAG) << "Unexpected message received, type: " << type << "\n";
     });
 }

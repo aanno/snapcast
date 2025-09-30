@@ -59,10 +59,13 @@ public:
         explicit MmapBuffer(size_t buffer_size, int socket_fd);
         ~MmapBuffer();
 
-        // No copying, only moving
+        /// No copying, only moving
         MmapBuffer(const MmapBuffer&) = delete;
+        /// No copy assignment
         MmapBuffer& operator=(const MmapBuffer&) = delete;
+        /// move constructor
         MmapBuffer(MmapBuffer&& other) noexcept;
+        /// move assignment operator
         MmapBuffer& operator=(MmapBuffer&& other) noexcept;
     };
 
@@ -70,6 +73,7 @@ public:
     class MmapBufferGuard : public BufferGuardBase
     {
     public:
+        /// c'tor
         MmapBufferGuard(MmapBufferPool& pool, std::unique_ptr<MmapBuffer> buffer);
 
         /// Get typed buffer data
@@ -119,10 +123,10 @@ private:
     std::unique_ptr<MmapBuffer> createBuffer(size_t size);
 
 private:
-    static constexpr size_t DEFAULT_PAGE_SIZE = 4096;
+    static constexpr size_t DEFAULT_PAGE_SIZE = 4096; ///< Default page size (4KB)
     static const std::vector<size_t> SIZE_BUCKETS; ///< Available buffer sizes (multiples of page size)
 
-    mutable std::mutex mutex_;
+    mutable std::mutex mutex_; ///< Mutex for thread-safe access
     std::map<size_t, std::deque<std::unique_ptr<MmapBuffer>>> available_buffers_; ///< Available buffers by size
 
     // Statistics (atomic for thread-safety)

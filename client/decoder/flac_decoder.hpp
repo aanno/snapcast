@@ -82,11 +82,11 @@ public:
     std::unique_ptr<FLAC__StreamDecoderErrorStatus> lastError_;
     
     // FLAC decoder state (moved from global namespace, accessible to callbacks)
-    msg::CodecHeader* flac_header_{nullptr};
-    std::unique_ptr<msg::PcmChunk> flac_chunk_;
-    msg::PcmChunk* pcm_chunk_{nullptr};
-    std::unique_ptr<msg::ZeroCopyPcmChunk> zero_copy_chunk_{nullptr}; // For true zero-copy output
-    SampleFormat sample_format_;
+    msg::CodecHeader* flac_header_{nullptr}; ///< Pointer to the codec header
+    std::unique_ptr<msg::PcmChunk> flac_chunk_; ///< Current PCM chunk being filled
+    msg::PcmChunk* pcm_chunk_{nullptr}; ///< Current PCM chunk being filled
+    std::unique_ptr<msg::ZeroCopyPcmChunk> zero_copy_chunk_{nullptr}; ///< For true zero-copy output
+    SampleFormat sample_format_; ///< Sample format of the decoded audio
     
     // Read position tracking to eliminate memmove
     size_t input_read_pos_{0};
@@ -96,17 +96,24 @@ public:
     size_t output_bytes_used_{0};
 
     // Growth strategy statistics
+
+    /// number of buffer expansions
     mutable std::atomic<uint64_t> buffer_expansions_{0};
+    /// number of decode operations
     mutable std::atomic<uint64_t> decode_operations_{0};
+    /// number of zero-copy decode operations
     mutable std::atomic<uint64_t> zero_copy_operations_{0};
+    /// Timestamp of last statistics log
     mutable std::chrono::steady_clock::time_point last_stats_log_{std::chrono::steady_clock::now()};
 
-    // Buffer pool for zero-copy memory management
+    /// Buffer pool for zero-copy memory management
     DynamicBufferPool& buffer_pool_;
 
-    // TRUE ZERO-COPY: No persistent buffers - use pool and direct payload access
-    // input: read directly from chunk->payload (no copy)
-    // output: use buffer pool via BufferGuard (reusable memory)
+    /**
+     * TRUE ZERO-COPY: No persistent buffers - use pool and direct payload access
+     * input: read directly from chunk->payload (no copy)
+     * output: use buffer pool via BufferGuard (reusable memory)
+     */
     DynamicBufferPool::BufferGuard output_buffer_guard_;
 
 private:

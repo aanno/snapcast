@@ -43,22 +43,36 @@ class ProtocolHandler
 {
 public:
     // Callback types for different message handling
+
+    /// Handler for wire chunk messages
     using WireChunkHandler = std::function<void(std::unique_ptr<msg::WireChunk>)>;
+    /// Handler for server settings messages
     using ServerSettingsHandler = std::function<void(std::unique_ptr<msg::ServerSettings>)>;
+    /// Handler for codec header messages
     using CodecHeaderHandler = std::function<void(std::unique_ptr<msg::CodecHeader>)>;
+    /// Handler for time sync messages
     using TimeHandler = std::function<void(std::unique_ptr<msg::Time>)>;
+    /// Handler for error messages
     using ErrorHandler = std::function<void(std::unique_ptr<msg::Error>)>;
+    /// Handler for unexpected message types
     using UnexpectedMessageHandler = std::function<void(message_type type)>;
 
     ProtocolHandler() = default;
     ~ProtocolHandler() = default;
 
     // Callback registration methods
+
+    /// Register handler for wire chunk messages
     void setWireChunkHandler(WireChunkHandler handler) { wire_chunk_handler_ = std::move(handler); }
+    /// Register handler for server settings messages
     void setServerSettingsHandler(ServerSettingsHandler handler) { server_settings_handler_ = std::move(handler); }
+    /// Register handler for codec header messages
     void setCodecHeaderHandler(CodecHeaderHandler handler) { codec_header_handler_ = std::move(handler); }
+    /// Register handler for time sync messages
     void setTimeHandler(TimeHandler handler) { time_handler_ = std::move(handler); }
+    /// Register handler for error messages
     void setErrorHandler(ErrorHandler handler) { error_handler_ = std::move(handler); }
+    /// Register handler for unexpected message types
     void setUnexpectedMessageHandler(UnexpectedMessageHandler handler) { unexpected_message_handler_ = std::move(handler); }
 
     /**

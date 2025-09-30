@@ -67,6 +67,7 @@ protected:
 class BufferGuardBase
 {
 public:
+    /// c'tor
     BufferGuardBase(IBufferPool* pool, void* data, size_t size)
         : pool_(pool), data_(data), size_(size)
     {
@@ -82,6 +83,7 @@ public:
     BufferGuardBase(const BufferGuardBase&) = delete;
     BufferGuardBase& operator=(const BufferGuardBase&) = delete;
 
+    /// Move constructor
     BufferGuardBase(BufferGuardBase&& other) noexcept
         : pool_(other.pool_), data_(other.data_), size_(other.size_)
     {
@@ -90,6 +92,7 @@ public:
         other.size_ = 0;
     }
 
+    /// Move assignment operator
     BufferGuardBase& operator=(BufferGuardBase&& other) noexcept
     {
         if (this != &other)
@@ -118,7 +121,7 @@ public:
     bool valid() const { return data_ != nullptr; }
 
 protected:
-    IBufferPool* pool_;
-    void* data_;
-    size_t size_;
+    IBufferPool* pool_; ///< Pointer to the owning buffer pool
+    void* data_; ///< Pointer to the buffer data
+    size_t size_; ///< Size of the allocated buffer
 };

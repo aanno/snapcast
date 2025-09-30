@@ -72,6 +72,11 @@ ClientConnectionTcpZeroCopy::~ClientConnectionTcpZeroCopy()
 
 void ClientConnectionTcpZeroCopy::disconnect()
 {
+    close();
+}
+
+void ClientConnectionTcpZeroCopy::close()
+{
     LOG(DEBUG, LOG_TAG) << "Disconnecting zero-copy client\n";
     stats_timer_.cancel();
     
