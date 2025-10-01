@@ -58,10 +58,13 @@
 class ClientConnectionTcpZeroCopy : public ClientConnection, public client::NetworkTransport
 {
 public:
+    /// c'tor
     ClientConnectionTcpZeroCopy(boost::asio::io_context& io_context, ClientSettings::Server server);
+    /// d'tor
     ~ClientConnectionTcpZeroCopy() override;
 
     // ClientConnection interface
+
     void disconnect() override;
     std::string getMacAddress() override;
     void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
