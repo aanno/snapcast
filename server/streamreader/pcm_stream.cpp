@@ -62,6 +62,10 @@ PcmStream::PcmStream(PcmStream::Listener* pcmListener, boost::asio::io_context& 
     if (uri_.query.find(kUriSampleFormat) == uri_.query.end())
         throw SnapException("Stream URI must have a sampleformat");
     sampleFormat_ = SampleFormat(uri_.query[kUriSampleFormat]);
+
+    if (uri_.query.find(kUriChunkMs) != uri_.query.end())
+        chunk_ms_ = cpt::stoul(uri_.query[kUriChunkMs]);
+
     chunk_ = std::make_unique<msg::PcmChunk>(sampleFormat_, chunk_ms_);
     silent_chunk_ = std::vector<char>(chunk_->payloadSize, 0);
     LOG(DEBUG, LOG_TAG) << "Chunk duration: " << chunk_->durationMs() << " ms, frames: " << chunk_->getFrameCount() << ", size: " << chunk_->payloadSize
@@ -75,9 +79,6 @@ PcmStream::PcmStream(PcmStream::Listener* pcmListener, boost::asio::io_context& 
             params = uri_.query[kControlScriptParams];
         stream_ctrl_ = std::make_unique<ScriptStreamControl>(strand_, server_settings_.stream.plugin_dir, uri_.query[kControlScript], std::move(params));
     }
-
-    if (uri_.query.find(kUriChunkMs) != uri_.query.end())
-        chunk_ms_ = cpt::stoul(uri_.query[kUriChunkMs]);
 
     double silence_threshold_percent = 0.;
     try

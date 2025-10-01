@@ -42,9 +42,11 @@ namespace client
 class NetworkTransport
 {
 public:
-    // Callback types for transport operations
+    /// Callback types for transport operations
     using ConnectCallback = std::function<void(const boost::system::error_code&)>;
+    /// Callback for send completion
     using SendCallback = std::function<void(const boost::system::error_code&)>;
+    /// Callback for receiving messages
     using MessageCallback = std::function<void(const boost::system::error_code&, std::unique_ptr<msg::BaseMessage>)>;
 
     virtual ~NetworkTransport() = default;

@@ -67,7 +67,7 @@ ClientConnectionTcpZeroCopy::ClientConnectionTcpZeroCopy(boost::asio::io_context
 
 ClientConnectionTcpZeroCopy::~ClientConnectionTcpZeroCopy()
 {
-    disconnect();
+    close();
 }
 
 void ClientConnectionTcpZeroCopy::disconnect()

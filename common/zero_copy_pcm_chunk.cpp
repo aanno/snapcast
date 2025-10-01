@@ -25,7 +25,7 @@
 // standard headers
 #include <cstring>
 
-static constexpr auto LOG_TAG = "ZeroCopyPcmChunk";
+// static constexpr auto LOG_TAG = "ZeroCopyPcmChunk";
 
 namespace msg
 {

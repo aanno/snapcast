@@ -56,6 +56,7 @@ public:
         std::chrono::steady_clock::time_point last_used; ///< Last usage timestamp
         int socket_fd;                 ///< Socket file descriptor for zero-copy
 
+        /// c'tor - allocates mmap buffer
         explicit MmapBuffer(size_t buffer_size, int socket_fd);
         ~MmapBuffer();
 

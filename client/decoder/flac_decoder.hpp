@@ -88,12 +88,12 @@ public:
     std::unique_ptr<msg::ZeroCopyPcmChunk> zero_copy_chunk_{nullptr}; ///< For true zero-copy output
     SampleFormat sample_format_; ///< Sample format of the decoded audio
     
-    // Read position tracking to eliminate memmove
+    /// Read position tracking to eliminate memmove
     size_t input_read_pos_{0};
 
     // Output buffer capacity tracking for buffer pool growth
-    size_t output_capacity_{0};
-    size_t output_bytes_used_{0};
+    size_t output_capacity_{0}; ///< total output buffer capacity
+    size_t output_bytes_used_{0}; ///< output bytes used in all buffers
 
     // Growth strategy statistics
 
