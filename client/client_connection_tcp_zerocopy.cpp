@@ -31,7 +31,6 @@
 #include <boost/asio/write.hpp>
 
 // system headers
-#include <sys/mman.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
