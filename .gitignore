@@ -4,6 +4,15 @@
 *.o
 *.obj
 
+# aanno
+*.log
+/.claude/
+/tmp/
+/heaptrack/
+/cpu/
+/testrist/client
+/testrist/server
+
 # Precompiled Headers
 *.gch
 *.pch

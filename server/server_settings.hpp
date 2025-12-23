@@ -209,6 +209,21 @@ struct ServerSettings
         bool publish{true};
     };
 
+    /// RIST streaming settings
+    struct Rist
+    {
+        /// enable RIST audio streaming
+        bool enabled{true};
+        /// RIST port
+        size_t port{1706};
+        /// RIST listen addresses
+        std::vector<std::string> bind_to_address{{"::"}};
+        /// RIST recovery length minimum in [ms]
+        uint32_t recovery_length_min{20};
+        /// RIST recovery length maximum in [ms]
+        uint32_t recovery_length_max{50};
+    };
+
     /// Stream settings
     struct Stream
     {
@@ -252,6 +267,7 @@ struct ServerSettings
     Http http;                       ///< HTTP settings
     TcpControl tcp_control;          ///< TCP-Control settings
     TcpStream tcp_stream;            ///< TCP-Stream settings
+    Rist rist;                       ///< RIST settings
     Stream stream;                   ///< Stream settings
     StreamingClient streamingclient; ///< Client settings
     Logging logging;                 ///< Logging settings

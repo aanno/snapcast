@@ -158,19 +158,26 @@ int main(int argc, char** argv)
         OptionParser op("Usage: snapclient [options...] [url]\n\n"
                         " With 'url' = "
 #ifdef HAS_OPENSSL
-                        "<tcp|ws|wss>"
+                        "<tcp|ws|wss"
 #else
-                        "<tcp|ws>"
+                        "<tcp|ws"
+#endif
+#ifdef HAS_LIBRIST
+                        "|rist"
 #endif
 #ifdef HAS_MDNS
-                        "://<snapserver host or IP or mDNS service name>[:port]\n"
+                        ">://<snapserver host or IP or mDNS service name>[:port]\n"
                         " For example: 'tcp://192.168.1.1:1704', or 'ws://)homeserver.local' or 'wss://_snapcast-https._tcp'\n"
                         " If 'url' is not configured, snapclient defaults to '" +
                         default_uri + "'\n");
 #else
-                        "://<snapserver host or IP>[:port]\n"
+                        ">://<snapserver host or IP>[:port]\n"
                         " For example: 'tcp://192.168.1.1:1704', or 'ws://homeserver.local'\n");
 #endif
+#ifdef HAS_LIBRIST
+                        ", or \"rist:\\\\192.168.1.1:1706\""
+#endif
+                        "\n"
         auto helpSwitch = op.add<Switch>("", "help", "Produce help message");
         auto groffSwitch = op.add<Switch, Attribute::hidden>("", "groff", "Produce groff message");
         auto versionSwitch = op.add<Switch>("v", "version", "Show version number");
@@ -191,6 +198,7 @@ int main(int argc, char** argv)
         op.add<Value<string>>("s", "soundcard", "Index or name of the PCM device", pcm_device, &pcm_device);
 #endif
         op.add<Value<int>>("", "latency", "Latency of the PCM device", 0, &settings.player.latency);
+        op.add<Value<int>>("", "rist-latency", "Additional latency for RIST transport (increases buffer tolerance)", 0, &settings.player.rist_latency);
 #ifdef HAS_SOXR
         auto sample_format = op.add<Value<string>>("", "sampleformat", "Resample audio stream to <rate>:<bits>:<channels>", "");
 #endif
@@ -370,6 +378,9 @@ int main(int argc, char** argv)
 #ifdef HAS_OPENSSL
             schemes.emplace_back("wss");
 #endif
+#ifdef HAS_LIBRIST
+            schemes.emplace_back("rist");
+#endif
             try
             {
                 settings.server.uri.parse(op.non_option_args().front());
@@ -391,8 +402,11 @@ int main(int argc, char** argv)
                     settings.server.uri.port = 1780;
                 else if (settings.server.uri.scheme == "wss")
                     settings.server.uri.port = 1788;
+#ifdef HAS_LIBRIST
+                else if (settings.server.uri.scheme == "rist")
+                    settings.server.uri.port = 1706;
+#endif
             }
-
             if (!settings.server.uri.user.empty() || !settings.server.uri.password.empty())
             {
                 ClientSettings::Server::Auth auth;
