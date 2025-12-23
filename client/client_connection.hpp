@@ -23,6 +23,7 @@
 #include "common/message/factory.hpp"
 #include "common/message/message.hpp"
 #include "common/time_defs.hpp"
+#include "common/buffer_pool.hpp"
 
 // 3rd party headers
 #include <boost/asio/any_io_executor.hpp>
@@ -203,30 +204,6 @@ protected:
 
     /// Pending messages to be sent
     std::deque<PendingMessage> messages_;
-};
-
-
-/// Plain TCP connection
-class ClientConnectionTcp : public ClientConnection
-{
-public:
-    /// c'tor
-    ClientConnectionTcp(boost::asio::io_context& io_context, ClientSettings::Server server);
-    /// d'tor
-    virtual ~ClientConnectionTcp();
-
-    void disconnect() override;
-    std::string getMacAddress() override;
-    void getNextMessage(const MessageHandler<msg::BaseMessage>& handler) override;
-
-private:
-    boost::system::error_code doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint) override;
-    void write(boost::asio::streambuf& buffer, WriteHandler&& write_handler) override;
-
-    /// TCP socket
-    tcp_socket socket_;
-    /// Receive buffer
-    std::vector<char> buffer_;
 };
 
 

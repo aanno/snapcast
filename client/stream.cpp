@@ -18,6 +18,7 @@
 
 #ifndef NOMINMAX
 #define NOMINMAX
+#include "controller.hpp"
 #endif // NOMINMAX
 
 // prototype/interface header file
@@ -43,15 +44,19 @@ namespace cs = chronos;
 static constexpr auto LOG_TAG = "Stream";
 static constexpr auto kCorrectionBegin = 100us;
 
+static constexpr auto kBuffer = 200; // 500;
+static constexpr auto kShortBuffer = 50; // 100;
+static constexpr auto kMiniBuffer = 20; // 20;
+
 // #define LOG_LATENCIES
 
 Stream::Stream(const SampleFormat& in_format, const SampleFormat& out_format)
-    : in_format_(in_format), median_(0), shortMedian_(0), lastUpdate_(0), playedFrames_(0), correctAfterXFrames_(0), bufferMs_(cs::msec(500)), frame_delta_(0),
+    : in_format_(in_format), median_(0), shortMedian_(0), lastUpdate_(0), playedFrames_(0), correctAfterXFrames_(0), bufferMs_(cs::msec(kBuffer)), frame_delta_(0),
       hard_sync_(true), time_cond_(1s)
 {
-    buffer_.setSize(500);
-    shortBuffer_.setSize(100);
-    miniBuffer_.setSize(20);
+    buffer_.setSize(kBuffer);
+    shortBuffer_.setSize(kShortBuffer);
+    miniBuffer_.setSize(kMiniBuffer);
     latencies_.setSize(100);
 
     format_ = in_format_;

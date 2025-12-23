@@ -1,6 +1,8 @@
 set(CLIENT_SOURCES
     client_connection.cpp
+    client_connection_tcp_zerocopy.cpp
     controller.cpp
+    protocol_handler.cpp
     snapclient.cpp
     stream.cpp
     time_provider.cpp

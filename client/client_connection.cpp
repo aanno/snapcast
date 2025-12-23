@@ -22,6 +22,7 @@
 // local headers
 #include "common/aixlog.hpp"
 #include "common/str_compat.hpp"
+#include "common/buffer_pool.hpp"
 
 // 3rd party headers
 #include <boost/asio/buffer.hpp>
@@ -293,126 +294,6 @@ void ClientConnection::cancelRequests()
         }
         pending_requests_.clear();
     });
-}
-
-
-///////////////////////////////////// TCP /////////////////////////////////////
-
-ClientConnectionTcp::ClientConnectionTcp(boost::asio::io_context& io_context, ClientSettings::Server server)
-    : ClientConnection(io_context, std::move(server)), socket_(strand_)
-{
-    buffer_.resize(base_msg_size_);
-}
-
-ClientConnectionTcp::~ClientConnectionTcp()
-{
-    disconnect(); // NOLINT
-}
-
-
-void ClientConnectionTcp::disconnect()
-{
-    LOG(DEBUG, LOG_TAG) << "Disconnecting\n";
-    if (!socket_.is_open())
-    {
-        LOG(DEBUG, LOG_TAG) << "Not connected\n";
-        return;
-    }
-    boost::system::error_code ec;
-    socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-    if (ec)
-        LOG(ERROR, LOG_TAG) << "Error in socket shutdown: " << ec.message() << "\n";
-    socket_.close(ec);
-    if (ec)
-        LOG(ERROR, LOG_TAG) << "Error in socket close: " << ec.message() << "\n";
-
-    cancelRequests();
-    LOG(DEBUG, LOG_TAG) << "Disconnected\n";
-}
-
-
-std::string ClientConnectionTcp::getMacAddress()
-{
-    std::string mac =
-#ifndef WINDOWS
-        ::getMacAddress(socket_.native_handle());
-#else
-        ::getMacAddress(socket_.local_endpoint().address().to_string());
-#endif
-    if (mac.empty())
-        mac = "00:00:00:00:00:00";
-    LOG(INFO, LOG_TAG) << "My MAC: \"" << mac << "\", socket: " << socket_.native_handle() << "\n";
-    return mac;
-}
-
-
-void ClientConnectionTcp::getNextMessage(const MessageHandler<msg::BaseMessage>& handler)
-{
-    boost::asio::async_read(socket_, boost::asio::buffer(buffer_, base_msg_size_), [this, handler](boost::system::error_code ec, std::size_t length) mutable
-    {
-        if (ec)
-        {
-            LOG(ERROR, LOG_TAG) << "Error reading message header of length " << length << ": " << ec.message() << "\n";
-            if (handler)
-                handler(ec, nullptr);
-            return;
-        }
-
-        base_message_.deserialize(buffer_.data());
-        tv t;
-        base_message_.received = t;
-        // LOG(TRACE, LOG_TAG) << "getNextMessage: " << base_message_.type << ", size: " << base_message_.size << ", id: " <<
-        // base_message_.id << ", refers: " << base_message_.refersTo << "\n";
-        if (base_message_.type > message_type::kLast)
-        {
-            LOG(ERROR, LOG_TAG) << "unknown message type received: " << base_message_.type << ", size: " << base_message_.size << "\n";
-            if (handler)
-                handler(boost::asio::error::invalid_argument, nullptr);
-            return;
-        }
-        else if (base_message_.size > msg::max_size)
-        {
-            LOG(ERROR, LOG_TAG) << "received message of type " << base_message_.type << " to large: " << base_message_.size << "\n";
-            if (handler)
-                handler(boost::asio::error::invalid_argument, nullptr);
-            return;
-        }
-
-        if (base_message_.size > buffer_.size())
-            buffer_.resize(base_message_.size);
-
-        boost::asio::async_read(socket_, boost::asio::buffer(buffer_, base_message_.size),
-                                [this, handler](boost::system::error_code ec, std::size_t length) mutable
-        {
-            if (ec)
-            {
-                LOG(ERROR, LOG_TAG) << "Error reading message body of length " << length << ": " << ec.message() << "\n";
-                if (handler)
-                    handler(ec, nullptr);
-                return;
-            }
-
-            auto response = msg::factory::createMessage(base_message_, buffer_.data());
-            if (!response)
-                LOG(WARNING, LOG_TAG) << "Failed to deserialize message of type: " << base_message_.type << "\n";
-
-            messageReceived(std::move(response), handler);
-        });
-    });
-}
-
-
-boost::system::error_code ClientConnectionTcp::doConnect(boost::asio::ip::basic_endpoint<boost::asio::ip::tcp> endpoint)
-{
-    boost::system::error_code ec;
-    socket_.connect(endpoint, ec);
-    return ec;
-}
-
-
-void ClientConnectionTcp::write(boost::asio::streambuf& buffer, WriteHandler&& write_handler)
-{
-    boost::asio::async_write(socket_, buffer, write_handler);
 }
 
 

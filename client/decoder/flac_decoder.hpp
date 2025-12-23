@@ -20,11 +20,15 @@
 
 // local headers
 #include "decoder.hpp"
+#include "common/buffer_pool.hpp"
+#include "common/zero_copy_pcm_chunk.hpp"
 
 // 3rd party headers
 #include <FLAC/stream_decoder.h>
 
 // standard headers
+#include <atomic>
+#include <chrono>
 #include <memory>
 #include <mutex>
 
@@ -61,13 +65,60 @@ public:
     bool decode(msg::PcmChunk* chunk) override;
     SampleFormat setHeader(msg::CodecHeader* chunk) override;
 
+    /// Zero-copy decode that creates and returns a ZeroCopyPcmChunk
+    std::unique_ptr<msg::ZeroCopyPcmChunk> decodeZeroCopy(msg::PcmChunk* chunk);
+
+    /// Get FLAC decoder buffer growth statistics
+    std::pair<uint64_t, uint64_t> getGrowthStats() const {
+        return {buffer_expansions_.load(), decode_operations_.load()};
+    }
+
+    /// Log growth statistics periodically (every 30 seconds)
+    void logGrowthStatistics() const;
+
     /// Flac internal cache info
     CacheInfo cacheInfo_;
     /// Last decoder error
     std::unique_ptr<FLAC__StreamDecoderErrorStatus> lastError_;
+    
+    // FLAC decoder state (moved from global namespace, accessible to callbacks)
+    msg::CodecHeader* flac_header_{nullptr}; ///< Pointer to the codec header
+    std::unique_ptr<msg::PcmChunk> flac_chunk_; ///< Current PCM chunk being filled
+    msg::PcmChunk* pcm_chunk_{nullptr}; ///< Current PCM chunk being filled
+    std::unique_ptr<msg::ZeroCopyPcmChunk> zero_copy_chunk_{nullptr}; ///< For true zero-copy output
+    SampleFormat sample_format_; ///< Sample format of the decoded audio
+    
+    /// Read position tracking to eliminate memmove
+    size_t input_read_pos_{0};
+
+    // Output buffer capacity tracking for buffer pool growth
+    size_t output_capacity_{0}; ///< total output buffer capacity
+    size_t output_bytes_used_{0}; ///< output bytes used in all buffers
+
+    // Growth strategy statistics
+
+    /// number of buffer expansions
+    mutable std::atomic<uint64_t> buffer_expansions_{0};
+    /// number of decode operations
+    mutable std::atomic<uint64_t> decode_operations_{0};
+    /// number of zero-copy decode operations
+    mutable std::atomic<uint64_t> zero_copy_operations_{0};
+    /// Timestamp of last statistics log
+    mutable std::chrono::steady_clock::time_point last_stats_log_{std::chrono::steady_clock::now()};
+
+    /// Buffer pool for zero-copy memory management
+    DynamicBufferPool& buffer_pool_;
+
+    /**
+     * TRUE ZERO-COPY: No persistent buffers - use pool and direct payload access
+     * input: read directly from chunk->payload (no copy)
+     * output: use buffer pool via BufferGuard (reusable memory)
+     */
+    DynamicBufferPool::BufferGuard output_buffer_guard_;
 
 private:
     std::mutex mutex_;
+    FLAC__StreamDecoder* decoder_{nullptr};
 };
 
 } // namespace decoder
